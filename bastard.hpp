@@ -150,8 +150,10 @@ struct abstract_data {
 	}
 };
 
-template< typename data_type, typename operators_factory >
+template< typename data_type, typename operators_factory, typename data_factory >
 struct bastard {
+	using self_type = bastard<data_type, operators_factory, data_factory>;
+
 	template<typename expr_t>
 	struct unary_op { std::decay_t<expr_t> expr; };
 	template<typename expr_t>
@@ -183,9 +185,16 @@ struct bastard {
 	template<typename expr_t> struct op_or       : binary_op<expr_t> {};
 	template<typename expr_t> struct op_not      : unary_op<expr_t> {};
 
+	template<typename expr_t>
+	struct list_expr {
+		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) list;
+	};
+
 	using string_t = data_type::string_t;
 	using integer_t = data_type::integer_t;
 	using float_point_t = data_type::float_point_t;
+
+	template<typename type> using ast_forwarder = data_factory::template ast_forwarder<type>;
 
 	template<typename... operators>
 	using parse_result = data_type::template variant_t<std::decay_t<operators>...,string_t,integer_t,float_point_t,bool>;
@@ -200,10 +209,12 @@ struct bastard {
 	     , op_fp_div   < fa<expr_type<fa>> >
 	     , op_power    < fa<expr_type<fa>> >
 	     , op_not      < fa<expr_type<fa>> >
+	     , list_expr   < fa<expr_type<fa>> >
 	> {};
 
 	data_type* env;
 	operators_factory ops;
+	data_factory df;
 
 	template<template<class>class fa> constexpr data_type operator()(const expr_type<fa>& e) {
 		return visit(*this, e);
@@ -246,10 +257,11 @@ struct bastard {
 		return data_type{ (integer_t)__LINE__ };
 	}
 
-	template<template<class>class ast_forwarder,typename gh, template<auto>class th=gh::template tmpl>
-	constexpr static auto parse_str(auto&& src, auto result_maker, auto mk_fwd) {
+	template<typename gh, template<auto>class th=gh::template tmpl>
+	constexpr auto parse_str(auto&& src) const {
 		using expr_t = ast_forwarder<expr_type<ast_forwarder>>;
-		auto expr_p = rv(result_maker
+		auto mk_fwd = [this](auto& v){ return df.mk_fwd(v); }; 
+		auto expr_p = rv([this](auto& v){ return df.mk_result(v); }
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"and"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"or">  >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> th<'+'>::_char >> ++gh::rv_rreq(mk_fwd))
@@ -259,6 +271,7 @@ struct bastard {
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"/"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"**"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<unary_op<expr_t>>(th<'!'>::_char++ >> --gh::rv_rreq(mk_fwd))
+			, th<'['>::_char++ >> --((gh::rv_req(mk_fwd)) % ',') >> th<']'>::_char // TODO: initialize list member with data factory?
 			, gh::quoted_string
 			, gh::int_
 			, gh::fp
@@ -270,74 +283,76 @@ struct bastard {
 		return r;
 	}
 
-	template<template<class>class af,typename gh>
-	constexpr static auto test_terms(auto mk_fwd, auto result_maker, auto src) {
+	template<typename gh>
+	constexpr static auto test_terms(auto src) {
 		data_type env;
 		operators_factory ops;
-		auto parsed = parse_str<af,gh>(src, result_maker, mk_fwd);
-		auto ret = bastard{&env, ops}(parsed);
-		return ret;
+		bastard ev{&env, ops};
+		auto parsed = ev.parse_str<gh>(src);
+		return ev(parsed);
 	}
 
-	template<template<class>class af,typename gh>
-	constexpr static bool test_terms(auto mk_fwd, auto rm) {
-		static_assert( get<integer_t>(parse_str<af,gh>("1",rm,mk_fwd)) == 1 );
-		static_assert( (integer_t)test_terms<af,gh>(mk_fwd, rm, "1") == 1 );
-		static_assert( (integer_t)test_terms<af,gh>(mk_fwd, rm, "2") == 2 );
-		static_assert( ((string_t)test_terms<af,gh>(mk_fwd, rm, "'ok'"))[1] == 'k' );
-		static_assert( (float_point_t)test_terms<af,gh>(mk_fwd, rm, "0.2") == (float_point_t)0.2 );
-		static_assert( (bool)test_terms<af,gh>(mk_fwd, rm, "true") == true );
-		static_assert( (bool)test_terms<af,gh>(mk_fwd, rm, "false") == false );
-		static_assert( (integer_t)test_terms<af,gh>(mk_fwd, rm, "4 // 2") == 2 );
-		static_assert( (integer_t)test_terms<af,gh>(mk_fwd, rm, "5 // 2") == 2 );
-		static_assert( (integer_t)test_terms<af,gh>(mk_fwd, rm, "6 // 2") == 3 );
-		static_assert( (integer_t)test_terms<af,gh>(mk_fwd, rm, "5 * 2") == 10 );
-		static_assert( (float_point_t)test_terms<af,gh>(mk_fwd, rm, "5 * 0.5") == 2.5 );
-		static_assert( (float_point_t)test_terms<af,gh>(mk_fwd, rm, "0.5 * 5") == 2.5 );
-		static_assert( (float_point_t)test_terms<af,gh>(mk_fwd, rm, "5 / 2") == 2.0 );
-		static_assert( (float_point_t)test_terms<af,gh>(mk_fwd, rm, "5 / 2.0") == 2.5 );
-		static_assert( (float_point_t)test_terms<af,gh>(mk_fwd, rm, "5 - 2.0") == 3 );
-		static_assert( (integer_t)test_terms<af,gh>(mk_fwd, rm, "5 + 2") == 7 );
-		static_assert( (integer_t)test_terms<af,gh>(mk_fwd, rm, "5 + 2 * 3") == 11 );
-		static_assert( (integer_t)test_terms<af,gh>(mk_fwd, rm, "10 ** 2") == 100 );
-		static_assert( (integer_t)test_terms<af,gh>(mk_fwd, rm, "5+5 ** 2") == 30 ); // 5 + 25
+	template<typename gh>
+	constexpr static bool test_terms() {
+		static_assert( (integer_t)test_terms<gh>("1") == 1 );
+		static_assert( (integer_t)test_terms<gh>("2") == 2 );
+		static_assert( ((string_t)test_terms<gh>("'ok'"))[1] == 'k' );
+		static_assert( (float_point_t)test_terms<gh>("0.2") == (float_point_t)0.2 );
+		static_assert( (bool)test_terms<gh>("true") == true );
+		static_assert( (bool)test_terms<gh>("false") == false );
+		static_assert( (integer_t)test_terms<gh>("4 // 2") == 2 );
+		static_assert( (integer_t)test_terms<gh>("5 // 2") == 2 );
+		static_assert( (integer_t)test_terms<gh>("6 // 2") == 3 );
+		static_assert( (integer_t)test_terms<gh>("5 * 2") == 10 );
+		static_assert( (float_point_t)test_terms<gh>("5 * 0.5") == 2.5 );
+		static_assert( (float_point_t)test_terms<gh>("0.5 * 5") == 2.5 );
+		static_assert( (float_point_t)test_terms<gh>("5 / 2") == 2.0 );
+		static_assert( (float_point_t)test_terms<gh>("5 / 2.0") == 2.5 );
+		static_assert( (float_point_t)test_terms<gh>("5 - 2.0") == 3 );
+		static_assert( (integer_t)test_terms<gh>("5 + 2") == 7 );
+		static_assert( (integer_t)test_terms<gh>("5 + 2 * 3") == 11 );
+		static_assert( (integer_t)test_terms<gh>("10 ** 2") == 100 );
+		static_assert( (integer_t)test_terms<gh>("5+5 ** 2") == 30 ); // 5 + 25
 
-		static_assert( ((integer_t)test_terms<af,gh>(mk_fwd, rm, "(3 + 2) * 2 + 3 + 1 + 2 + 3 + 4 + 5")) == 28 );
+		static_assert( ((integer_t)test_terms<gh>("(3 + 2) * 2 + 3 + 1 + 2 + 3 + 4 + 5")) == 28 );
 
-		static_assert( (bool)test_terms<af,gh>(mk_fwd, rm, "!true") == false , "to bool and invert" );
-		static_assert( (bool)test_terms<af,gh>(mk_fwd, rm, "!0") == true , "to bool and invert" );
-		static_assert( (bool)test_terms<af,gh>(mk_fwd, rm, "!1") == false , "to bool and invert" );
-		static_assert( (bool)test_terms<af,gh>(mk_fwd, rm, "!.05") == false , "to bool and invert (c++ rules used)" );
-		static_assert( (bool)test_terms<af,gh>(mk_fwd, rm, "!'str'") == false , "to bool and invert" );
-		static_assert( (bool)test_terms<af,gh>(mk_fwd, rm, "!''") == true , "to bool and invert" );
+		static_assert( (bool)test_terms<gh>("!true") == false , "to bool and invert" );
+		static_assert( (bool)test_terms<gh>("!0") == true , "to bool and invert" );
+		static_assert( (bool)test_terms<gh>("!1") == false , "to bool and invert" );
+		static_assert( (bool)test_terms<gh>("!.05") == false , "to bool and invert (c++ rules used)" );
+		static_assert( (bool)test_terms<gh>("!'str'") == false , "to bool and invert" );
+		static_assert( (bool)test_terms<gh>("!''") == true , "to bool and invert" );
 
-		static_assert( (bool)test_terms<af,gh>(mk_fwd, rm, "true and !true") == false );
-		static_assert( (bool)test_terms<af,gh>(mk_fwd, rm, "true or !true") == true );
+		static_assert( (bool)test_terms<gh>("true and !true") == false );
+		static_assert( (bool)test_terms<gh>("true or !true") == true );
 
 		return true;
 	}
 
-	template<template<class>class af,typename gh>
-	constexpr static bool test_parse(auto mk_fwd, auto rm) {
+	template<typename gh>
+	constexpr static bool test_parse() {
+		data_type env;
+		operators_factory ops;
+		static_assert( ({ auto r = bastard{&env,ops}.parse_str<gh>("true"); r.index(); }) == 13 );
+		static_assert( ({ auto r = bastard{&env,ops}.parse_str<gh>("[1,2]"); r.index(); }) == 9 );
 		/*
-		static_assert( ({ auto r = parse_str<af,gh>("true", rm,mk_fwd); r.index(); }) == 9 );
-		static_assert( ({ auto r = parse_str<af,gh>("1", rm,mk_fwd); r.index(); }) == 7 );
-		static_assert( ({ auto r = parse_str<af,gh>("3.14", rm,mk_fwd); r.index(); }) == 8 );
-		static_assert( ({ auto r = parse_str<af,gh>("'ok'", rm,mk_fwd); r.index(); }) == 6 );
-		static_assert( ({ auto r = parse_str<af,gh>("1 + 3", rm,mk_fwd); r.index(); }) == 0 );
-		static_assert( ({ auto r = parse_str<af,gh>("1 + 3", rm,mk_fwd); get<0>(r).left->index(); }) == 7 );
-		static_assert( ({ auto r = parse_str<af,gh>("1 // 3", rm,mk_fwd); r.index(); }) == 3 );
-		static_assert( ({ auto r = parse_str<af,gh>("1 // 3", rm,mk_fwd); get<7>(*get<3>(r).right); }) == 3 );
-		static_assert( ({ auto r = parse_str<af,gh>("1 // 3", rm,mk_fwd); get<3>(r).left->index(); }) == 7 );
-		static_assert( ({ auto r = parse_str<af,gh>("1 // 3", rm,mk_fwd); get<7>(*get<3>(r).left); }) == 1 );
-		static_assert( ({ auto r = parse_str<af,gh>("1*3+2", rm,mk_fwd); r.index(); }) == 0 );
+		static_assert( ({ auto r = parse_str<gh>("1", rm,mk_fwd); r.index(); }) == 7 );
+		static_assert( ({ auto r = parse_str<gh>("3.14", rm,mk_fwd); r.index(); }) == 8 );
+		static_assert( ({ auto r = parse_str<gh>("'ok'", rm,mk_fwd); r.index(); }) == 6 );
+		static_assert( ({ auto r = parse_str<gh>("1 + 3", rm,mk_fwd); r.index(); }) == 0 );
+		static_assert( ({ auto r = parse_str<gh>("1 + 3", rm,mk_fwd); get<0>(r).left->index(); }) == 7 );
+		static_assert( ({ auto r = parse_str<gh>("1 // 3", rm,mk_fwd); r.index(); }) == 3 );
+		static_assert( ({ auto r = parse_str<gh>("1 // 3", rm,mk_fwd); get<7>(*get<3>(r).right); }) == 3 );
+		static_assert( ({ auto r = parse_str<gh>("1 // 3", rm,mk_fwd); get<3>(r).left->index(); }) == 7 );
+		static_assert( ({ auto r = parse_str<gh>("1 // 3", rm,mk_fwd); get<7>(*get<3>(r).left); }) == 1 );
+		static_assert( ({ auto r = parse_str<gh>("1*3+2", rm,mk_fwd); r.index(); }) == 0 );
 		*/
 		return true;
 	}
 
-	template<template<class>class ast_forwarder,typename gh>
-	constexpr static bool test(auto mk_fwd, auto result_maker) {
-		return test_parse<ast_forwarder,gh>(mk_fwd, result_maker) && test_terms<ast_forwarder,gh>(mk_fwd, result_maker);
+	template<typename gh>
+	constexpr static bool test() {
+		return test_parse<gh>() && test_terms<gh>();
 	}
 };
 
