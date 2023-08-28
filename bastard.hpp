@@ -4,12 +4,14 @@
  * Distributed under the GNU Affero General Public License.
  * See accompanying file copying (at the root of this repository)
  * or <http://www.gnu.org/licenses/> for details
- **************************************************************************/
+ *************************************************************************/
 
 #include <utility>
-#include <iostream>
 
 namespace bastard_details {
+
+template<typename... types> struct overloaded : types... { using types::operator()... ;} ;
+template<typename... types> overloaded(types...) -> overloaded<types...>;
 
 template<typename type, template<typename...>class tmpl> constexpr const bool is_specialization_of = false;
 template<template<typename...>class type, typename... args> constexpr const bool is_specialization_of<type<args...>, type> = true;
@@ -119,11 +121,12 @@ template<
 	template<class...>class variant,
 	typename string,
 	typename integer=int,
-	typename float_point=double
+	typename float_point=double,
+	typename... implementations
 	>
 struct abstract_data {
-	using self_type = abstract_data<variant,string,integer,float_point>;
-	using holder_type = variant<string,integer,float_point,bool>;
+	using self_type = abstract_data<variant,string,integer,float_point, implementations...>;
+	using holder_type = variant<string,integer,float_point,bool, implementations...>;
 
 	using string_t = string;
 	using integer_t = integer;
@@ -136,6 +139,16 @@ struct abstract_data {
 	constexpr bool is_str() const { return holder.index() == 0; }
 	constexpr bool is_int() const { return get_if<integer>(&holder) != nullptr; }
 	constexpr bool is_bool() const { return holder.index() == 3; }
+	constexpr bool is_arr() const {
+		return visit( bastard_details::overloaded {
+			[](const string_t&){ return false; },
+			[](const integer_t&){ return false; },
+			[](const float_point_t&){ return false; },
+			[](const auto& other) {
+				return true;
+			}
+			}, holder );
+	}
 
 	constexpr operator string() const { return get<string>(holder); }
 	constexpr explicit operator bool() const { return get<bool>(holder); }
@@ -152,6 +165,7 @@ struct abstract_data {
 
 template< typename data_type, typename operators_factory, typename data_factory >
 struct bastard {
+	template<typename... types> using variant_t = data_type::template variant_t<types...>;
 	using self_type = bastard<data_type, operators_factory, data_factory>;
 
 	template<typename expr_t>
@@ -350,9 +364,22 @@ struct bastard {
 		return true;
 	}
 
+	constexpr static bool test_abstract_data() {
+		data_factory df;
+		using int_vec_type = decltype(df.template mk_vec<int>());
+		using data_t = abstract_data<variant_t, typename data_type::string_t, typename data_type::integer_t, typename data_type::float_point_t, int_vec_type>;
+		static_assert( data_t{ true }.is_bool() == true );
+		static_assert( data_t{ (integer_t)1 }.is_int() == true );
+		static_assert( data_t{ (integer_t)1 }.is_str() == false );
+		static_assert( data_t{ (integer_t)1 }.is_arr() == false );
+		static_assert( data_t{ (integer_t)1 }.is_bool() == false );
+		static_assert( data_t{ int_vec_type{} }.is_arr() == true );
+		return true;
+	}
+
 	template<typename gh>
 	constexpr static bool test() {
-		return test_parse<gh>() && test_terms<gh>();
+		return test_abstract_data() && test_parse<gh>() && test_terms<gh>();
 	}
 };
 
