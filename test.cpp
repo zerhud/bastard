@@ -3,12 +3,13 @@
 //#include "ascip_all.hpp"
 #include "ascip.hpp"
 
+#include <map>
 #include <tuple>
 #include <vector>
 #include <memory>
 #include <string>
 #include <variant>
-#include <map>
+#include <cassert>
 
 #include <iostream>
 
@@ -25,9 +26,13 @@ struct absd_factory {
 	using float_point_t = float_point;
 	using string_t = std::string;
 	using empty_t = std::monostate;
+//	template<typename key,typename value> using map_t = std::map<key,value>;
 
-	constexpr static auto* mk_ptr(auto d) { return new decltype(d){ std::move(d) }; }
-	constexpr static void deallocate(auto* ptr){ delete ptr; }
+	template<typename type> constexpr static auto mk_vec(){ return std::vector<type>{}; }
+//	template<typename key, typename value>
+//	constexpr static auto mk_map(){ return map_t<key,value>{}; }
+	constexpr static auto mk_ptr(auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
+	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
 	constexpr static void throw_wrong_interface_error(auto&& op) {
 		throw std::runtime_error("cannot perform operation "s + op);
 	}
@@ -80,11 +85,20 @@ struct data_factory {
 	constexpr auto mk_ptr(auto&&... args) { return std::make_unique<type>(std::forward<decltype(args)>(args)...); }
 };
 
+bool check_exception(auto fnc) {
+	bool ok = false;
+	try{ fnc(); }
+	catch(const std::exception&){ ok = true; }
+	return ok;
+}
+
 int main(int,char**) {
 	static_assert( bastard<data_type,op_factory,data_factory>::test<parser>() );
 	static_assert( bastard<data_type2,op_factory,data_factory>::test<parser>() );
 
 	static_assert( absd_data1::test() );
+
+	assert(check_exception([]{ absd_data1{1}.push_back(absd_data1(2)); }));
 
 	//auto result = bastard<data_type,op_factory>::test_terms<std::unique_ptr,parser>(fwd_ast, result_maker, "(5+2)*3");
 	//std::cout << "===\n" << result << std::endl;

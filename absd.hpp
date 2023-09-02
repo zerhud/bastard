@@ -12,42 +12,93 @@ namespace absd {
 
 namespace details {
 
-	template<typename factory> constexpr auto mk_integer_type() {
-		if constexpr(!requires{ typename factory::integer_t; }) return int{};
-		else return typename factory::integer_t{};
-	}
-	template<typename factory> constexpr auto mk_float_point_type() {
-		if constexpr(!requires{ typename factory::float_pint_t; }) return double{};
-		else return typename factory::float_pint_t{};
-	}
+template<typename factory> constexpr auto mk_integer_type() {
+	if constexpr(!requires{ typename factory::integer_t; }) return int{};
+	else return typename factory::integer_t{};
+}
+template<typename factory> constexpr auto mk_float_point_type() {
+	if constexpr(!requires{ typename factory::float_pint_t; }) return double{};
+	else return typename factory::float_pint_t{};
+}
 
-	struct inner_counter {
-		unsigned long int ref_counter = 0;
-		constexpr auto increase_counter() { return ++ref_counter; }
-		constexpr auto decrease_counter() { return --ref_counter; }
+struct inner_counter {
+	unsigned long int ref_counter = 0;
+	constexpr auto increase_counter() { return ++ref_counter; }
+	constexpr auto decrease_counter() { return --ref_counter; }
+};
+
+template<typename factory, typename data>
+struct array : inner_counter {
+	using vec_content = data;
+
+	[[no_unique_address]] factory f;
+	factory::template vector<vec_content> holder;
+
+
+	constexpr array(factory _f) requires (requires{ _f.template mk_vec<vec_content>(); }) : f(std::move(_f)), holder(f.template mk_vec<vec_content>()) {}
+	constexpr array(factory _f) requires (!requires{ _f.template mk_vec<vec_content>(); }) : f(std::move(_f)) {}
+
+	constexpr data& emplace_back(data d) { return holder.emplace_back(std::move(d)); }
+	constexpr data& at(std::integral auto ind) { return holder.at(ind); }
+	constexpr auto size() const { return holder.size(); }
+};
+template<typename data, typename factory> constexpr auto mk_array_type(const factory& f) {
+	if constexpr(!requires{ typename factory::array_t; }) return array<factory, data>(f);
+	else return typename factory::array_t{};
+}
+
+//template<template<typename>class vector, typename key, typename value>
+template<typename factory, typename key, typename value>
+struct constexpr_kinda_map {
+	struct chunk {
+		key k;
+		value v;
 	};
+	factory::template vector<chunk> store;
 
-	template<typename factory, typename data>
-	struct array : inner_counter {
-		[[no_unique_address]] factory f;
-		factory::template vector<data*> holder;
+	using value_type = chunk;
 
-
-		constexpr array(factory _f) requires (requires{ _f.template mk_vec<data*>(); }) : f(std::move(_f)), holder(f.template mk_vec<data*>()) {}
-		constexpr array(factory _f) requires (!requires{ _f.template mk_vec<data*>(); }) : f(std::move(_f)) {}
-
-		//constexpr data& emplace_back(data d) { return holder.emplace_back(std::move(d)); }
-		constexpr data& emplace_back(data d) { return *holder.emplace_back(f.mk_ptr(std::move(d))); }
-		constexpr data& at(auto ind) { return *holder.at(ind); }
-		constexpr auto size() const { return holder.size(); }
-		constexpr auto deallocate() {
-			for(auto& v:holder) f.deallocate(v);
-		}
-	};
-	template<typename factory, typename data> constexpr auto mk_array_type() {
-		if constexpr(!requires{ typename factory::array_t; }) return array<factory, data>(factory{});
-		else return typename factory::array_t{};
+	constexpr void insert(auto&& _v) {
+		auto&& [k,v] = _v;
+		store.emplace_back( chunk{ std::move(k), std::move(v) } );
 	}
+
+	constexpr auto& at(const key& fk) {
+		for(auto&[k,v]:store) if(k==fk) return v;
+		throw __LINE__;
+	}
+};
+template<typename key, typename value, typename factory> constexpr auto mk_map_type(const factory& f) {
+	if constexpr(requires{ f.template mk_map<key,value>(); }) return f.template mk_map<key,value>();
+	else {
+		using map_t = constexpr_kinda_map<factory, key, value>;
+		return map_t{f.template mk_vec<typename map_t::chunk>()};
+	}
+}
+template<typename data, typename map_t>
+struct object : inner_counter {
+	map_t map;
+
+	constexpr object(map_t map) : map(std::move(map)) {}
+	constexpr data& at(const data& ind) { return map.at(ind); }
+	constexpr data& put(data key, data value) {
+		struct kv{ data k, v; };
+		map.insert( kv{ key, value} );
+		return map.at(key);
+	}
+};
+template<typename data, typename factory> constexpr auto mk_object_type(const factory& f) {
+	if constexpr(requires{ typename factory::object_t; }) return typename factory::object_t{};
+	else {
+		using map_t = decltype(mk_map_type<data,data>(std::declval<factory>()));
+		return object<data,map_t>(mk_map_type<data,data>(factory{}));
+	}
+}
+
+template<typename factory, typename data>
+struct callable_object : inner_counter {
+	virtual ~callable_object() noexcept =default ;
+};
 
 } // namespace details
 
@@ -69,26 +120,36 @@ namespace details {
 
 template<typename factory, typename crtp>
 struct data {
+	static_assert( noexcept( std::declval<factory>().deallocate((int*)nullptr) ), "for safity delete allocated objects the dealocate method must to be noexcept" );
+
 	using self_type = crtp;//data<factory, crtp>;
 	using base_data_type = data<factory, crtp>;
-	using array_t = decltype(details::mk_array_type<factory,crtp>());
+	using array_t = decltype(details::mk_array_type<crtp>(std::declval<factory>()));
+	using object_t = decltype(details::mk_object_type<crtp>(std::declval<factory>()));
 	using string_t = typename factory::string_t;
 	using integer_t = decltype(details::mk_integer_type<factory>());
 	using float_point_t = decltype(details::mk_float_point_type<factory>());
-	using holder_t = factory::template variant<typename factory::empty_t, bool, integer_t, float_point_t, string_t, array_t>;
+	using holder_t = factory::template variant<typename factory::empty_t, bool, integer_t, float_point_t, string_t, array_t*, object_t*>;
 
 private:
+	template<typename type> constexpr static const bool is_inner_counter_exists = requires(std::remove_pointer_t<std::decay_t<type>>& v){ v.increase_counter(); };
+
 	holder_t holder;
 
 	constexpr void allocate() {
 		visit([](auto& v){
-			if constexpr(requires{ v.increase_counter(); }) v.increase_counter();
+			if constexpr(is_inner_counter_exists<decltype(v)>) {
+				v->increase_counter();
+			}
 		}, holder);
 	}
 	constexpr void deallocate() {
-		visit([](auto& v){
-			if constexpr(requires{ v.decrease_counter(); }) {
-				if(v.decrease_counter()==0) v.deallocate();
+		visit([this](auto& v){
+			if constexpr(is_inner_counter_exists<decltype(v)>) {
+				if(v->decrease_counter()==0) {
+					factory::deallocate(v);
+					holder = typename factory::empty_t{};
+				}
 			}
 			}, holder);
 	}
@@ -101,10 +162,31 @@ public:
 	constexpr data(float_point_t v) : holder(v) {}
 	constexpr data(self_type&& v) : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; }
 	constexpr data(const self_type& v) : holder(v.holder) { allocate(); }
+	constexpr data(const data& v) : holder(v.holder) { allocate(); }
+	constexpr data(data&& v) : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; }
 	constexpr ~data() { deallocate(); }
 
-	constexpr self_type& assign() { deallocate(); holder = typename factory::empty_t{}; return static_cast<self_type&>(*this);}
-	constexpr self_type& assign(auto&& v) { deallocate(); holder = std::forward<decltype(v)>(v); allocate(); return static_cast<self_type&>(*this); }
+	constexpr self_type& assign() {
+		deallocate();
+		holder = typename factory::empty_t{};
+		return static_cast<self_type&>(*this);
+	}
+	constexpr self_type& assign(auto&& v) {
+		deallocate();
+		if constexpr(requires{ holder = std::forward<decltype(v)>(v); })
+			holder = std::forward<decltype(v)>(v);
+		else {
+			holder = v.get();
+			v.release();
+		}
+		allocate();
+		return static_cast<self_type&>(*this);
+	}
+
+	constexpr auto& operator=(const data& v) { return assign(v.holder); }
+	constexpr auto& operator=(const self_type& v) { return assign(v.holder); }
+	constexpr auto& operator=(data&& v) { return assign(std::move(v.holder)); }
+	constexpr auto& operator=(self_type&& v) { return assign(std::move(v.holder)); }
 
 	constexpr auto& operator=(string_t v){ return assign(std::move(v)); }
 	constexpr auto& operator=(integer_t v){ return assign(v); }
@@ -120,18 +202,21 @@ public:
 	constexpr bool is_bool() const { return holder.index() == 1; }
 	constexpr bool is_string() const { return holder.index() == 4; }
 	constexpr bool is_float_point() const { return holder.index() == 3; }
-	constexpr bool is_array() const { return visit( [](const auto& v){ return requires(std::decay_t<decltype(v)>& vv){ vv.emplace_back( crtp{} ); }; }, holder); }
+	constexpr bool is_array() const { return visit( [](const auto& v){ return requires(std::decay_t<decltype(v)> vv){ vv->at( integer_t{} ); }; }, holder); }
+	constexpr bool is_object() const { return visit( [](const auto& v){ return requires(std::decay_t<decltype(v)> vv){ vv->at( crtp{} ); }; }, holder); }
 
 	constexpr auto size() const {
 		return visit( [](const auto& v){
 			if constexpr(requires{ v.size(); }) return v.size();
+			else if constexpr(requires{ v->size(); }) return v->size();
 			else return sizeof(v); }, holder);
 	}
 
-	constexpr self_type& mk_empty_array() { return assign(array_t(factory{})); }
+	constexpr self_type& mk_empty_array() { return assign(factory::mk_ptr(details::mk_array_type<crtp>(factory{}))); }
+	constexpr self_type& mk_empty_object() { return assign(factory::mk_ptr(details::mk_object_type<crtp>(factory{}))); }
 	constexpr self_type& push_back(self_type d) {
 		return visit([this,d=std::move(d)](auto& v) -> self_type& { 
-			if constexpr(requires{ v.emplace_back(std::move(d)); }) { return v.emplace_back(std::move(d)); }
+			if constexpr(requires{ v->emplace_back(std::move(d)); }) { return v->emplace_back(std::move(d)); }
 			else {
 				factory::throw_wrong_interface_error("push_back");
 				std::unreachable();
@@ -139,11 +224,31 @@ public:
 			}
 		}, holder);
 	}
+	constexpr self_type& put(self_type key, self_type value) {
+		return visit([this,key=std::move(key),value=std::move(value)](auto& v) -> self_type& {
+			if constexpr(requires{ v->put(key,value); }) return v->put(key, value);
+			else {
+				factory::throw_wrong_interface_error("put");
+				std::unreachable();
+				return static_cast<self_type&>(*this);
+			}
+		}, holder);
+	}
 	constexpr self_type& operator[](integer_t ind){
 		return visit([this,ind](auto& v)->self_type&{ 
-			if constexpr(requires{ v.emplace_back(self_type{}); v.at(ind); }) { return v.at(ind); }
+			if constexpr(requires{ v->emplace_back(self_type{}); v->at(ind); }) { return v->at(ind); }
 			else {
-				factory::throw_wrong_interface_error("operator[]");
+				factory::throw_wrong_interface_error("operator[ind]");
+				std::unreachable();
+				return static_cast<self_type&>(*this);
+			}
+		}, holder);
+	}
+	constexpr self_type& operator[](self_type key){
+		return visit([this,key=std::move(key)](auto&v)->self_type& {
+			if constexpr(requires{ v->at(key); }) return v->at(key);
+			else {
+				factory::throw_wrong_interface_error("operator[key]");
 				std::unreachable();
 				return static_cast<self_type&>(*this);
 			}
@@ -172,15 +277,42 @@ public:
 		struct data_type : data<factory,data_type> {using data<factory,data_type>::operator=;};
 
 		static_assert( data_type{}.mk_empty_array().is_array() == true );
+		static_assert( data_type{}.mk_empty_array().is_object() == false );
+		static_assert( data_type{(integer_t)10}.mk_empty_array().is_array() == true );
 		static_assert( []{ data_type d; d.mk_empty_array(); d.push_back(data_type{(integer_t)10}); return (integer_t)d[0]; }() == 10 );
-//		static_assert( []{ data_type d; return get<array_t>(d.holder).ref_counter; }() == 10 );
-//		static_assert( []{ data_type d; d.mk_empty_array(); d.push_back(data_type{(integer_t)10}); auto dd = d; return (integer_t)dd[0]; }() == 10 );
+		static_assert( []{ data_type d; d.mk_empty_array(); d.push_back(data_type{(integer_t)10}); auto dd = d; return (integer_t)dd[0]; }() == 10 );
+		static_assert( []{ data_type d; d.mk_empty_array(); d.push_back(data_type{(integer_t)10}); auto dd = std::move(d); return (integer_t)dd[0]; }() == 10 );
+		static_assert( []{ data_type d; d.mk_empty_array(); d.push_back(data_type{(integer_t)10}); auto dd = std::move(d); return dd.size(); }() == 1 );
+		return true;
+	}
+
+	constexpr static bool test_object_cases() {
+		struct data_type : data<factory,data_type> {using data<factory,data_type>::operator=;};
+
+		static_assert( data_type{}.mk_empty_object().is_object() == true );
+		static_assert( data_type{}.mk_empty_object().is_array() == false );
+		static_assert( []{data_type d{}; d.mk_empty_object(); d.put(data_type{"a"}, data_type{(integer_t)1}); return (integer_t)d[data_type{"a"}];}() == 1 );
+		return true;
+	}
+
+	constexpr static bool test_callable_cases() {
+		struct data_type : data<factory, data_type> { using data<factory, data_type>::operator=; };
+
+		//static_assert( data_type{ []{return data_type{(integer_t)1};} }() == 1 );
 		return true;
 	}
 
 	constexpr static bool test() {
-		return test_simple_cases() && test_array_cases();
+		return test_simple_cases() && test_array_cases() && test_callable_cases() && test_object_cases();
+	}
+
+	friend constexpr bool operator==(const self_type& left, const self_type& right) {
+		return left.holder.index() == right.holder.index() && visit([](const auto& l, const auto& r){
+			if constexpr(requires{ l==r; }) return l==r;
+			else return false;
+			}, left.holder, right.holder);
 	}
 };
+
 
 } // namespace absd
