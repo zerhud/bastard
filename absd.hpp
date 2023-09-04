@@ -47,7 +47,6 @@ template<typename data, typename factory> constexpr auto mk_array_type(const fac
 	else return typename factory::array_t{};
 }
 
-//template<template<typename>class vector, typename key, typename value>
 template<typename factory, typename key, typename value>
 struct constexpr_kinda_map {
 	struct chunk {
@@ -56,6 +55,7 @@ struct constexpr_kinda_map {
 	};
 	factory::template vector<chunk> store;
 
+	using key_type = key;
 	using value_type = chunk;
 
 	constexpr void insert(auto&& _v) {
@@ -67,6 +67,13 @@ struct constexpr_kinda_map {
 		for(auto&[k,v]:store) if(k==fk) return v;
 		throw __LINE__;
 	}
+
+	constexpr auto size() const { return store.size(); }
+
+	constexpr auto end() { return store.end(); }
+	constexpr auto begin() { return store.begin(); }
+	constexpr auto end() const { return store.end(); }
+	constexpr auto begin() const { return store.begin(); }
 };
 template<typename key, typename value, typename factory> constexpr auto mk_map_type(const factory& f) {
 	if constexpr(requires{ f.template mk_map<key,value>(); }) return f.template mk_map<key,value>();
@@ -86,6 +93,14 @@ struct object : inner_counter {
 		map.insert( kv{ key, value} );
 		return map.at(key);
 	}
+	constexpr data keys(const auto& f) const {
+		data ret;
+		ret.mk_empty_array();
+		for(const auto& [k,v]:map) ret.push_back(k);
+		return ret;
+	}
+
+	constexpr auto size() const { return map.size(); }
 };
 template<typename data, typename factory> constexpr auto mk_object_type(const factory& f) {
 	if constexpr(requires{ typename factory::object_t; }) return typename factory::object_t{};
@@ -96,9 +111,50 @@ template<typename data, typename factory> constexpr auto mk_object_type(const fa
 }
 
 template<typename factory, typename data>
-struct callable_object : inner_counter {
-	virtual ~callable_object() noexcept =default ;
+struct type_erasure_callable1 {
+	constexpr virtual ~type_erasure_callable1() noexcept =default ;
+	constexpr virtual data call() =0 ;
 };
+
+template<typename factory, typename data>
+struct type_erasure_callable {
+	using factory_t = factory;
+	using string_t = data::string_t;
+	struct parameter_descriptor {
+		string_t name;
+		data default_value;
+	};
+	using params_t = decltype(std::declval<factory_t>().template mk_vec<parameter_descriptor>());
+
+	constexpr virtual ~type_erasure_callable() noexcept =default ;
+	constexpr virtual data call(data params) =0 ;
+	constexpr virtual params_t params(const factory_t& f) const =0 ;
+};
+
+template<typename factory, typename data>
+struct type_erasure_object {
+	using size_t = decltype(sizeof(data));
+	using factory_t = factory;
+
+	virtual ~type_erasure_object() noexcept =default ;
+	constexpr virtual data& at(const data& ind) =0 ;
+	constexpr virtual data& put(data key, data value) =0 ;
+	constexpr virtual data keys(const factory_t& f) const =0 ;
+	constexpr virtual size_t size() const =0 ;
+};
+
+template<typename factory, typename data>
+struct type_erasure_array {
+	using size_t = decltype(sizeof(data));
+
+	constexpr virtual ~type_erasure_array() noexcept =default ;
+
+	constexpr virtual data& emplace_back(data d) =0 ;
+	constexpr virtual data& at(size_t ind) =0 ;
+	constexpr virtual size_t size() const =0 ;
+};
+
+template<typename factory, typename data> struct type_erasure_callable_object : type_erasure_callable<factory,data>, type_erasure_object<factory, data> {};
 
 } // namespace details
 
@@ -129,7 +185,17 @@ struct data {
 	using string_t = typename factory::string_t;
 	using integer_t = decltype(details::mk_integer_type<factory>());
 	using float_point_t = decltype(details::mk_float_point_type<factory>());
-	using holder_t = factory::template variant<typename factory::empty_t, bool, integer_t, float_point_t, string_t, array_t*, object_t*>;
+	using holder_t = factory::template variant<
+		typename factory::empty_t, bool, integer_t, float_point_t,
+		string_t, array_t*, object_t*,
+		details::type_erasure_callable<factory, self_type>*, details::type_erasure_object<factory, self_type>*, details::type_erasure_array<factory, self_type>*,
+		details::type_erasure_callable_object<factory, self_type>*
+	>;
+
+	constexpr static self_type mk(auto&& v) {
+		using v_type = std::decay_t<decltype(v)>;
+		return self_type{};
+	}
 
 private:
 	template<typename type> constexpr static const bool is_inner_counter_exists = requires(std::remove_pointer_t<std::decay_t<type>>& v){ v.increase_counter(); };
@@ -156,8 +222,11 @@ private:
 public:
 
 	constexpr data() {}
-	constexpr data(bool v) : holder(v) {}
-	constexpr data(string_t v) : holder(v) {} //NOTE: bug in libstdc++ string cannot be moved here
+	constexpr data(auto v) requires (std::is_same_v<decltype(v), bool>) : holder(v) {}
+
+	constexpr data(string_t v) : holder(v) {} //NOTE: bug in libstdc++ string cannot be moved here (gcc bugs 111258 111284)
+	constexpr data(const typename string_t::value_type* v) : holder(string_t(v)) {}
+
 	constexpr data(integer_t v) : holder(v) {}
 	constexpr data(float_point_t v) : holder(v) {}
 	constexpr data(self_type&& v) : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; }
@@ -197,6 +266,7 @@ public:
 	constexpr operator integer_t() const { return get<integer_t>(holder); }
 	constexpr operator float_point_t() const { return get<float_point_t>(holder); }
 
+	constexpr auto cur_type_index() const { return holder.index(); }
 	constexpr bool is_int() const { return holder.index() == 2; }
 	constexpr bool is_none() const { return holder.index() == 0; }
 	constexpr bool is_bool() const { return holder.index() == 1; }
@@ -210,6 +280,16 @@ public:
 			if constexpr(requires{ v.size(); }) return v.size();
 			else if constexpr(requires{ v->size(); }) return v->size();
 			else return sizeof(v); }, holder);
+	}
+	constexpr auto keys() const {
+		return visit( [](const auto& v){
+			if constexpr(requires{ v->keys(factory{}); }) return v->keys(factory{});
+			else {
+				factory::throw_wrong_interface_error("keys");
+				std::unreachable();
+				return self_type{};
+			}
+			}, holder);
 	}
 
 	constexpr self_type& mk_empty_array() { return assign(factory::mk_ptr(details::mk_array_type<crtp>(factory{}))); }
@@ -225,6 +305,7 @@ public:
 		}, holder);
 	}
 	constexpr self_type& put(self_type key, self_type value) {
+		if(is_none()) mk_empty_object();
 		return visit([this,key=std::move(key),value=std::move(value)](auto& v) -> self_type& {
 			if constexpr(requires{ v->put(key,value); }) return v->put(key, value);
 			else {
@@ -253,6 +334,16 @@ public:
 				return static_cast<self_type&>(*this);
 			}
 		}, holder);
+	}
+
+	constexpr self_type call() {
+	}
+
+	friend constexpr bool operator==(const self_type& left, const self_type& right) {
+		return left.holder.index() == right.holder.index() && visit([](const auto& l, const auto& r){
+			if constexpr(requires{ l==r; }) return l==r;
+			else return false;
+			}, left.holder, right.holder);
 	}
 
 	constexpr static bool test_simple_cases() {
@@ -291,7 +382,13 @@ public:
 
 		static_assert( data_type{}.mk_empty_object().is_object() == true );
 		static_assert( data_type{}.mk_empty_object().is_array() == false );
-		static_assert( []{data_type d{}; d.mk_empty_object(); d.put(data_type{"a"}, data_type{(integer_t)1}); return (integer_t)d[data_type{"a"}];}() == 1 );
+		static_assert( []{data_type d{}; d.mk_empty_object(); d.put(data_type{1}, data_type{7}); return (integer_t)d[data_type{1}];}() == 7 );
+		static_assert( []{ data_type d; d.put(data_type{1}, data_type{7}); d.put(data_type{2}, data_type{8}); return d.size(); }() == 2 );
+		static_assert( []{ data_type d;
+			d.put(data_type{1}, data_type{7});
+			d.put(data_type{2}, data_type{8});
+			auto keys = d.keys();
+			return (keys.size() == 2) + (2*((integer_t)keys[0] == 1)) + (4*((integer_t)keys[1] == 2)); }() == 7 );
 		return true;
 	}
 
@@ -304,13 +401,6 @@ public:
 
 	constexpr static bool test() {
 		return test_simple_cases() && test_array_cases() && test_callable_cases() && test_object_cases();
-	}
-
-	friend constexpr bool operator==(const self_type& left, const self_type& right) {
-		return left.holder.index() == right.holder.index() && visit([](const auto& l, const auto& r){
-			if constexpr(requires{ l==r; }) return l==r;
-			else return false;
-			}, left.holder, right.holder);
 	}
 };
 
