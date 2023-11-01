@@ -12,6 +12,9 @@ namespace absd {
 
 namespace details {
 
+template<typename type, template<typename...>class tmpl> constexpr const bool is_specialization_of = false;
+template<template<typename...>class type, typename... args> constexpr const bool is_specialization_of<type<args...>, type> = true;
+
 template<typename factory> constexpr auto mk_integer_type() {
 	if constexpr(!requires{ typename factory::integer_t; }) return int{};
 	else return typename factory::integer_t{};
@@ -25,6 +28,12 @@ struct inner_counter {
 	unsigned long int ref_counter = 0;
 	constexpr auto increase_counter() { return ++ref_counter; }
 	constexpr auto decrease_counter() { return --ref_counter; }
+};
+
+struct counter_interface {
+	virtual ~counter_interface() noexcept =default ;
+	constexpr virtual decltype(inner_counter::ref_counter) increase_counter() =0 ;
+	constexpr virtual decltype(inner_counter::ref_counter) decrease_counter() =0 ;
 };
 
 template<typename factory, typename data>
@@ -111,7 +120,7 @@ template<typename data, typename factory> constexpr auto mk_object_type(const fa
 }
 
 template<typename factory, typename data>
-struct type_erasure_callable1 {
+struct type_erasure_callable1 : counter_interface {
 	constexpr virtual ~type_erasure_callable1() noexcept =default ;
 	constexpr virtual data call() =0 ;
 };
@@ -132,26 +141,23 @@ struct type_erasure_callable {
 };
 
 template<typename factory, typename data>
-struct type_erasure_object {
-	using size_t = decltype(sizeof(data));
+struct type_erasure_object : counter_interface {
 	using factory_t = factory;
 
 	virtual ~type_erasure_object() noexcept =default ;
 	constexpr virtual data& at(const data& ind) =0 ;
 	constexpr virtual data& put(data key, data value) =0 ;
 	constexpr virtual data keys(const factory_t& f) const =0 ;
-	constexpr virtual size_t size() const =0 ;
+	constexpr virtual decltype(sizeof(data)) size() const =0 ;
 };
 
 template<typename factory, typename data>
-struct type_erasure_array {
-	using size_t = decltype(sizeof(data));
-
+struct type_erasure_array : counter_interface {
 	constexpr virtual ~type_erasure_array() noexcept =default ;
 
 	constexpr virtual data& emplace_back(data d) =0 ;
-	constexpr virtual data& at(size_t ind) =0 ;
-	constexpr virtual size_t size() const =0 ;
+	constexpr virtual data& at(data::integer_t ind) =0 ;
+	constexpr virtual decltype(sizeof(data)) size() const =0 ;
 };
 
 template<typename factory, typename data> struct type_erasure_callable_object : type_erasure_callable<factory,data>, type_erasure_object<factory, data> {};
@@ -160,17 +166,12 @@ template<typename factory, typename data> struct type_erasure_callable_object : 
 
 // просто создать класс данных от фабрики, он должен содержать
 //
-// - массив таких же типов
-// - объект (карта) таких же типов и в качестве ключа и в качестве значения
 // - вызываемый объект с двумя параметрами:
 //   - список позиционных параметров и
 //   - карта именованных параметров
 //   - также должен возращать дефолтные параметы (получит в карте именнованых, если не указаны)
 //   - дефолтный объект должен работать на подобии std::function - type erasure
 // 
-// - реализиющие объекты должны иметь также счетчик ссылок и должны очиститься при его обнулении
-// - объект данных достает все из фабрики, если там нет, то использует дефолтные типы
-// - если нет типа в фабрике, то может понадобится, чтобы там был тип вектора и карты
 // - так как std::{,unordered_}map (похоже) не может быть использована за неимением constexpr
 //   методов, то операции с ней нужно проверить в runtime
 
@@ -185,16 +186,113 @@ struct data {
 	using string_t = typename factory::string_t;
 	using integer_t = decltype(details::mk_integer_type<factory>());
 	using float_point_t = decltype(details::mk_float_point_type<factory>());
+
+	using te_callable1 = details::type_erasure_callable1<factory, self_type>;
+	using te_callable = details::type_erasure_callable<factory, self_type>;
+	using te_array = details::type_erasure_array<factory, self_type>;
+	using te_object = details::type_erasure_object<factory, self_type>;
+
 	using holder_t = factory::template variant<
 		typename factory::empty_t, bool, integer_t, float_point_t,
 		string_t, array_t*, object_t*,
-		details::type_erasure_callable<factory, self_type>*, details::type_erasure_object<factory, self_type>*, details::type_erasure_array<factory, self_type>*,
+		te_callable*, te_callable1*,
+		details::type_erasure_object<factory, self_type>*, details::type_erasure_array<factory, self_type>*,
 		details::type_erasure_callable_object<factory, self_type>*
 	>;
 
-	constexpr static self_type mk(auto&& v) {
+	template<typename functor>
+	struct callable {
+		functor fnc;
+		constexpr callable(functor f) : fnc(std::move(f)) {}
+		constexpr auto operator()(auto&&... args) { fnc(std::forward<decltype(args)>(args)...); }
+	};
+
+	constexpr static self_type mk(auto&& v) { return mk(factory{}, std::forward<decltype(v)>(v)); }
+	constexpr static self_type mk(const factory& f, auto&& v) requires (!details::is_specialization_of<std::decay_t<decltype(v)>, callable>) {
 		using v_type = std::decay_t<decltype(v)>;
-		return self_type{};
+		constexpr const bool is_call_np = requires{ v(); };
+		constexpr const bool is_array = requires{ v.at(integer_t{}); };
+		constexpr const bool is_object = requires{ v.at(self_type{}); };
+		self_type ret{};
+		if constexpr( is_call_np && is_object ) {
+		}
+		else if constexpr( is_call_np ) {
+			struct te : te_callable1, details::inner_counter {
+				v_type val;
+				constexpr te(v_type v) : val(std::move(v)) {}
+				constexpr self_type call() override {
+					if constexpr(requires{ {val()}->std::same_as<self_type>; }) return val();
+					else return (val(), self_type{});
+				}
+				constexpr decltype(inner_counter::ref_counter) increase_counter() override { return inner_counter::increase_counter(); }
+				constexpr decltype(inner_counter::ref_counter) decrease_counter() override { return inner_counter::decrease_counter(); }
+			};
+			auto tmp = f.mk_ptr(te(std::forward<decltype(v)>(v)));
+			ret.assign(static_cast<te_callable1*>(tmp.get()));
+			tmp.release();
+		}
+		else if constexpr( is_array ) {
+			struct te : te_array, details::inner_counter {
+				v_type val;
+				constexpr te(v_type v) : val(std::move(v)) {}
+
+				constexpr self_type& emplace_back(self_type d) override { return val.emplace_back(std::move(d)); }
+				constexpr self_type& at(integer_t ind) override { return val.at(ind); }
+				constexpr decltype(sizeof(self_type)) size() const override { return val.size(); }
+
+				constexpr decltype(inner_counter::ref_counter) increase_counter() override { return inner_counter::increase_counter(); }
+				constexpr decltype(inner_counter::ref_counter) decrease_counter() override { return inner_counter::decrease_counter(); }
+			};
+			auto tmp = f.mk_ptr(te(std::forward<decltype(v)>(v)));
+			ret.assign(static_cast<te_array*>(tmp.get()));
+			tmp.release();
+		}
+		else if constexpr( is_object ) {
+			struct te : te_object, details::inner_counter {
+				v_type val;
+				constexpr te(v_type v) : val(std::move(v)) {}
+
+				constexpr self_type& at(const self_type& ind) override { return val.at(ind); }
+				constexpr self_type& put(self_type key, self_type value) override {
+					struct kv{ self_type k, v; };
+					val.insert( kv{ key, value} );
+					return val.at(key);
+				}
+				constexpr self_type keys(const factory& f) const override {
+					self_type ret;
+					ret.mk_empty_array();
+					for(const auto& [k,v]:val) ret.push_back(k);
+					return ret;
+				}
+				constexpr decltype(sizeof(self_type)) size() const override { return val.size(); }
+				constexpr decltype(inner_counter::ref_counter) increase_counter() override { return inner_counter::increase_counter(); }
+				constexpr decltype(inner_counter::ref_counter) decrease_counter() override { return inner_counter::decrease_counter(); }
+			};
+			auto tmp = f.mk_ptr(te(std::forward<decltype(v)>(v)));
+			ret.assign(static_cast<te_object*>(tmp.get()));
+			tmp.release();
+		}
+		return ret;
+	}
+	constexpr static self_type mk(auto&& v) requires( !std::is_same_v<std::decay_t<decltype(v)>, factory> && details::is_specialization_of<std::decay_t<decltype(v)>, callable> ){
+		return mk( factory{}, std::forward<decltype(v)>(v) ); }
+	constexpr static self_type mk(const factory& f, auto&& v) requires( details::is_specialization_of<std::decay_t<decltype(v)>, callable> ){
+		/*
+		using val_type = std::decay_t<decltype(v)>;
+		constexpr const bool is_object = requires{ v.at(self_type{}); };
+
+		struct te : te_callable, details::inner_counter { 
+			using params_t = te_callable::params_t;
+
+			val_type v;
+			params_t p;
+
+			constexpr data call(data params) override {return v(std::move(params));}
+			constexpr params_t params(const factory& f) const override {return p;}
+		};
+		for(auto& [name,def]:params) ;
+		*/
+		return self_type{ (integer_t)10 };
 	}
 
 private:
@@ -274,6 +372,8 @@ public:
 	constexpr bool is_float_point() const { return holder.index() == 3; }
 	constexpr bool is_array() const { return visit( [](const auto& v){ return requires(std::decay_t<decltype(v)> vv){ vv->at( integer_t{} ); }; }, holder); }
 	constexpr bool is_object() const { return visit( [](const auto& v){ return requires(std::decay_t<decltype(v)> vv){ vv->at( crtp{} ); }; }, holder); }
+	constexpr bool is_callable() const { return visit( [](const auto& v) {
+			return requires{ v->call(); } || requires{ v->call({}); }; }, holder); }
 
 	constexpr auto size() const {
 		return visit( [](const auto& v){
@@ -337,6 +437,17 @@ public:
 	}
 
 	constexpr self_type call() {
+		return visit([this](auto& v) -> self_type {
+			if constexpr(requires{ {v->call()}->std::same_as<self_type>; }) return v->call();
+			else if constexpr(requires{ v->call(); }) return (v->call(), self_type{});
+			else {
+				factory::throw_wrong_interface_error("operator()");
+				std::unreachable();
+				return self_type{};
+			}
+		}, holder);
+	}
+	constexpr self_type call(const auto& params) {
 	}
 
 	friend constexpr bool operator==(const self_type& left, const self_type& right) {
@@ -374,6 +485,14 @@ public:
 		static_assert( []{ data_type d; d.mk_empty_array(); d.push_back(data_type{(integer_t)10}); auto dd = d; return (integer_t)dd[0]; }() == 10 );
 		static_assert( []{ data_type d; d.mk_empty_array(); d.push_back(data_type{(integer_t)10}); auto dd = std::move(d); return (integer_t)dd[0]; }() == 10 );
 		static_assert( []{ data_type d; d.mk_empty_array(); d.push_back(data_type{(integer_t)10}); auto dd = std::move(d); return dd.size(); }() == 1 );
+
+		static_assert( []{
+			auto vec = factory{}.template mk_vec<data_type>();
+			vec.emplace_back(data_type{(integer_t)1});
+			vec.emplace_back(data_type{(integer_t)3});
+			auto d = data_type::mk(std::move(vec));
+			return (integer_t)d[1]; }() == 3);
+
 		return true;
 	}
 
@@ -389,13 +508,24 @@ public:
 			d.put(data_type{2}, data_type{8});
 			auto keys = d.keys();
 			return (keys.size() == 2) + (2*((integer_t)keys[0] == 1)) + (4*((integer_t)keys[1] == 2)); }() == 7 );
+
+		static_assert( (integer_t)[]{
+			details::constexpr_kinda_map<factory,data_type,data_type> v;
+			v.insert(std::make_pair(data_type{1}, data_type{3}));
+			//return data_type::mk(std::move(v));}() == 10 );
+			return data_type::mk(std::move(v))[data_type{1}];}() == 3 );
 		return true;
 	}
 
 	constexpr static bool test_callable_cases() {
 		struct data_type : data<factory, data_type> { using data<factory, data_type>::operator=; };
 
-		//static_assert( data_type{ []{return data_type{(integer_t)1};} }() == 1 );
+		static_assert( (integer_t)data_type::mk( []{return data_type{1};} ).call() == 1 );
+		static_assert( (integer_t)data_type::mk( []{return data_type{2};} ).call() == 2 );
+		static_assert( data_type::mk([]{}).is_callable() );
+		static_assert( data_type::mk([]{}).call().is_none() );
+
+		static_assert( data_type::mk(typename data_type::callable([](){})).is_int() );
 		return true;
 	}
 
