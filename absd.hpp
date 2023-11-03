@@ -1,12 +1,13 @@
 /*************************************************************************
  * Copyright © 2023 Hudyaev Alexy <hudyaev.alexy@gmail.com>
- * This file is part of modegen.
+ * This file is part of bastard.
  * Distributed under the GNU Affero General Public License.
  * See accompanying file copying (at the root of this repository)
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
 #include <utility>
+#include <cassert> //TODO: remove after gcc bug will be fixed
 
 namespace absd {
 
@@ -41,7 +42,7 @@ struct array : inner_counter {
 	using vec_content = data;
 
 	[[no_unique_address]] factory f;
-	factory::template vector<vec_content> holder;
+	std::decay_t<decltype(std::declval<factory>().template mk_vec<vec_content>())> holder;
 
 
 	constexpr array(factory _f) requires (requires{ _f.template mk_vec<vec_content>(); }) : f(std::move(_f)), holder(f.template mk_vec<vec_content>()) {}
@@ -62,7 +63,7 @@ struct constexpr_kinda_map {
 		key k;
 		value v;
 	};
-	factory::template vector<chunk> store;
+	std::decay_t<decltype(std::declval<factory>().template mk_vec<chunk>())> store;
 
 	using key_type = key;
 	using value_type = chunk;
@@ -126,9 +127,9 @@ struct type_erasure_callable1 : counter_interface {
 };
 
 template<typename factory, typename data>
-struct type_erasure_callable {
+struct type_erasure_callable : counter_interface {
 	using factory_t = factory;
-	using string_t = data::string_t;
+	using string_t = typename data::string_t;
 	struct parameter_descriptor {
 		string_t name;
 		data default_value;
@@ -138,6 +139,11 @@ struct type_erasure_callable {
 	constexpr virtual ~type_erasure_callable() noexcept =default ;
 	constexpr virtual data call(data params) =0 ;
 	constexpr virtual params_t params(const factory_t& f) const =0 ;
+};
+
+template<typename factory, typename data> // cannot to be derived from both: cannot to be constexpr and have virtual base class
+struct type_erasure_callable_both : type_erasure_callable<factory, data> {
+	constexpr virtual data call() =0 ;
 };
 
 template<typename factory, typename data>
@@ -156,7 +162,7 @@ struct type_erasure_array : counter_interface {
 	constexpr virtual ~type_erasure_array() noexcept =default ;
 
 	constexpr virtual data& emplace_back(data d) =0 ;
-	constexpr virtual data& at(data::integer_t ind) =0 ;
+	constexpr virtual data& at(typename data::integer_t ind) =0 ;
 	constexpr virtual decltype(sizeof(data)) size() const =0 ;
 };
 
@@ -189,22 +195,46 @@ struct data {
 
 	using te_callable1 = details::type_erasure_callable1<factory, self_type>;
 	using te_callable = details::type_erasure_callable<factory, self_type>;
+	using te_callable_both = details::type_erasure_callable_both<factory, self_type>;
 	using te_array = details::type_erasure_array<factory, self_type>;
 	using te_object = details::type_erasure_object<factory, self_type>;
 
-	using holder_t = factory::template variant<
+	using holder_t = typename factory::template variant<
 		typename factory::empty_t, bool, integer_t, float_point_t,
 		string_t, array_t*, object_t*,
-		te_callable*, te_callable1*,
+		te_callable*, te_callable1*, te_callable_both*,
 		details::type_erasure_object<factory, self_type>*, details::type_erasure_array<factory, self_type>*,
 		details::type_erasure_callable_object<factory, self_type>*
 	>;
 
+	constexpr static auto mk_param(auto&& name) {
+		return name;
+	}
+	constexpr static auto mk_param(auto&& _name, self_type _def_val) {
+		struct desc {
+			std::decay_t<decltype(_name)> name;
+			std::decay_t<decltype(_def_val)> def_val;
+		};
+		return desc{std::forward<decltype(_name)>(_name), std::move(_def_val)};
+	}
 	template<typename functor>
-	struct callable {
+	struct callable { ///< allow to specify default arguments, use it as function in code and so on...
 		functor fnc;
-		constexpr callable(functor f) : fnc(std::move(f)) {}
-		constexpr auto operator()(auto&&... args) { fnc(std::forward<decltype(args)>(args)...); }
+		self_type params_info;
+		constexpr callable(functor f, auto&&... params) : fnc(std::move(f)) {
+			(create_param(std::forward<decltype(params)>(params)),..., 1);
+		}
+		constexpr auto operator()() requires requires{ fnc(); } { return fnc(); }
+		constexpr auto operator()() requires (!requires{ fnc(); }) {
+			//factory{}.mk_tuple();
+			return self_type{3};
+		}
+		constexpr auto operator()(auto&& first, auto&&... args) { return fnc(std::forward<decltype(first)>(first), std::forward<decltype(args)>(args)...); }
+	private:
+		constexpr void create_param(auto&& param) {
+			//if constexpr (requires{param.name;param.def_val;}) params_info.put(self_type{param.name}, param.def_val);
+			//else params_info.put(param, self_type{});
+		}
 	};
 
 	constexpr static self_type mk(auto&& v) { return mk(factory{}, std::forward<decltype(v)>(v)); }
@@ -217,38 +247,29 @@ struct data {
 		if constexpr( is_call_np && is_object ) {
 		}
 		else if constexpr( is_call_np ) {
-			struct te : te_callable1, details::inner_counter {
+			struct te : te_callable1 {
 				v_type val;
 				constexpr te(v_type v) : val(std::move(v)) {}
 				constexpr self_type call() override {
 					if constexpr(requires{ {val()}->std::same_as<self_type>; }) return val();
 					else return (val(), self_type{});
 				}
-				constexpr decltype(inner_counter::ref_counter) increase_counter() override { return inner_counter::increase_counter(); }
-				constexpr decltype(inner_counter::ref_counter) decrease_counter() override { return inner_counter::decrease_counter(); }
 			};
-			auto tmp = f.mk_ptr(te(std::forward<decltype(v)>(v)));
-			ret.assign(static_cast<te_callable1*>(tmp.get()));
-			tmp.release();
+			ret = mk_coutner_and_assign<te_callable1, te>(f, std::forward<decltype(v)>(v));
 		}
 		else if constexpr( is_array ) {
-			struct te : te_array, details::inner_counter {
+			struct te : te_array {
 				v_type val;
 				constexpr te(v_type v) : val(std::move(v)) {}
 
 				constexpr self_type& emplace_back(self_type d) override { return val.emplace_back(std::move(d)); }
 				constexpr self_type& at(integer_t ind) override { return val.at(ind); }
 				constexpr decltype(sizeof(self_type)) size() const override { return val.size(); }
-
-				constexpr decltype(inner_counter::ref_counter) increase_counter() override { return inner_counter::increase_counter(); }
-				constexpr decltype(inner_counter::ref_counter) decrease_counter() override { return inner_counter::decrease_counter(); }
 			};
-			auto tmp = f.mk_ptr(te(std::forward<decltype(v)>(v)));
-			ret.assign(static_cast<te_array*>(tmp.get()));
-			tmp.release();
+			ret = mk_coutner_and_assign<te_array, te>(f, std::forward<decltype(v)>(v));
 		}
 		else if constexpr( is_object ) {
-			struct te : te_object, details::inner_counter {
+			struct te : te_object {
 				v_type val;
 				constexpr te(v_type v) : val(std::move(v)) {}
 
@@ -265,34 +286,52 @@ struct data {
 					return ret;
 				}
 				constexpr decltype(sizeof(self_type)) size() const override { return val.size(); }
-				constexpr decltype(inner_counter::ref_counter) increase_counter() override { return inner_counter::increase_counter(); }
-				constexpr decltype(inner_counter::ref_counter) decrease_counter() override { return inner_counter::decrease_counter(); }
 			};
-			auto tmp = f.mk_ptr(te(std::forward<decltype(v)>(v)));
-			ret.assign(static_cast<te_object*>(tmp.get()));
-			tmp.release();
+			ret = mk_coutner_and_assign<te_object, te>(f, std::forward<decltype(v)>(v));
 		}
 		return ret;
 	}
 	constexpr static self_type mk(auto&& v) requires( !std::is_same_v<std::decay_t<decltype(v)>, factory> && details::is_specialization_of<std::decay_t<decltype(v)>, callable> ){
+		//TODO: do we realy need it? or it can to be replaced with first mk method?
 		return mk( factory{}, std::forward<decltype(v)>(v) ); }
 	constexpr static self_type mk(const factory& f, auto&& v) requires( details::is_specialization_of<std::decay_t<decltype(v)>, callable> ){
-		/*
 		using val_type = std::decay_t<decltype(v)>;
 		constexpr const bool is_object = requires{ v.at(self_type{}); };
 
-		struct te : te_callable, details::inner_counter { 
-			using params_t = te_callable::params_t;
-
+		struct te_base {
+			using params_t = typename te_callable::params_t;
 			val_type v;
-			params_t p;
-
-			constexpr data call(data params) override {return v(std::move(params));}
-			constexpr params_t params(const factory& f) const override {return p;}
+			constexpr te_base(val_type&& v) : v(std::forward<decltype(v)>(v)) {}
+			constexpr self_type call(self_type params) {return self_type{3};}
+			constexpr params_t params(const factory& f) const {return params_t{};}
+			constexpr self_type call_without_params() {
+				if constexpr(requires{ self_type{v()}; }) return self_type{v()};
+				else if constexpr(requires{ {v()} -> std::same_as<void>; })  return (v(), self_type{});
+				else {
+					std::unreachable();
+					return self_type{};
+				}
+			}
 		};
-		for(auto& [name,def]:params) ;
-		*/
-		return self_type{ (integer_t)10 };
+
+		if constexpr(requires{ {v()} -> std::same_as<void>; } || requires{ self_type{v()}; }) {
+			struct te : te_base, te_callable_both {
+				using params_t = typename te_callable::params_t;
+				constexpr te(val_type&& v) : te_base(std::forward<decltype(v)>(v)) {}
+				constexpr self_type call() override {return te_base::call_without_params();}
+				constexpr self_type call(self_type params) override {return te_base::call(std::move(params));}
+				constexpr params_t params(const factory& f) const override {return te_base::params(f);}
+			};
+			return mk_coutner_and_assign<te_callable_both, te>(f, std::forward<decltype(v)>(v));
+		}
+		else {
+			struct te : te_base, te_callable {
+				using params_t = typename te_callable::params_t;
+				constexpr self_type call(self_type params) override { return te_base::call(std::move(params)); }
+				constexpr params_t params(const factory &f) const override { return te_base::params(f); }
+			};
+			return mk_coutner_and_assign<te_callable, te>(f, te(std::forward<decltype(v)>(v)));
+		}
 	}
 
 private:
@@ -300,7 +339,7 @@ private:
 
 	holder_t holder;
 
-	constexpr void allocate() {
+	constexpr void allocate() noexcept {
 		visit([](auto& v){
 			if constexpr(is_inner_counter_exists<decltype(v)>) {
 				v->increase_counter();
@@ -317,12 +356,27 @@ private:
 			}
 			}, holder);
 	}
+
+	template<typename type>
+	struct counter_maker : details::inner_counter, type {
+		constexpr counter_maker(auto&&... args) : type(std::forward<decltype(args)>(args)...) {}
+		constexpr decltype(inner_counter::ref_counter) increase_counter() override { return inner_counter::increase_counter(); }
+		constexpr decltype(inner_counter::ref_counter) decrease_counter() override { return inner_counter::decrease_counter(); }
+	};
+	template<typename from, typename type>
+	constexpr static self_type mk_coutner_and_assign(const factory& f, auto&& v) {
+		self_type ret;
+		auto tmp = f.mk_ptr(counter_maker<type>(std::forward<decltype(v)>(v)));
+		ret.assign(static_cast<from*>(tmp.get()));
+		tmp.release();
+		return ret;
+	}
 public:
 
 	constexpr data() {}
 	constexpr data(auto v) requires (std::is_same_v<decltype(v), bool>) : holder(v) {}
 
-	constexpr data(string_t v) : holder(v) {} //NOTE: bug in libstdc++ string cannot be moved here (gcc bugs 111258 111284)
+	constexpr data(string_t v) : holder(v) {} //NOTE: bug in gcc https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111284
 	constexpr data(const typename string_t::value_type* v) : holder(string_t(v)) {}
 
 	constexpr data(integer_t v) : holder(v) {}
@@ -468,7 +522,7 @@ public:
 		static_assert( data_type{ string_t{} }.is_string() == true );
 		static_assert( data_type{ string_t{} }.is_array() == false );
 		static_assert( []{ data_type d; d=10; return (integer_t)d; }() == 10 );
-	//NOTE: it seems there is ub in string realization after move
+	//NOTE: string cannot to be tested in compile time due gcc bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111284
 	//	static_assert( []{ data_type d; d="hel"; auto ret = ((string_t)d)[2]; return ret; }() == 'l' );
 		static_assert( data_type{ integer_t{} }.size() == sizeof(integer_t) );
 		static_assert( data_type{ string_t{"hello"} }.size() == 5 );
@@ -525,7 +579,18 @@ public:
 		static_assert( data_type::mk([]{}).is_callable() );
 		static_assert( data_type::mk([]{}).call().is_none() );
 
-		static_assert( data_type::mk(typename data_type::callable([](){})).is_int() );
+		static_assert( data_type::mk(typename data_type::callable([](){})).is_callable() );
+		static_assert( (integer_t)data_type::mk(typename data_type::callable([](){return data_type{2};})).call() == 2 );
+		static_assert( (integer_t)data_type::mk(typename data_type::callable([](){return 2;})).call() == 2 );
+
+		static_assert( callable([](int v){ return v+1;})(1) == 2 );
+		return true;
+	}
+
+	static bool test_callable_cases_rt() {
+		//NOTE: cannot test in ct due gcc bug with move
+		callable wp([](int v){return v+1;}, mk_param("v", self_type{2}));
+		assert((integer_t)wp() == 3);
 		return true;
 	}
 

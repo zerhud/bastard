@@ -72,8 +72,8 @@ struct absdata_raw_ptr_factory {
 struct expr_operators_simple {
 	template<typename data_type>
 	constexpr static auto math_op(auto&& l, auto&& r, auto&& op) {
-		using integer_t = data_type::integer_t;
-		using float_point_t = data_type::float_point_t;
+		using integer_t = typename data_type::integer_t;
+		using float_point_t = typename data_type::float_point_t;
 		if(l.is_int()) {
 			if(r.is_fp()) return data_type{ float_point_t( op((integer_t)l,(float_point_t)r) ) };
 			return data_type{ integer_t( op((integer_t)l,(integer_t)r) ) };
@@ -87,8 +87,8 @@ struct expr_operators_simple {
 	template<typename to_type>
 	constexpr static auto div(const auto& l, const auto& r) {
 		using data_type = std::decay_t<decltype(l)>;
-		using integer_t = data_type::integer_t;
-		using float_point_t = data_type::float_point_t;
+		using integer_t = typename data_type::integer_t;
+		using float_point_t = typename data_type::float_point_t;
 		if(l.is_int()) {
 			if(r.is_fp()) return data_type{ to_type((integer_t)l / (float_point_t)r) };
 			return data_type{ to_type((integer_t)l / (integer_t)r) };
@@ -101,9 +101,9 @@ struct expr_operators_simple {
 
 	template<typename data_type>
 	constexpr static auto to_bool(auto&& val) {
-		using integer_t = data_type::integer_t;
-		using float_point_t = data_type::float_point_t;
-		using string_t = data_type::string_t;
+		using integer_t = typename data_type::integer_t;
+		using float_point_t = typename data_type::float_point_t;
+		using string_t = typename data_type::string_t;
 		if( val.is_bool() ) return val;
 		else if( val.is_int() ) return data_type{ !!((integer_t)val) };
 		else if( val.is_fp() ) return data_type{ !!((float_point_t)val) };
@@ -152,8 +152,8 @@ struct expr_operators_simple {
 
 	template<typename data_type>
 	constexpr static auto pow(auto&& l, auto&& r) {
-		using integer_t = data_type::integer_t;
-		using float_point_t = data_type::float_point_t;
+		using integer_t = typename data_type::integer_t;
+		using float_point_t = typename data_type::float_point_t;
 		auto right = (integer_t)r;
 		if(l.is_int()) {
 			auto left = (integer_t)l;
@@ -173,14 +173,14 @@ struct expr_operators_simple {
 template< typename factory, typename final_type, typename... implementations >
 struct abstract_data {
 	using factory_t = factory;
-	template<typename... types> using variant_t = factory_t::template variant<types...>;
+	template<typename... types> using variant_t = typename factory_t::template variant<types...>;
 
 	//using self_type = abstract_data<factory_t, final_type, implementations...>;
 	using self_type = final_type;
 
-	using string_t = factory_t::string_t;
-	using integer_t = factory_t::integer_t;
-	using float_point_t = factory_t::float_point_t;
+	using string_t = typename factory_t::string_t;
+	using integer_t = typename factory_t::integer_t;
+	using float_point_t = typename factory_t::float_point_t;
 
 	using holder_type = variant_t<string_t,integer_t,float_point_t,bool, implementations...>;
 
@@ -196,7 +196,7 @@ struct abstract_data {
 	constexpr static bool is_map = requires(const type& t){ self_type{ t.at("some_key") }; } ;
 
 	template<typename type>
-	constexpr static bool is_data_container = std::is_same_v<std::decay_t<type>::value_type, self_type>;
+	constexpr static bool is_data_container = std::is_same_v<typename std::decay_t<type>::value_type, self_type>;
 
 	holder_type holder;
 
@@ -285,7 +285,7 @@ private:
 
 template< typename data_type, typename operators_factory, typename data_factory >
 struct bastard {
-	template<typename... types> using variant_t = data_type::template variant_t<types...>;
+	template<typename... types> using variant_t = typename data_type::template variant_t<types...>;
 	using self_type = bastard<data_type, operators_factory, data_factory>;
 
 	template<typename expr_t>
@@ -324,14 +324,14 @@ struct bastard {
 		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) list;
 	};
 
-	using string_t = data_type::string_t;
-	using integer_t = data_type::integer_t;
-	using float_point_t = data_type::float_point_t;
+	using string_t = typename data_type::string_t;
+	using integer_t = typename data_type::integer_t;
+	using float_point_t = typename data_type::float_point_t;
 
-	template<typename type> using ast_forwarder = data_factory::template ast_forwarder<type>;
+	template<typename type> using ast_forwarder = typename data_factory::template ast_forwarder<type>;
 
 	template<typename... operators>
-	using parse_result = data_type::template variant_t<std::decay_t<operators>...,string_t,integer_t,float_point_t,bool>;
+	using parse_result = typename data_type::template variant_t<std::decay_t<operators>...,string_t,integer_t,float_point_t,bool>;
 
 	template<template<class>class fa> struct expr_type : parse_result<
 	       op_and      < fa<expr_type<fa>> >
