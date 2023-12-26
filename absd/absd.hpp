@@ -6,6 +6,8 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
+#include <iostream>
+
 #include <utility>
 #include <cassert> //TODO: remove after gcc bug will be fixed
 
@@ -59,6 +61,7 @@ template<typename data, typename factory> constexpr auto mk_array_type(const fac
 
 template<typename factory, typename key, typename value>
 struct constexpr_kinda_map {
+		constexpr static int kinda_map = 0;
 	struct chunk {
 		key k;
 		value v;
@@ -68,6 +71,10 @@ struct constexpr_kinda_map {
 	using key_type = key;
 	using value_type = chunk;
 
+	constexpr bool contains(const auto& v) const {
+		for(const auto&[k,_]:store) if(k==v) return true;
+		return false;
+	}
 	constexpr void insert(auto&& _v) {
 		auto&& [k,v] = _v;
 		store.emplace_back( chunk{ std::move(k), std::move(v) } );
@@ -75,7 +82,7 @@ struct constexpr_kinda_map {
 
 	constexpr auto& at(const key& fk) {
 		for(auto&[k,v]:store) if(k==fk) return v;
-		throw __LINE__;
+		throw __LINE__; //TODO: what to do if key not found
 	}
 
 	constexpr auto size() const { return store.size(); }
@@ -97,6 +104,7 @@ struct object : inner_counter {
 	map_t map;
 
 	constexpr object(map_t map) : map(std::move(map)) {}
+	constexpr bool contains(const data& key) const { return map.contains(key); }
 	constexpr data& at(const data& ind) { return map.at(ind); }
 	constexpr data& put(data key, data value) {
 		struct kv{ data k, v; };
@@ -151,6 +159,7 @@ struct type_erasure_object : counter_interface {
 	using factory_t = factory;
 
 	virtual ~type_erasure_object() noexcept =default ;
+	constexpr virtual bool contains(const data& key) const =0 ;
 	constexpr virtual data& at(const data& ind) =0 ;
 	constexpr virtual data& put(data key, data value) =0 ;
 	constexpr virtual data keys(const factory_t& f) const =0 ;
@@ -221,19 +230,47 @@ struct data {
 	struct callable { ///< allow to specify default arguments, use it as function in code and so on...
 		functor fnc;
 		self_type params_info;
-		constexpr callable(functor f, auto&&... params) : fnc(std::move(f)) {
+		constexpr explicit callable(functor f, auto&&... params) : fnc(std::move(f)) {
+			params_info.mk_empty_array();
 			(create_param(std::forward<decltype(params)>(params)),..., 1);
 		}
-		constexpr auto operator()() requires requires{ fnc(); } { return fnc(); }
-		constexpr auto operator()() requires (!requires{ fnc(); }) {
-			//factory{}.mk_tuple();
-			return self_type{3};
+		constexpr auto operator()(auto&&... args) const {
+			return call_with_params(std::forward<decltype(args)>(args)...);
 		}
-		constexpr auto operator()(auto&& first, auto&&... args) { return fnc(std::forward<decltype(first)>(first), std::forward<decltype(args)>(args)...); }
+		constexpr auto call(self_type params) const {
+			return call_with_combined_params<0>(params);
+		}
 	private:
 		constexpr void create_param(auto&& param) {
-			//if constexpr (requires{param.name;param.def_val;}) params_info.put(self_type{param.name}, param.def_val);
-			//else params_info.put(param, self_type{});
+			self_type desk;
+			if constexpr (!requires{param.name;param.def_val;}) desk.put(self_type{string_t{"name"}}, self_type{param});
+			else {
+				desk.put(self_type{string_t{"name"}}, self_type{param.name});
+				desk.put(self_type{string_t{"val"}}, self_type{param.def_val});
+			}
+			params_info.push_back(std::move(desk));
+		}
+		constexpr auto call_with_params(auto&&... params) const {
+			if constexpr (requires{fnc(std::forward<decltype(params)>(params)...);})
+				return fnc(std::forward<decltype(params)>(params)...);
+			else {
+				auto& desk = params_info[(integer_t) sizeof...(params)];
+				if(desk.size() == 2) return call_with_params(std::forward<decltype(params)>(params)..., desk[self_type{string_t{"val"}}]);
+				else {
+					factory::throw_wrong_interface_error("call with wrong parameter number");
+					return call_with_params(std::forward<decltype(params)>(params)..., self_type{});
+				}
+			}
+		}
+		template<auto ind>
+		constexpr auto call_with_combined_params(const auto& user_params, auto&&... params) const {
+			if constexpr (requires{fnc(std::forward<decltype(params)>(params)...);}) return fnc(std::forward<decltype(params)>(params)...);
+			else {
+				if(user_params.contains(self_type{ind})) return call_with_combined_params<ind+1>(user_params, std::forward<decltype(params)>(params)..., user_params[self_type{ind}]);
+				else if(user_params.contains(params_info[ind][self_type{string_t{"name"}}]))
+					return call_with_combined_params<ind+1>(user_params, std::forward<decltype(params)>(params)..., user_params[params_info[ind][self_type{string_t{"name"}}]]);
+				else return call_with_combined_params<ind+1>(user_params, std::forward<decltype(params)>(params)..., params_info[ind][self_type{string_t{"val"}}]);
+			}
 		}
 	};
 
@@ -273,6 +310,7 @@ struct data {
 				v_type val;
 				constexpr te(v_type v) : val(std::move(v)) {}
 
+				constexpr bool contains(const self_type& key) const override { return val.contains(key); }
 				constexpr self_type& at(const self_type& ind) override { return val.at(ind); }
 				constexpr self_type& put(self_type key, self_type value) override {
 					struct kv{ self_type k, v; };
@@ -301,7 +339,7 @@ struct data {
 		struct te_base {
 			using params_t = typename te_callable::params_t;
 			val_type v;
-			constexpr te_base(val_type&& v) : v(std::forward<decltype(v)>(v)) {}
+			constexpr explicit te_base(val_type&& v) : v(std::forward<decltype(v)>(v)) {}
 			constexpr self_type call(self_type params) {return self_type{3};}
 			constexpr params_t params(const factory& f) const {return params_t{};}
 			constexpr self_type call_without_params() {
@@ -317,7 +355,7 @@ struct data {
 		if constexpr(requires{ {v()} -> std::same_as<void>; } || requires{ self_type{v()}; }) {
 			struct te : te_base, te_callable_both {
 				using params_t = typename te_callable::params_t;
-				constexpr te(val_type&& v) : te_base(std::forward<decltype(v)>(v)) {}
+				constexpr explicit  te(val_type&& v) : te_base(std::forward<decltype(v)>(v)) {}
 				constexpr self_type call() override {return te_base::call_without_params();}
 				constexpr self_type call(self_type params) override {return te_base::call(std::move(params));}
 				constexpr params_t params(const factory& f) const override {return te_base::params(f);}
@@ -384,6 +422,7 @@ public:
 	constexpr data(self_type&& v) : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; }
 	constexpr data(const self_type& v) : holder(v.holder) { allocate(); }
 	constexpr data(const data& v) : holder(v.holder) { allocate(); }
+	//NOTE: bug in gcc workaround: use holder = declytpe(holder){v.holder} ?
 	constexpr data(data&& v) : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; }
 	constexpr ~data() { deallocate(); }
 
@@ -429,6 +468,18 @@ public:
 	constexpr bool is_callable() const { return visit( [](const auto& v) {
 			return requires{ v->call(); } || requires{ v->call({}); }; }, holder); }
 
+	constexpr int contains(const auto& val) const {
+		return visit([this,&val](const auto& v){
+			if constexpr(requires{v->contains(val);}) return v->contains(val);
+			else if constexpr(requires{v.contains(typename std::decay_t<decltype(v)>::key_type{});}) return v.contains(val);
+			else if constexpr(requires{v==val;}) return v==val;
+			else {
+				factory::throw_wrong_interface_error("contains");
+				std::unreachable();
+				return false;
+			}
+		}, holder);
+	}
 	constexpr auto size() const {
 		return visit( [](const auto& v){
 			if constexpr(requires{ v.size(); }) return v.size();
@@ -469,6 +520,7 @@ public:
 			}
 		}, holder);
 	}
+	constexpr const self_type& operator[](integer_t ind) const {return const_cast<base_data_type&>(*this)[ind];}
 	constexpr self_type& operator[](integer_t ind){
 		return visit([this,ind](auto& v)->self_type&{ 
 			if constexpr(requires{ v->emplace_back(self_type{}); v->at(ind); }) { return v->at(ind); }
@@ -479,6 +531,7 @@ public:
 			}
 		}, holder);
 	}
+	constexpr const self_type& operator[](self_type key) const { return const_cast<base_data_type&>(*this)[std::move(key)]; }
 	constexpr self_type& operator[](self_type key){
 		return visit([this,key=std::move(key)](auto&v)->self_type& {
 			if constexpr(requires{ v->at(key); }) return v->at(key);
@@ -526,6 +579,7 @@ public:
 	//	static_assert( []{ data_type d; d="hel"; auto ret = ((string_t)d)[2]; return ret; }() == 'l' );
 		static_assert( data_type{ integer_t{} }.size() == sizeof(integer_t) );
 		static_assert( data_type{ string_t{"hello"} }.size() == 5 );
+		static_assert( data_type{3} == data_type{3});
 		return true;
 	}
 
@@ -563,11 +617,21 @@ public:
 			auto keys = d.keys();
 			return (keys.size() == 2) + (2*((integer_t)keys[0] == 1)) + (4*((integer_t)keys[1] == 2)); }() == 7 );
 
+		static_assert( []{
+			details::constexpr_kinda_map<factory,data_type,data_type> v;
+			v.insert(std::make_pair(data_type{1}, data_type{2}));
+			return v.contains(data_type{1});
+		}() );
 		static_assert( (integer_t)[]{
 			details::constexpr_kinda_map<factory,data_type,data_type> v;
 			v.insert(std::make_pair(data_type{1}, data_type{3}));
-			//return data_type::mk(std::move(v));}() == 10 );
 			return data_type::mk(std::move(v))[data_type{1}];}() == 3 );
+
+		static_assert( []{
+			data_type d;d.mk_empty_object();
+			d.put(data_type{1}, data_type{7});
+			return d.contains(data_type{1}) + (2*!d.contains(data_type{7}));
+		}() == 3);
 		return true;
 	}
 
@@ -583,14 +647,49 @@ public:
 		static_assert( (integer_t)data_type::mk(typename data_type::callable([](){return data_type{2};})).call() == 2 );
 		static_assert( (integer_t)data_type::mk(typename data_type::callable([](){return 2;})).call() == 2 );
 
-		static_assert( callable([](int v){ return v+1;})(1) == 2 );
+		static_assert( (integer_t)callable([](int v){return v+1;})(2) == 3 );
+		static_assert( (integer_t)callable([](int l, int r){return l+r;})(7, 13) == 20 );
+
 		return true;
 	}
 
 	static bool test_callable_cases_rt() {
 		//NOTE: cannot test in ct due gcc bug with move
-		callable wp([](int v){return v+1;}, mk_param("v", self_type{2}));
-		assert((integer_t)wp() == 3);
+		assert( []{
+            callable wp([](int v) { return v + 1; }, mk_param("v", self_type{2}));
+            return (integer_t)wp();}() == 3);
+		callable w_lpr([](integer_t l, integer_t r) { return l + r; }, mk_param("l"), mk_param("r", self_type{2}));
+		assert( (integer_t)w_lpr(1) == 3 );
+		assert( (integer_t)w_lpr(1, 3) == 4 );
+		callable wd_lpr([](integer_t l, integer_t r) { return l + r; }, mk_param("l", self_type{1}), mk_param("r", self_type{2}));
+		assert( [&wd_lpr]{
+			self_type params; params.put(self_type{0}, self_type{4}); params.put(self_type{1}, self_type{7});
+			return (integer_t)wd_lpr.call(params);
+		}() == 11 );
+		assert( [&wd_lpr]{
+			self_type params; params.put(self_type{0}, self_type{4});
+			return (integer_t)wd_lpr.call(params);
+		}() == 6 );
+		assert( [&wd_lpr]{
+			self_type params; params.put(self_type{1}, self_type{4});
+			return (integer_t)wd_lpr.call(params);
+		}() == 5 );
+		assert( [&wd_lpr]{
+			self_type params; params.put(self_type{"r"}, self_type{4});
+			return (integer_t)wd_lpr.call(params);
+		}() == 5 );
+		assert( [&wd_lpr]{
+			self_type params; params.put(self_type{"l"}, self_type{4});
+			return (integer_t)wd_lpr.call(params);
+		}() == 6 );
+		assert( [&wd_lpr]{
+			self_type params; params.put(self_type{0}, self_type{4}); params.put(self_type{"r"}, self_type{7});
+			return (integer_t)wd_lpr.call(params);
+		}() == 11 );
+		assert( [&wd_lpr]{
+			self_type params; params.put(self_type{0}, self_type{4}); params.put(self_type{"l"}, self_type{40});
+			return (integer_t)wd_lpr.call(params);
+		}() == 6 );
 		return true;
 	}
 
