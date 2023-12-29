@@ -1,6 +1,8 @@
+#pragma once
+
 /*************************************************************************
  * Copyright © 2023 Hudyaev Alexy <hudyaev.alexy@gmail.com>
- * This file is part of modegen.
+ * This file is part of cogen.
  * Distributed under the GNU Affero General Public License.
  * See accompanying file copying (at the root of this repository)
  * or <http://www.gnu.org/licenses/> for details
@@ -52,7 +54,7 @@ struct vectorized_data {
 
 	constexpr auto clear() { return container.clear(); }
 	constexpr auto& at(auto ind) const { return *container.at(ind); }
-	constexpr auto push_back(auto&& d) requires( std::is_same_v<std::decay_t<decltype(d)>, data_type> ) {
+	constexpr auto push_back(auto&& d) requires( std::is_same_v<std::decay_t<decltype(d)>, data_type> ){
 		return container.push_back(factory.template mk_ptr<data_type>(std::forward<decltype(d)>(d)));
 	}
 };
