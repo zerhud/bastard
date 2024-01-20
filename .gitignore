@@ -30,3 +30,4 @@
 *.exe
 *.out
 *.app
+/jb_build/

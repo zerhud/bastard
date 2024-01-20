@@ -22,55 +22,6 @@ template<template<typename...>class type, typename... args> constexpr const bool
 template<typename data_type, typename type>
 concept data_vector = requires(type& v, const data_type& d){ v.clear(); v.push_back(d); } && requires(const type& v){ { v.at(0) } -> std::same_as<data_type>; } ;
 
-template<template<typename>class vector, typename key, typename value>
-struct constexpr_kinda_map {
-	struct chunk {
-		key k;
-		value v;
-	};
-	vector<chunk> store;
-
-	using value_type = chunk;
-
-	constexpr void insert(auto&& _v) {
-		auto&& [k,v] = _v;
-		store.emplace_back( chunk{ std::move(k), std::move(v) } );
-	}
-
-	constexpr auto& at(const key& fk) const {
-		for(auto&[k,v]:store) if(k==fk) return v;
-		throw __LINE__;
-	}
-};
-
-template<typename container_t, typename factory_t, typename data_type>
-struct vectorized_data {
-	using value_type = data_type;
-	//using used_type = decltype(std::declval<factory_t>().mk_ptr(std::declval<data_type>()));
-
-	factory_t factory;
-	//vector<used_type> container;
-	container_t container;
-
-	constexpr auto clear() { return container.clear(); }
-	constexpr auto& at(auto ind) const { return *container.at(ind); }
-	constexpr auto push_back(auto&& d) requires( std::is_same_v<std::decay_t<decltype(d)>, data_type> ){
-		return container.push_back(factory.template mk_ptr<data_type>(std::forward<decltype(d)>(d)));
-	}
-};
-
-//template<template<typename...>class variant_t, typename integer, typename float_point, typename string>
-struct absdata_raw_ptr_factory {
-	//template<typename type> using smart_ptr = type*;
-	//template<typename... types> using variant = variant_t<types...>;
-	//using float_point_t = float_point;
-	//using integer_t = integer;
-	//using string_t = string;
-
-	template<typename type> constexpr auto mk_ptr(auto&&... args) const { return new type(std::forward<decltype(args)>(args)...); }
-	[[noreturn]] constexpr static void throw_wrong_interface_error(auto&& op){ throw __LINE__; }
-};
-
 struct expr_operators_simple {
 	template<typename data_type>
 	constexpr static auto math_op(auto&& l, auto&& r, auto&& op) {
@@ -140,7 +91,7 @@ struct expr_operators_simple {
 
 	template<typename data_type>
 	constexpr static auto negate(auto&& val) {
-		return data_type{ !to_bool<data_type>(std::move(val)) };
+		return data_type{ !to_bool<data_type>( std::forward<decltype(val)>(val) ) };
 	}
 
 	template<typename data_type>
@@ -171,119 +122,6 @@ struct expr_operators_simple {
 };
 
 } // namespace bastard_details
-
-template< typename factory, typename final_type, typename... implementations >
-struct abstract_data {
-	using factory_t = factory;
-	template<typename... types> using variant_t = typename factory_t::template variant<types...>;
-
-	//using self_type = abstract_data<factory_t, final_type, implementations...>;
-	using self_type = final_type;
-
-	using string_t = typename factory_t::string_t;
-	using integer_t = typename factory_t::integer_t;
-	using float_point_t = typename factory_t::float_point_t;
-
-	using holder_type = variant_t<string_t,integer_t,float_point_t,bool, implementations...>;
-
-	static_assert( (std::copyable<implementations> && ...), "all implementations type must to be copyable" );
-	//static_assert( ((!requires{ typename implementations::value_type; } || std::copyable<typename implementations::value_type>) && ...), "all value_tye in implementations type must to be copyable also" );
-
-	template<typename type>
-	constexpr static bool is_array =
-		   (requires(const type& t){ self_type{ t.at(0) }; } || requires(const type& t){ self_type{ *t.at(0) }; })
-		&& requires(type& t){ t.push_back(std::declval<typename type::value_type>()); }
-	;
-	template<typename type>
-	constexpr static bool is_map = requires(const type& t){ self_type{ t.at("some_key") }; } ;
-
-	template<typename type>
-	constexpr static bool is_data_container = std::is_same_v<typename std::decay_t<type>::value_type, self_type>;
-
-	holder_type holder;
-
-	constexpr bool is_fp() const { return get_if<float_point_t>(&holder) != nullptr; }
-	constexpr bool is_str() const { return holder.index() == 0; }
-	constexpr bool is_int() const { return get_if<integer_t>(&holder) != nullptr; }
-	constexpr bool is_bool() const { return holder.index() == 3; }
-	constexpr bool is_arr() const {
-		return exec_for_arr([](const auto&){ return true; }, []{ return false; });
-	}
-
-	constexpr explicit operator string_t() const { return get<string_t>(holder); }
-	constexpr explicit operator bool() const { return get<bool>(holder); }
-
-	constexpr explicit operator integer_t() const {
-		auto* fp = get_if<float_point_t>(&holder);
-		return fp ? (integer_t)(*fp) : get<integer_t>(holder);
-	}
-	constexpr explicit operator float_point_t() const {
-		auto* fp = get_if<float_point_t>(&holder);
-		return fp ? *fp : get<integer_t>(holder);
-	}
-	constexpr void push_back(self_type data) {
-		exec_for_arr(
-			[data=std::move(data)](auto& v)mutable{
-				using ar_t = std::decay_t<decltype(v)>;
-				//static_assert( std::is_same_v<typename ar_t::value_type, self_type> );
-				//if constexpr ( std::is_same_v<typename ar_t::value_type, self_type> )
-				if constexpr ( requires{ v.push_back(std::move(data)); } ) {
-					static_assert( bastard_details::is_specialization_of<std::decay_t<decltype(v)>, bastard_details::vectorized_data> );
-					v.push_back(std::move(data));
-				} else v.push_back( (typename ar_t::value_type)data );
-			}, []{ factory_t::throw_wrong_interface_error("push_back"); }
-			);
-	}
-	constexpr void put(string_t key, auto data) {
-		exec_for_map(
-			[&key,&data](auto& v){v.insert(typename std::decay_t<decltype(v)>::value_type{ key, std::move(data) });},
-			[]{});
-	}
-	constexpr self_type operator[](integer_t ind) {
-		return exec_for_arr(
-			[ind](auto&v){ return self_type{ v.at(ind) }; },
-			[]()->self_type{ factory_t::throw_wrong_interface_error("operator[](ind)"); }
-			);
-	}
-	constexpr self_type operator[](string_t key) {
-		return exec_for_map(
-			[key](auto&v){ return self_type{ v.at(key) }; },
-			[]()->self_type{ factory_t::throw_wrong_interface_error("operator[](key)"); }
-			);
-	}
-private:
-
-	constexpr auto exec_for_arr(auto&& ar, auto&& other) {
-		return visit( bastard_details::overloaded {
-			[&other](string_t&){ return other(); },
-			[&ar,&other](auto& v) {
-			if constexpr (is_array<std::decay_t<decltype(v)>>) return ar(v);
-			else return other();
-			}
-		}, holder );
-	}
-	constexpr auto exec_for_arr(auto&& ar, auto&& other) const {
-		return visit( bastard_details::overloaded {
-			[&other](const string_t&){ return other(); },
-			[&ar,&other](const auto& v) {
-			if constexpr (is_array<std::decay_t<decltype(v)>>) return ar(v);
-			else return other();
-			}
-		}, holder );
-	}
-	constexpr auto exec_for_map(auto&& map, auto&& other) const {
-		return visit( [&map,&other](const auto& v) {
-			if constexpr (is_map<std::decay_t<decltype(v)>>) return map(v);
-			else return other();
-			}, holder);
-	}
-	constexpr auto exec_for_map(auto&& map, auto&& other) {
-		return visit( [&map,&other](auto& v) {
-			if constexpr (is_map<std::decay_t<decltype(v)>>) return map(v);
-			else return other();
-			}, holder);
-	}
-};
 
 template< typename data_type, typename operators_factory, typename data_factory >
 struct bastard {
@@ -491,54 +329,9 @@ struct bastard {
 		return true;
 	}
 
-	constexpr static bool test_abstract_data() {
-		data_factory df;
-		using int_vec_type = decltype(df.template mk_vec<typename data_type::integer_t>());
-		using int_map_type = decltype(df.template mk_map<typename data_type::string_t, typename data_type::integer_t>());
-		using integer_t = typename data_type::integer_t;
-		struct data_t : abstract_data< typename data_type::factory_t, data_t, int_vec_type, int_map_type> {};
-
-		static_assert( data_t{ true }.is_bool() == true );
-		static_assert( data_t{ (integer_t)1 }.is_int() == true );
-		static_assert( data_t{ (integer_t)1 }.is_str() == false );
-		static_assert( data_t{ (integer_t)1 }.is_arr() == false );
-		static_assert( data_t{ (integer_t)1 }.is_bool() == false );
-		static_assert( data_t{ int_vec_type{} }.is_arr() == true );
-		static_assert( (integer_t)([]{data_t d{int_vec_type{}};d.push_back(data_t{(integer_t)10});return d[0];}()) == 10 );
-		static_assert( (integer_t)([]{data_t d{int_vec_type{}};d.push_back(data_t{(integer_t)15});return d[0];}()) == 15 );
-		static_assert( (integer_t)([]{data_t d{int_map_type{}};d.put("key",(integer_t)15);return d["key"];}()) == 15 );
-		static_assert( (integer_t)([]{data_t d{int_map_type{}};
-				d.put("key",(integer_t)15);
-				d.put("key2",(integer_t)10);
-				return d["key2"];}()) == 10 );
-		/*
-		*/
-		return true;
-	}
-
-	constexpr static bool test_sc_abstract_data() {
-		struct data_sc_t;
-		data_factory df;
-		using ptr_type = data_sc_t*;//decltype(df.template mk_ptr<data_sc_t>());
-		using sc_vec_type = decltype(df.template mk_vec<ptr_type>());
-		using vectorized_type = bastard_details::vectorized_data<sc_vec_type, bastard_details::absdata_raw_ptr_factory, data_sc_t>;
-		struct data_sc_t : abstract_data< typename data_type::factory_t, data_sc_t, vectorized_type> {};
-
-		/*
-		static_assert( []{ vectorized_type v; v.push_back(data_sc_t{ (integer_t)10 }); auto vv = v; return (integer_t)vv.at(0); }() == 10 );
-		static_assert( []{ data_sc_t d{vectorized_type{}};
-			d.push_back(data_sc_t{(integer_t)10});
-			integer_t ret = (integer_t)d[0];
-			return ret;
-			}() == 10);
-		*/
-
-		return true;
-	}
-
 	template<typename gh>
 	constexpr static bool test() {
-		return test_abstract_data() && test_sc_abstract_data() && test_parse<gh>() && test_terms<gh>();
+		return test_parse<gh>() && test_terms<gh>();
 	}
 };
 
