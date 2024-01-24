@@ -31,3 +31,4 @@
 *.out
 *.app
 /jb_build/
+/tests/*
