@@ -227,7 +227,10 @@ struct bastard {
 		return ops.template do_or<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 	}
 	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, list_expr> ) {
-		return data_type{ (integer_t)3 };
+		data_type ret;
+		ret.mk_empty_array();
+		for(auto&& item:op.list) ret.push_back(visit(*this, *item));
+		return ret;
 	}
 	constexpr data_type operator()(const auto& op) const {
 		std::unreachable(); // your specialization dosen't work :(
@@ -303,7 +306,9 @@ struct bastard {
 		static_assert( (bool)test_terms<gh>("true and !true") == false );
 		static_assert( (bool)test_terms<gh>("true or !true") == true );
 
-		//static_assert( (integer_t)(test_terms<gh>("[1,2,3]")[2]) == 3 );
+		static_assert( (integer_t)(test_terms<gh>("[1,2,3]")[0]) == 1 );
+		static_assert( (bool)(test_terms<gh>("[1,true,3]")[1]) == true );
+		static_assert( (integer_t)(test_terms<gh>("[1,2,3+3]")[2]) == 6 );
 
 		return true;
 	}
