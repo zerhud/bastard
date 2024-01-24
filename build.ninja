@@ -1,0 +1,17 @@
+builddir = ninja_build
+odir = ninja_build
+iflags = -I..
+
+rule gcc
+  command = g++ -MMD -pipe -std=gnu++23 -fwhole-program -march=native -fdiagnostics-color=always $iflags $in -o $builddir/$out
+  depfile = $builddir/$out.d
+
+rule clang
+  command = clang++ -MMD -pipe -std=c++23 -fdiagnostics-color=always $iflags $in -o $builddir/$out
+  depfile = $builddir/$out.d
+
+build absd_test: gcc absd/test.cpp
+#build absd_test_clang: clang absd/test.cpp
+
+build jiexpr_ct_test: gcc jiexpr/test_ct.cpp
+  iflags = -Iabsd
