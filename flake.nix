@@ -18,14 +18,16 @@
       #ascip = import params.ascip { inherit system; };
       der = pkgs.gcc13Stdenv.mkDerivation {
         name = "bastard";
-        nativeBuildInputs = [pkgs.clang_15 ascip.packages."${system}".default pkgs.jetbrains.clion];
+        nativeBuildInputs = with pkgs;[clang_17 ninja ascip.packages."${system}".default];
         installPhase = "mkdir -p \"$out/include\" && cp ascip.hpp -t \"$out/include\"";
         buildPhase = "g++ -std=c++23 -fwhole-program -march=native ./test.cpp -o ascip_test && ./ascip_test";
         meta.description = "bastard is an jinja interpretator with extensions writted in cpp. it can to be embbadded in your projects with open source license.";
         src = ./.;
       };
     in rec {
-      devShell = der;
+      devShell = der.overrideAttrs(finalAttrs: previousAttrs: {
+          nativeBuildInputs =  previousAttrs.nativeBuildInputs ++ [ pkgs.jetbrains.clion ];
+        });
       packages.default = der;
       packages.bastard = der;
       defaultPackage = der;
