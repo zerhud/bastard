@@ -28,11 +28,11 @@ struct expr_operators_simple {
 		using integer_t = typename data_type::integer_t;
 		using float_point_t = typename data_type::float_point_t;
 		if(l.is_int()) {
-			if(r.is_fp()) return data_type{ float_point_t( op((integer_t)l,(float_point_t)r) ) };
+			if(r.is_float_point()) return data_type{ float_point_t( op((integer_t)l,(float_point_t)r) ) };
 			return data_type{ integer_t( op((integer_t)l,(integer_t)r) ) };
 		}
 		else {
-			if(r.is_fp()) return data_type{ float_point_t( op((float_point_t)l,(float_point_t)r) ) };
+			if(r.is_float_point()) return data_type{ float_point_t( op((float_point_t)l,(float_point_t)r) ) };
 			return data_type{ float_point_t( op((float_point_t)l,(integer_t)r) ) };
 		}
 	}
@@ -43,11 +43,11 @@ struct expr_operators_simple {
 		using integer_t = typename data_type::integer_t;
 		using float_point_t = typename data_type::float_point_t;
 		if(l.is_int()) {
-			if(r.is_fp()) return data_type{ to_type((integer_t)l / (float_point_t)r) };
+			if(r.is_float_point()) return data_type{ to_type((integer_t)l / (float_point_t)r) };
 			return data_type{ to_type((integer_t)l / (integer_t)r) };
 		}
 		else {
-			if(r.is_fp()) return data_type{ to_type((float_point_t)l / (float_point_t)r) };
+			if(r.is_float_point()) return data_type{ to_type((float_point_t)l / (float_point_t)r) };
 			return data_type{ to_type((float_point_t)l / (integer_t)r) };
 		}
 	}
@@ -59,8 +59,8 @@ struct expr_operators_simple {
 		using string_t = typename data_type::string_t;
 		if( val.is_bool() ) return val;
 		else if( val.is_int() ) return data_type{ !!((integer_t)val) };
-		else if( val.is_fp() ) return data_type{ !!((float_point_t)val) };
-		else if( val.is_str() ) return data_type{ !((string_t)val).empty() };
+		else if( val.is_float_point() ) return data_type{ !!((float_point_t)val) };
+		else if( val.is_string() ) return data_type{ !((string_t)val).empty() };
 		else return data_type{ false };
 	}
 
@@ -125,7 +125,7 @@ struct expr_operators_simple {
 
 template< typename data_type, typename operators_factory, typename data_factory >
 struct bastard {
-	template<typename... types> using variant_t = typename data_type::template variant_t<types...>;
+	template<typename... types> using variant_t = typename data_factory::template variant_t<types...>;
 	using self_type = bastard<data_type, operators_factory, data_factory>;
 
 	template<typename expr_t>
@@ -171,7 +171,7 @@ struct bastard {
 	template<typename type> using ast_forwarder = typename data_factory::template ast_forwarder<type>;
 
 	template<typename... operators>
-	using parse_result = typename data_type::template variant_t<std::decay_t<operators>...,string_t,integer_t,float_point_t,bool>;
+	using parse_result = typename data_factory::template variant_t<std::decay_t<operators>...,string_t,integer_t,float_point_t,bool>;
 
 	template<template<class>class fa> struct expr_type : parse_result<
 	       op_and      < fa<expr_type<fa>> >

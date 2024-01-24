@@ -1,6 +1,7 @@
 #include "absd.hpp"
 #include "jiexpr.hpp"
 
+#include <ascip.hpp>
 #include <vector>
 #include <memory>
 #include <variant>
@@ -25,10 +26,33 @@ struct absd_factory {
 	}
 };
 
+struct bastard_factory {
+	template<typename... types> using variant_t = std::variant<types...>;
+	template<typename type> using ast_forwarder = std::unique_ptr<type>;
+	template<typename type> using vec_type = std::vector<type> ;
+
+	constexpr auto mk_fwd(auto& v) const {
+		v = std::make_unique<typename std::decay_t<decltype(v)>::element_type>();
+		return v.get();
+	}
+	constexpr auto mk_result(auto& v) const {
+		using expr_t = std::decay_t<decltype(v)>;
+		return std::make_unique<expr_t>(std::move(v));
+	}
+	template<typename type> constexpr auto mk_vec() const {
+		return std::vector<type>{};
+	}
+
+	template<typename type>
+	constexpr auto mk_ptr(auto&&... args) { return std::make_unique<type>(std::forward<decltype(args)>(args)...); }
+};
+
+using parser = ascip<std::tuple>;
 struct absd_data1 : absd::data<absd_factory<double>, absd_data1> {using base_data_type::operator=;};
 
-using bs1 = bastard<absd_data1, bastard_details::expr_operators_simple, absd_factory<double>>;
+using bs1 = bastard<absd_data1, bastard_details::expr_operators_simple, bastard_factory>;
 
 int main(int,char**) {
+	static_assert( bs1::test<parser>() );
 	return 0;
 }

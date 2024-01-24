@@ -61,7 +61,6 @@ template<typename data, typename factory> constexpr auto mk_array_type(const fac
 
 template<typename factory, typename key, typename value>
 struct constexpr_kinda_map {
-		constexpr static int kinda_map = 0;
 	struct chunk {
 		key k;
 		value v;
