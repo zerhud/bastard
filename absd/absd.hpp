@@ -116,6 +116,10 @@ struct object : inner_counter {
 		for(const auto& [k,v]:map) ret.push_back(k);
 		return ret;
 	}
+	constexpr data cmpget_workaround(const auto& f) const {
+		for(auto& [k,v]:map) if((decltype(f))k==f) return v;
+		return data{};
+	}
 
 	constexpr auto size() const { return map.size(); }
 };
@@ -510,7 +514,7 @@ public:
 	}
 	constexpr self_type& put(self_type key, self_type value) {
 		if(is_none()) mk_empty_object();
-		return visit([this,key=std::move(key),value=std::move(value)](auto& v) -> self_type& {
+		return visit([this,&key,&value](auto& v) -> self_type& {
 			if constexpr(requires{ v->put(key,value); }) return v->put(key, value);
 			else {
 				factory::throw_wrong_interface_error("put");
@@ -536,6 +540,17 @@ public:
 			if constexpr(requires{ v->at(key); }) return v->at(key);
 			else {
 				factory::throw_wrong_interface_error("operator[key]");
+				std::unreachable();
+				return static_cast<self_type&>(*this);
+			}
+		}, holder);
+	}
+
+	constexpr self_type cmpget_workaround(const string_t& key) {
+		return visit([this,&key](auto&v)->self_type {
+			if constexpr(requires{ v->cmpget_workaround(key); }) return v->cmpget_workaround(key);
+			else {
+				factory::throw_wrong_interface_error("cmpget_workaround");
 				std::unreachable();
 				return static_cast<self_type&>(*this);
 			}

@@ -164,9 +164,18 @@ struct bastard {
 		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) list;
 	};
 
+
 	using string_t = typename data_type::string_t;
 	using integer_t = typename data_type::integer_t;
 	using float_point_t = typename data_type::float_point_t;
+
+	struct ident_term {
+		string_t val;
+	};
+	template<typename expr_t>
+	struct var_expr {
+		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) path;
+	};
 
 	template<typename type> using ast_forwarder = typename data_factory::template ast_forwarder<type>;
 
@@ -184,6 +193,8 @@ struct bastard {
 	     , op_power    < fa<expr_type<fa>> >
 	     , op_not      < fa<expr_type<fa>> >
 	     , list_expr   < fa<expr_type<fa>> >
+	     , ident_term
+	     , var_expr    < fa<expr_type<fa>> >
 	> {};
 
 	data_type* env;
@@ -232,6 +243,12 @@ struct bastard {
 		for(auto&& item:op.list) ret.push_back(visit(*this, *item));
 		return ret;
 	}
+	constexpr data_type operator()(const ident_term& op) {
+		return env->cmpget_workaround(op.val);
+	}
+	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, var_expr> ) {
+		return data_type{3};
+	}
 	constexpr data_type operator()(const auto& op) const {
 		std::unreachable(); // your specialization dosen't work :(
 		return data_type{ (integer_t)__LINE__ };
@@ -252,6 +269,8 @@ struct bastard {
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"**"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<unary_op<expr_t>>(th<'!'>::_char++ >> --gh::rv_rreq(mk_fwd))
 			, th<'['>::_char++ >> --((gh::rv_req(mk_fwd)) % ',') >> th<']'>::_char // TODO: initialize list member with data factory?
+			, cast<ident_term>(lexeme(gh::alpha++ >> --(*(gh::alpha | gh::d10 | th<'_'>::char_))))
+			, cast<var_expr<expr_t>>(lexeme(gh::alpha++ >> --(*(gh::alpha | gh::d10 | th<'_'>::char_))) % '.')
 			, gh::quoted_string
 			, gh::int_
 			, gh::fp
@@ -264,12 +283,25 @@ struct bastard {
 	}
 
 	template<typename gh>
-	constexpr static auto test_terms(auto src) {
-		data_type env;
+	constexpr static auto test_terms(auto src, auto& env) {
 		operators_factory ops;
 		bastard ev{&env, ops};
 		auto parsed = ev.parse_str<gh>(src);
 		return ev(parsed);
+	}
+
+	template<typename gh>
+	constexpr static auto test_terms(auto src) {
+		data_type env;
+		return test_terms<gh>(src, env);
+	}
+
+	template<typename gh>
+	constexpr static auto test_terms_abc(auto src) {
+		data_type env;
+		env.put(data_type{string_t{"a"}}, data_type{1});
+		env.put(data_type{string_t{"b"}}, data_type{2});
+		return test_terms<gh>(src, env);
 	}
 
 	template<typename gh>
@@ -314,6 +346,15 @@ struct bastard {
 	}
 
 	template<typename gh>
+	constexpr static auto test_env_terms() {
+		static_assert( (integer_t)test_terms_abc<gh>("a") == 1 );
+		static_assert( (integer_t)test_terms_abc<gh>("b") == 2 );
+		static_assert( (integer_t)test_terms_abc<gh>("a.b") == 3 );
+
+		return true;
+	}
+
+	template<typename gh>
 	constexpr static bool test_parse() {
 		data_type env;
 		operators_factory ops;
@@ -336,7 +377,7 @@ struct bastard {
 
 	template<typename gh>
 	constexpr static bool test() {
-		return test_parse<gh>() && test_terms<gh>();
+		return test_parse<gh>() && test_terms<gh>() && test_env_terms<gh>();
 	}
 };
 
