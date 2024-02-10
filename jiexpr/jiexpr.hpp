@@ -174,6 +174,12 @@ struct bastard {
 		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) path;
 	};
 
+	template<typename expr_t>
+	struct fnc_call_expr {
+		var_expr<expr_t> name;
+		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) params;
+	};
+
 	template<typename type> using ast_forwarder = typename data_factory::template ast_forwarder<type>;
 
 	template<typename... operators>
@@ -191,6 +197,7 @@ struct bastard {
 	     , op_not      < fa<expr_type<fa>> >
 	     , list_expr   < fa<expr_type<fa>> >
 	     , var_expr    < fa<expr_type<fa>> >
+		 , fnc_call_expr < fa<expr_type<fa>> >
 	> {};
 
 	data_type* env;
@@ -253,6 +260,12 @@ struct bastard {
 		}
 		return cur;
 	}
+	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, fnc_call_expr> ) {
+		auto fnc = (*this)(op.name);
+		data_type params;
+		params.mk_empty_object();
+		return fnc.call(std::move(params));
+	}
 	constexpr data_type operator()(const auto& op) const {
 		std::unreachable(); // your specialization doesn't work :(
 		return data_type{ (integer_t)__LINE__ };
@@ -266,6 +279,8 @@ struct bastard {
 		//TODO: initialize string (ident, quoted_string, array) and vectors (array only) with data factory
 		constexpr auto ident = lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))([](auto& v){return &v.template emplace<string_t>();});
 		auto var_expr_mk_result = [this](auto& v){result_t r; return v.path.emplace_back(df.mk_result(r)).get();};
+		auto var_expr_parser = cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)));
+		auto fnc_call_expr_parser = cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_req(mk_fwd) % ',') >> th<')'>::_char);
 		auto expr_p = rv([this](auto& v){ return df.mk_result(v); }
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"and"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"or">  >> ++gh::rv_rreq(mk_fwd))
@@ -277,7 +292,8 @@ struct bastard {
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"**"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<unary_op<expr_t>>(th<'!'>::_char++ >> --gh::rv_rreq(mk_fwd))
 			, th<'['>::_char++ >> --((gh::rv_req(mk_fwd)) % ',') >> th<']'>::_char // TODO: initialize list member with data factory?
-			, cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)))
+			, var_expr_parser
+			, fnc_call_expr_parser
 			, gh::quoted_string
 			, gh::int_
 			, gh::fp
@@ -308,6 +324,8 @@ struct bastard {
 		data_type env;
 		env.put(data_type{string_t{"a"}}, data_type{1});
 		env.put(data_type{string_t{"b"}}, data_type{2});
+		env.put(data_type{string_t{"fnc1"}}, data_type::mk([](){return data_type{1};}));
+		env.put(data_type{string_t{"fnc2"}}, data_type::mk([](){return data_type{2};}));
 		data_type obj, arr, obj_with_a;
 		obj_with_a.put(data_type{string_t{"a"}}, data_type{5});
 		obj.put(data_type{string_t{"b"}}, data_type{3});
@@ -367,6 +385,9 @@ struct bastard {
 		static_assert( (integer_t)test_terms_abc<gh>("obj['b']") == 3 );
 		static_assert( (integer_t)test_terms_abc<gh>("obj.arr[3-3]") == 4 );
 		static_assert( (integer_t)test_terms_abc<gh>("obj.arr[3-2].a") == 5 );
+
+		static_assert( (integer_t)test_terms_abc<gh>("fnc1()") == 1 );
+		static_assert( (integer_t)test_terms_abc<gh>("fnc2()") == 2 );
 
 		return true;
 	}

@@ -570,6 +570,15 @@ public:
 		}, holder);
 	}
 	constexpr self_type call(const auto& params) {
+		return visit([this,&params](auto& v) -> self_type {
+			if constexpr(requires{ {v->call(params)}->std::same_as<self_type>; }) return v->call(params);
+			else if constexpr(requires{ v->call(params); }) return (v->call(params), self_type{});
+			else {
+				factory::throw_wrong_interface_error("operator()");
+				std::unreachable();
+				return self_type{};
+			}
+		}, holder);
 	}
 
 	friend constexpr bool operator==(const self_type& left, const self_type& right) {
