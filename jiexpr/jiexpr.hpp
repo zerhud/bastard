@@ -169,9 +169,6 @@ struct bastard {
 	using integer_t = typename data_type::integer_t;
 	using float_point_t = typename data_type::float_point_t;
 
-	struct ident_term {
-		string_t val;
-	};
 	template<typename expr_t>
 	struct var_expr {
 		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) path;
@@ -193,7 +190,6 @@ struct bastard {
 	     , op_power    < fa<expr_type<fa>> >
 	     , op_not      < fa<expr_type<fa>> >
 	     , list_expr   < fa<expr_type<fa>> >
-	     , ident_term
 	     , var_expr    < fa<expr_type<fa>> >
 	> {};
 
@@ -243,21 +239,33 @@ struct bastard {
 		for(auto&& item:op.list) ret.push_back(visit(*this, *item));
 		return ret;
 	}
-	constexpr data_type operator()(const ident_term& op) {
-		return env->cmpget_workaround(op.val);
-	}
 	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, var_expr> ) {
-		return data_type{3};
+		//cmpget_workwaroud for constexpr bug with strings
+		auto cur = env->cmpget_workaround(get<string_t>(*op.path.at(0)));
+		for(auto pos = ++op.path.begin();pos!=op.path.end();++pos) {
+			auto& item = **pos;
+			if(holds_alternative<string_t>(item)) cur = cur.cmpget_workaround(get<string_t>(item));
+			else {
+				auto key = visit(*this, item);
+				if(key.is_int()) cur = cur[(integer_t)key];
+				else cur = cur[key];
+			}
+		}
+		return cur;
 	}
 	constexpr data_type operator()(const auto& op) const {
-		std::unreachable(); // your specialization dosen't work :(
+		std::unreachable(); // your specialization doesn't work :(
 		return data_type{ (integer_t)__LINE__ };
 	}
 
 	template<typename gh, template<auto>class th=gh::template tmpl>
 	constexpr auto parse_str(auto&& src) const {
+		using result_t = expr_type<ast_forwarder>;
 		using expr_t = ast_forwarder<expr_type<ast_forwarder>>;
-		auto mk_fwd = [this](auto& v){ return df.mk_fwd(v); }; 
+		auto mk_fwd = [this](auto& v){ return df.mk_fwd(v); };
+		//TODO: initialize string (ident, quoted_string, array) and vectors (array only) with data factory
+		constexpr auto ident = lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))([](auto& v){return &v.template emplace<string_t>();});
+		auto var_expr_mk_result = [this](auto& v){result_t r; return v.path.emplace_back(df.mk_result(r)).get();};
 		auto expr_p = rv([this](auto& v){ return df.mk_result(v); }
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"and"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"or">  >> ++gh::rv_rreq(mk_fwd))
@@ -269,8 +277,7 @@ struct bastard {
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"**"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<unary_op<expr_t>>(th<'!'>::_char++ >> --gh::rv_rreq(mk_fwd))
 			, th<'['>::_char++ >> --((gh::rv_req(mk_fwd)) % ',') >> th<']'>::_char // TODO: initialize list member with data factory?
-			, cast<ident_term>(lexeme(gh::alpha++ >> --(*(gh::alpha | gh::d10 | th<'_'>::char_))))
-			, cast<var_expr<expr_t>>(lexeme(gh::alpha++ >> --(*(gh::alpha | gh::d10 | th<'_'>::char_))) % '.')
+			, cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)))
 			, gh::quoted_string
 			, gh::int_
 			, gh::fp
@@ -301,6 +308,13 @@ struct bastard {
 		data_type env;
 		env.put(data_type{string_t{"a"}}, data_type{1});
 		env.put(data_type{string_t{"b"}}, data_type{2});
+		data_type obj, arr, obj_with_a;
+		obj_with_a.put(data_type{string_t{"a"}}, data_type{5});
+		obj.put(data_type{string_t{"b"}}, data_type{3});
+		arr.push_back(data_type{4});
+		arr.push_back(obj_with_a);
+		obj.put(data_type{string_t{"arr"}}, std::move(arr));
+		env.put(data_type{string_t{"obj"}}, std::move(obj));
 		return test_terms<gh>(src, env);
 	}
 
@@ -349,7 +363,10 @@ struct bastard {
 	constexpr static auto test_env_terms() {
 		static_assert( (integer_t)test_terms_abc<gh>("a") == 1 );
 		static_assert( (integer_t)test_terms_abc<gh>("b") == 2 );
-		static_assert( (integer_t)test_terms_abc<gh>("a.b") == 3 );
+		static_assert( (integer_t)test_terms_abc<gh>("obj.b") == 3 );
+		static_assert( (integer_t)test_terms_abc<gh>("obj['b']") == 3 );
+		static_assert( (integer_t)test_terms_abc<gh>("obj.arr[3-3]") == 4 );
+		static_assert( (integer_t)test_terms_abc<gh>("obj.arr[3-2].a") == 5 );
 
 		return true;
 	}

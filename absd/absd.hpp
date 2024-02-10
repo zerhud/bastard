@@ -503,7 +503,8 @@ public:
 	constexpr self_type& mk_empty_array() { return assign(factory::mk_ptr(details::mk_array_type<crtp>(factory{}))); }
 	constexpr self_type& mk_empty_object() { return assign(factory::mk_ptr(details::mk_object_type<crtp>(factory{}))); }
 	constexpr self_type& push_back(self_type d) {
-		return visit([this,d=std::move(d)](auto& v) -> self_type& { 
+		if(is_none()) mk_empty_array();
+		return visit([this,d=std::move(d)](auto& v) -> self_type& {
 			if constexpr(requires{ v->emplace_back(std::move(d)); }) { return v->emplace_back(std::move(d)); }
 			else {
 				factory::throw_wrong_interface_error("push_back");
