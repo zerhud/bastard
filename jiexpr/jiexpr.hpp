@@ -197,7 +197,7 @@ struct bastard {
 	     , op_not      < fa<expr_type<fa>> >
 	     , list_expr   < fa<expr_type<fa>> >
 	     , var_expr    < fa<expr_type<fa>> >
-		 , fnc_call_expr < fa<expr_type<fa>> >
+	     , fnc_call_expr < fa<expr_type<fa>> >
 	> {};
 
 	data_type* env;
@@ -324,13 +324,17 @@ struct bastard {
 		data_type env;
 		env.put(data_type{string_t{"a"}}, data_type{1});
 		env.put(data_type{string_t{"b"}}, data_type{2});
-		env.put(data_type{string_t{"fnc1"}}, data_type::mk([](){return data_type{1};}));
-		env.put(data_type{string_t{"fnc2"}}, data_type::mk([](){return data_type{2};}));
+		env.put(data_type{string_t{"fnc1"}}, data_type::mk(typename data_type::callable([](){return data_type{1};})));
+		//TODO: uncomment fnc2 and remove fnc2 with callable
+		//env.put(data_type{string_t{"fnc2"}}, data_type::mk([](){return data_type{2};}));
+		env.put(data_type{string_t{"fnc2"}}, data_type::mk(typename data_type::callable([](){return data_type{2};})));
 		data_type obj, arr, obj_with_a;
 		obj_with_a.put(data_type{string_t{"a"}}, data_type{5});
 		obj.put(data_type{string_t{"b"}}, data_type{3});
 		arr.push_back(data_type{4});
 		arr.push_back(obj_with_a);
+		//TODO: add parameters with default args and call by positioned and named params
+		arr.push_back(data_type::mk(typename data_type::callable([]{return data_type{4};})));
 		obj.put(data_type{string_t{"arr"}}, std::move(arr));
 		env.put(data_type{string_t{"obj"}}, std::move(obj));
 		return test_terms<gh>(src, env);
@@ -388,6 +392,7 @@ struct bastard {
 
 		static_assert( (integer_t)test_terms_abc<gh>("fnc1()") == 1 );
 		static_assert( (integer_t)test_terms_abc<gh>("fnc2()") == 2 );
+		static_assert( (integer_t)test_terms_abc<gh>("obj.arr[4-(8*1-6)]()") == 3 );
 
 		return true;
 	}

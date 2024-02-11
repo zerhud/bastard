@@ -154,6 +154,7 @@ struct type_erasure_callable : counter_interface {
 
 template<typename factory, typename data> // cannot to be derived from both: cannot to be constexpr and have virtual base class
 struct type_erasure_callable_both : type_erasure_callable<factory, data> {
+	using type_erasure_callable<factory, data>::call;
 	constexpr virtual data call() =0 ;
 };
 
@@ -277,6 +278,7 @@ struct data {
 		}
 	};
 
+	//TODO: implement mk with lambda
 	constexpr static self_type mk(auto&& v) { return mk(factory{}, std::forward<decltype(v)>(v)); }
 	constexpr static self_type mk(const factory& f, auto&& v) requires (!details::is_specialization_of<std::decay_t<decltype(v)>, callable>) {
 		using v_type = std::decay_t<decltype(v)>;
@@ -343,8 +345,8 @@ struct data {
 			using params_t = typename te_callable::params_t;
 			val_type v;
 			constexpr explicit te_base(val_type&& v) : v(std::forward<decltype(v)>(v)) {}
-			constexpr self_type call(self_type params) {return self_type{3};}
-			constexpr params_t params(const factory& f) const {return params_t{};}
+			constexpr self_type call(self_type params) {return self_type{333};} // TODO: implement call with parameters
+			constexpr params_t params(const factory& f) const {return params_t{};} // TODO: implement parameters search
 			constexpr self_type call_without_params() {
 				if constexpr(requires{ self_type{v()}; }) return self_type{v()};
 				else if constexpr(requires{ {v()} -> std::same_as<void>; })  return (v(), self_type{});
@@ -569,7 +571,7 @@ public:
 			}
 		}, holder);
 	}
-	constexpr self_type call(const auto& params) {
+	constexpr self_type call(auto&& params) {
 		return visit([this,&params](auto& v) -> self_type {
 			if constexpr(requires{ {v->call(params)}->std::same_as<self_type>; }) return v->call(params);
 			else if constexpr(requires{ v->call(params); }) return (v->call(params), self_type{});
