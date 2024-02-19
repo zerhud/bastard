@@ -242,7 +242,12 @@ struct data {
 			return call_with_params(std::forward<decltype(args)>(args)...);
 		}
 		constexpr auto call(self_type params) const {
-			return call_with_combined_params<0>(params);
+			using ret_type = decltype(call_with_combined_params<0>(params));
+			if constexpr(!std::is_same_v<ret_type, void>) return call_with_combined_params<0>(params);
+			else {
+				call_with_combined_params<0>(params);
+				return self_type{};
+			}
 		}
 	private:
 		constexpr void create_param(auto&& param) {
@@ -345,7 +350,9 @@ struct data {
 			using params_t = typename te_callable::params_t;
 			val_type v;
 			constexpr explicit te_base(val_type&& v) : v(std::forward<decltype(v)>(v)) {}
-			constexpr self_type call(self_type params) {return self_type{333};} // TODO: implement call with parameters
+			constexpr self_type call(self_type params) {
+				return self_type{v.call(params)};
+			}
 			constexpr params_t params(const factory& f) const {return params_t{};} // TODO: implement parameters search
 			constexpr self_type call_without_params() {
 				if constexpr(requires{ self_type{v()}; }) return self_type{v()};
@@ -716,6 +723,14 @@ public:
 			self_type params; params.put(self_type{0}, self_type{4}); params.put(self_type{"l"}, self_type{40});
 			return (integer_t)wd_lpr.call(params);
 		}() == 6 );
+/*
+		assert( [&wd_lpr]{
+			self_type params; params.put(self_type{0}, self_type{4}); params.put(self_type{"l"}, self_type{40});
+			auto d = self_type::mk(std::move(wd_lpr));
+			std::cout << "here " << d.is_callable() << ' ' << std::flush << (integer_t)(d.call(params)) << std::endl;
+			return (integer_t)(d.call(params));
+		}() == 6 );
+*/
 		return true;
 	}
 

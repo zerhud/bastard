@@ -392,7 +392,7 @@ struct bastard {
 
 		static_assert( (integer_t)test_terms_abc<gh>("fnc1()") == 1 );
 		static_assert( (integer_t)test_terms_abc<gh>("fnc2()") == 2 );
-		static_assert( (integer_t)test_terms_abc<gh>("obj.arr[4-(8*1-6)]()") == 3 );
+		static_assert( (integer_t)test_terms_abc<gh>("obj.arr[4-(8*1-6)]()") == 4 );
 
 		return true;
 	}
