@@ -4,6 +4,7 @@
 #include <memory>
 #include <variant>
 
+#include "absd/callable_tests.hpp"
 using namespace std::literals;
 
 template<typename float_point>
@@ -22,12 +23,16 @@ struct absd_factory {
 	constexpr static void throw_wrong_interface_error(auto&& op) {
 		throw std::runtime_error("cannot perform operation "s + op);
 	}
+	constexpr static void throw_wrong_parameters_count(auto cnt) {
+		throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
+	}
 };
 
 struct absd_data1 : absd::data<absd_factory<double>, absd_data1> {using base_data_type::operator=;};
 
 int main(int,char**){
 	static_assert( absd_data1::test() );
+	static_assert( absd_details::tests::callable2_test<absd_data1>() );
 	assert(absd_data1::test_callable_cases_rt());
 	return 0;
 }

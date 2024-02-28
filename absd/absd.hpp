@@ -6,10 +6,13 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
+#pragma once
+
 #include <iostream>
 
 #include <utility>
 #include <cassert> //TODO: remove after gcc bug will be fixed
+#include "absd/callable.hpp"
 
 namespace absd {
 
@@ -198,7 +201,9 @@ template<typename factory, typename crtp>
 struct data {
 	static_assert( noexcept( std::declval<factory>().deallocate((int*)nullptr) ), "for safity delete allocated objects the dealocate method must to be noexcept" );
 
+	using factory_t = factory;
 	using self_type = crtp;//data<factory, crtp>;
+	template<typename functor> using callable2 = absd_details::callable2<self_type, functor>;
 	using base_data_type = data<factory, crtp>;
 	using array_t = decltype(details::mk_array_type<crtp>(std::declval<factory>()));
 	using object_t = decltype(details::mk_object_type<crtp>(std::declval<factory>()));
@@ -230,9 +235,11 @@ struct data {
 		};
 		return desc{std::forward<decltype(_name)>(_name), std::move(_def_val)};
 	}
+	constexpr static auto mk_ca(auto&& fnc, auto&&... params) {
+		return callable2(std::forward<decltype(fnc)>(fnc), std::forward<decltype(params)>(params)...);
+	}
 #include "absd/callable.ipp"
 
-	//TODO: implement mk with lambda (mk([]{return 1;} -> self_type{callable{[]{return 1;}}}
 	constexpr static self_type mk(auto&& v) { return mk(factory{}, std::forward<decltype(v)>(v)); }
 	constexpr static self_type mk(const factory& f, auto&& v) requires (!details::is_specialization_of<std::decay_t<decltype(v)>, callable>) {
 		using v_type = std::decay_t<decltype(v)>;
@@ -449,9 +456,9 @@ public:
 			}
 		}, holder);
 	}
-	constexpr const self_type& operator[](self_type key) const { return const_cast<base_data_type&>(*this)[std::move(key)]; }
-	constexpr self_type& operator[](self_type key){
-		return visit([this,key=std::move(key)](auto&v)->self_type& {
+	constexpr const self_type& operator[](const self_type& key) const { return const_cast<base_data_type&>(*this)[std::move(key)]; }
+	constexpr self_type& operator[](const self_type& key){
+		return visit([this,&key](auto&v)->self_type& {
 			if constexpr(requires{ v->at(key); }) return v->at(key);
 			else {
 				factory::throw_wrong_interface_error("operator[key]");
