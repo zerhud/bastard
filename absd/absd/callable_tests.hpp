@@ -46,6 +46,18 @@ constexpr bool callable2_test() {
 	static_assert( test_callable_ab<data_type>(0, 3, "b", 1) == 2 );
 	static_assert( test_callable_ab<data_type>("a", 3, 1, 1) == 2 );
 
+	static_assert( []{
+		int ret=2;
+		data_type::mk_ca([&ret](int){++ret;})(3);
+		return ret;
+	}() == 3, "void lambda should to be called with () operator");
+
+	static_assert( []{
+		int ret=2;
+		auto result = data_type::mk_ca([&ret](int){++ret;}, data_type::mk_param("a")).call(mk_params<data_type>(0, 3));
+		return (ret==3) + result.is_none();
+	}() == 2, "void lambda should to be called with call() method and returns empty data object" );
+
 	return true;
 }
 

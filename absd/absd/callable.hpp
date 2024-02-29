@@ -18,7 +18,7 @@ struct callable2 {
 		(create_param(std::forward<decltype(params)>(params)),..., 1);
 	}
 
-	constexpr auto operator()(auto&&... args) {
+	constexpr auto operator()(auto&&... args) const {
 		return call_with_params<sizeof...(args)>(std::forward<decltype(args)>(args)...);
 	}
 
@@ -32,7 +32,6 @@ struct callable2 {
 		}
 	}
 private:
-	using string_t = typename data_type::string_t;
 	using integer_t = typename data_type::integer_t;
 	constexpr static integer_t param_sign_name = 1;
 	constexpr static integer_t param_sign_value = 2;
@@ -58,6 +57,7 @@ constexpr void callable2<data_type, functor>::create_param(auto&& param) {
 	constexpr bool  parameter_is_only_name = requires{data_type{param};};
 	if constexpr (parameter_is_only_name) desk.put(data_type{integer_t{1}}, data_type{param});
 	else {
+		//TODO: use std::forward_like<decltype(param)>(name) and same for def_val since gcc14
 		auto&& [name, def_val] = param;
 		desk.put(data_type{param_sign_name}, data_type{name});
 		desk.put(data_type{param_sign_value}, data_type{def_val});
