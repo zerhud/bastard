@@ -6,7 +6,7 @@
 
 #include <utility>
 
-namespace absd_details {
+namespace absd::details {
 
 template<typename data_type, typename functor>
 struct callable2 {
@@ -79,4 +79,4 @@ constexpr auto callable2<data_type, functor>::call_with_params(auto&&... params)
 	}
 }
 
-} // namespace absd_details
+} // namespace absd::details

@@ -13,6 +13,8 @@
 #include <utility>
 #include <cassert> //TODO: remove after gcc bug will be fixed
 #include "absd/callable.hpp"
+#include "absd/type_erasure.hpp"
+#include "absd/default_array.hpp"
 
 namespace absd {
 
@@ -28,38 +30,6 @@ template<typename factory> constexpr auto mk_integer_type() {
 template<typename factory> constexpr auto mk_float_point_type() {
 	if constexpr(!requires{ typename factory::float_pint_t; }) return double{};
 	else return typename factory::float_pint_t{};
-}
-
-struct inner_counter {
-	unsigned long int ref_counter = 0;
-	constexpr auto increase_counter() { return ++ref_counter; }
-	constexpr auto decrease_counter() { return --ref_counter; }
-};
-
-struct counter_interface {
-	virtual ~counter_interface() noexcept =default ;
-	constexpr virtual decltype(inner_counter::ref_counter) increase_counter() =0 ;
-	constexpr virtual decltype(inner_counter::ref_counter) decrease_counter() =0 ;
-};
-
-template<typename factory, typename data>
-struct array : inner_counter {
-	using vec_content = data;
-
-	[[no_unique_address]] factory f;
-	std::decay_t<decltype(std::declval<factory>().template mk_vec<vec_content>())> holder;
-
-
-	constexpr array(factory _f) requires (requires{ _f.template mk_vec<vec_content>(); }) : f(std::move(_f)), holder(f.template mk_vec<vec_content>()) {}
-	constexpr array(factory _f) requires (!requires{ _f.template mk_vec<vec_content>(); }) : f(std::move(_f)) {}
-
-	constexpr data& emplace_back(data d) { return holder.emplace_back(std::move(d)); }
-	constexpr data& at(std::integral auto ind) { return holder.at(ind); }
-	constexpr auto size() const { return holder.size(); }
-};
-template<typename data, typename factory> constexpr auto mk_array_type(const factory& f) {
-	if constexpr(!requires{ typename factory::array_t; }) return array<factory, data>(f);
-	else return typename factory::array_t{};
 }
 
 template<typename factory, typename key, typename value>
@@ -173,15 +143,6 @@ struct type_erasure_object : counter_interface {
 	constexpr virtual decltype(sizeof(data)) size() const =0 ;
 };
 
-template<typename factory, typename data>
-struct type_erasure_array : counter_interface {
-	constexpr virtual ~type_erasure_array() noexcept =default ;
-
-	constexpr virtual data& emplace_back(data d) =0 ;
-	constexpr virtual data& at(typename data::integer_t ind) =0 ;
-	constexpr virtual decltype(sizeof(data)) size() const =0 ;
-};
-
 template<typename factory, typename data> struct type_erasure_callable_object : type_erasure_callable<factory,data>, type_erasure_object<factory, data> {};
 
 } // namespace details
@@ -203,7 +164,7 @@ struct data {
 
 	using factory_t = factory;
 	using self_type = crtp;//data<factory, crtp>;
-	template<typename functor> using callable2 = absd_details::callable2<self_type, functor>;
+	template<typename functor> using callable2 = details::callable2<self_type, functor>;
 	using base_data_type = data<factory, crtp>;
 	using array_t = decltype(details::mk_array_type<crtp>(std::declval<factory>()));
 	using object_t = decltype(details::mk_object_type<crtp>(std::declval<factory>()));
@@ -214,7 +175,6 @@ struct data {
 	using te_callable1 = details::type_erasure_callable1<factory, self_type>;
 	using te_callable = details::type_erasure_callable<factory, self_type>;
 	using te_callable_both = details::type_erasure_callable_both<factory, self_type>;
-	using te_array = details::type_erasure_array<factory, self_type>;
 	using te_object = details::type_erasure_object<factory, self_type>;
 
 	using holder_t = typename factory::template variant<
@@ -254,23 +214,13 @@ struct data {
 				v_type val;
 				constexpr te(v_type v) : val(std::move(v)) {}
 				constexpr self_type call() override {
-					if constexpr(requires{ {val()}->std::same_as<self_type>; }) return val();
+					if constexpr(requires{ {val()}->std::convertible_to<self_type>; }) return val();
 					else return (val(), self_type{});
 				}
 			};
 			ret = mk_coutner_and_assign<te_callable1, te>(f, std::forward<decltype(v)>(v));
 		}
-		else if constexpr( is_array ) {
-			struct te : te_array {
-				v_type val;
-				constexpr te(v_type v) : val(std::move(v)) {}
-
-				constexpr self_type& emplace_back(self_type d) override { return val.emplace_back(std::move(d)); }
-				constexpr self_type& at(integer_t ind) override { return val.at(ind); }
-				constexpr decltype(sizeof(self_type)) size() const override { return val.size(); }
-			};
-			ret = mk_coutner_and_assign<te_array, te>(f, std::forward<decltype(v)>(v));
-		}
+		else if constexpr( is_array ) ret = details::mk_te_array<self_type>(f, std::forward<decltype(v)>(v));
 		else if constexpr( is_object ) {
 			struct te : te_object {
 				v_type val;
