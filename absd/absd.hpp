@@ -15,6 +15,7 @@
 #include "absd/callable.hpp"
 #include "absd/type_erasure.hpp"
 #include "absd/default_array.hpp"
+#include "absd/default_object.hpp"
 
 namespace absd {
 
@@ -32,77 +33,6 @@ template<typename factory> constexpr auto mk_float_point_type() {
 	else return typename factory::float_pint_t{};
 }
 
-template<typename factory, typename key, typename value>
-struct constexpr_kinda_map {
-	struct chunk {
-		key k;
-		value v;
-	};
-	std::decay_t<decltype(std::declval<factory>().template mk_vec<chunk>())> store;
-
-	using key_type = key;
-	using value_type = chunk;
-
-	constexpr bool contains(const auto& v) const {
-		for(const auto&[k,_]:store) if(k==v) return true;
-		return false;
-	}
-	constexpr void insert(auto&& _v) {
-		auto&& [k,v] = _v;
-		store.emplace_back( chunk{ std::move(k), std::move(v) } );
-	}
-
-	constexpr auto& at(const key& fk) {
-		for(auto&[k,v]:store) if(k==fk) return v;
-		throw __LINE__; //TODO: what to do if key not found
-	}
-
-	constexpr auto size() const { return store.size(); }
-
-	constexpr auto end() { return store.end(); }
-	constexpr auto begin() { return store.begin(); }
-	constexpr auto end() const { return store.end(); }
-	constexpr auto begin() const { return store.begin(); }
-};
-template<typename key, typename value, typename factory> constexpr auto mk_map_type(const factory& f) {
-	if constexpr(requires{ f.template mk_map<key,value>(); }) return f.template mk_map<key,value>();
-	else {
-		using map_t = constexpr_kinda_map<factory, key, value>;
-		return map_t{f.template mk_vec<typename map_t::chunk>()};
-	}
-}
-template<typename data, typename map_t>
-struct object : inner_counter {
-	map_t map;
-
-	constexpr object(map_t map) : map(std::move(map)) {}
-	constexpr bool contains(const data& key) const { return map.contains(key); }
-	constexpr data& at(const data& ind) { return map.at(ind); }
-	constexpr data& put(data key, data value) {
-		struct kv{ data k, v; };
-		map.insert( kv{ key, value} );
-		return map.at(key);
-	}
-	constexpr data keys(const auto& f) const {
-		data ret;
-		ret.mk_empty_array();
-		for(const auto& [k,v]:map) ret.push_back(k);
-		return ret;
-	}
-	constexpr data cmpget_workaround(const auto& f) const {
-		for(auto& [k,v]:map) if((decltype(f))k==f) return v;
-		return data{};
-	}
-
-	constexpr auto size() const { return map.size(); }
-};
-template<typename data, typename factory> constexpr auto mk_object_type(const factory& f) {
-	if constexpr(requires{ typename factory::object_t; }) return typename factory::object_t{};
-	else {
-		using map_t = decltype(mk_map_type<data,data>(std::declval<factory>()));
-		return object<data,map_t>(mk_map_type<data,data>(factory{}));
-	}
-}
 
 template<typename factory, typename data>
 struct type_erasure_callable1 : counter_interface {
@@ -129,18 +59,6 @@ template<typename factory, typename data> // cannot to be derived from both: can
 struct type_erasure_callable_both : type_erasure_callable<factory, data> {
 	using type_erasure_callable<factory, data>::call;
 	constexpr virtual data call() =0 ;
-};
-
-template<typename factory, typename data>
-struct type_erasure_object : counter_interface {
-	using factory_t = factory;
-
-	virtual ~type_erasure_object() noexcept =default ;
-	constexpr virtual bool contains(const data& key) const =0 ;
-	constexpr virtual data& at(const data& ind) =0 ;
-	constexpr virtual data& put(data key, data value) =0 ;
-	constexpr virtual data keys(const factory_t& f) const =0 ;
-	constexpr virtual decltype(sizeof(data)) size() const =0 ;
 };
 
 template<typename factory, typename data> struct type_erasure_callable_object : type_erasure_callable<factory,data>, type_erasure_object<factory, data> {};
@@ -175,7 +93,6 @@ struct data {
 	using te_callable1 = details::type_erasure_callable1<factory, self_type>;
 	using te_callable = details::type_erasure_callable<factory, self_type>;
 	using te_callable_both = details::type_erasure_callable_both<factory, self_type>;
-	using te_object = details::type_erasure_object<factory, self_type>;
 
 	using holder_t = typename factory::template variant<
 		typename factory::empty_t, bool, integer_t, float_point_t,
@@ -221,28 +138,7 @@ struct data {
 			ret = mk_coutner_and_assign<te_callable1, te>(f, std::forward<decltype(v)>(v));
 		}
 		else if constexpr( is_array ) ret = details::mk_te_array<self_type>(f, std::forward<decltype(v)>(v));
-		else if constexpr( is_object ) {
-			struct te : te_object {
-				v_type val;
-				constexpr te(v_type v) : val(std::move(v)) {}
-
-				constexpr bool contains(const self_type& key) const override { return val.contains(key); }
-				constexpr self_type& at(const self_type& ind) override { return val.at(ind); }
-				constexpr self_type& put(self_type key, self_type value) override {
-					struct kv{ self_type k, v; };
-					val.insert( kv{ key, value} );
-					return val.at(key);
-				}
-				constexpr self_type keys(const factory& f) const override {
-					self_type ret;
-					ret.mk_empty_array();
-					for(const auto& [k,v]:val) ret.push_back(k);
-					return ret;
-				}
-				constexpr decltype(sizeof(self_type)) size() const override { return val.size(); }
-			};
-			ret = mk_coutner_and_assign<te_object, te>(f, std::forward<decltype(v)>(v));
-		}
+		else if constexpr( is_object ) ret = details::mk_te_object<self_type>(f, std::forward<decltype(v)>(v));
 		return ret;
 	}
 

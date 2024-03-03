@@ -7,7 +7,7 @@
 #include "callable.hpp"
 #include "../absd.hpp"
 
-namespace absd_details::tests {
+namespace absd::details::tests {
 
 template<typename data_type> constexpr void mk_params_impl(data_type& params, auto&& key, auto&& val, auto&&... args) {
 	params.put(data_type{std::forward<decltype(key)>(key)}, data_type{std::forward<decltype(val)>(val)});
@@ -61,4 +61,4 @@ constexpr bool callable2_test() {
 	return true;
 }
 
-} // namespace absd_details
+} // namespace absd::details::tests
