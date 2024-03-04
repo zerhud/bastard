@@ -16,6 +16,7 @@
 #include "absd/type_erasure.hpp"
 #include "absd/default_array.hpp"
 #include "absd/default_object.hpp"
+#include "absd/default_callable.hpp"
 
 namespace absd {
 
@@ -38,21 +39,6 @@ template<typename factory, typename data>
 struct type_erasure_callable1 : counter_interface {
 	constexpr virtual ~type_erasure_callable1() noexcept =default ;
 	constexpr virtual data call() =0 ;
-};
-
-template<typename factory, typename data>
-struct type_erasure_callable : counter_interface {
-	using factory_t = factory;
-	using string_t = typename data::string_t;
-	struct parameter_descriptor {
-		string_t name;
-		data default_value;
-	};
-	using params_t = decltype(std::declval<factory_t>().template mk_vec<parameter_descriptor>());
-
-	constexpr virtual ~type_erasure_callable() noexcept =default ;
-	constexpr virtual data call(data params) =0 ;
-	constexpr virtual params_t params(const factory_t& f) const =0 ;
 };
 
 template<typename factory, typename data> // cannot to be derived from both: cannot to be constexpr and have virtual base class
@@ -115,31 +101,30 @@ struct data {
 	constexpr static auto mk_ca(auto&& fnc, auto&&... params) {
 		return callable2(std::forward<decltype(fnc)>(fnc), std::forward<decltype(params)>(params)...);
 	}
-#include "absd/callable.ipp"
-
-	constexpr static self_type mk(auto&& v) { return mk(factory{}, std::forward<decltype(v)>(v)); }
-	constexpr static self_type mk(const factory& f, auto&& v) requires (!details::is_specialization_of<std::decay_t<decltype(v)>, callable>) {
-		using v_type = std::decay_t<decltype(v)>;
+private:
+	constexpr static void mk_map_impl(self_type& result, auto&& key, auto&& val, auto&&... tail) {
+		result.put(self_type{std::forward<decltype(key)>(key)}, self_type{std::forward<decltype(val)>(val)});
+		if constexpr (sizeof...(tail) != 0) mk_map_impl(result, std::forward<decltype(tail)>(tail)...);
+	}
+public:
+	constexpr static self_type mk_map(auto&&... args) requires (sizeof...(args) % 2 == 0) {
+		self_type ret;
+		if constexpr (sizeof...(args)==0) ret.mk_empty_object();
+		else mk_map_impl(ret, std::forward<decltype(args)>(args)...);
+		return ret;
+	}
+	constexpr static self_type mk(auto&& v, auto&&... args) requires (!std::is_same_v<std::decay_t<decltype(v)>, factory_t>) {
+		return mk(factory_t{}, std::forward<decltype(v)>(v), std::forward<decltype(args)>(args)...);
+	}
+	constexpr static self_type mk(const factory& f, auto&& v, auto&&... args) {//requires (!details::is_specialization_of<std::decay_t<decltype(v)>, callable>) {
 		constexpr const bool is_call_np = requires{ v(); };
 		constexpr const bool is_array = requires{ v.at(integer_t{}); };
 		constexpr const bool is_object = requires{ v.at(self_type{}); };
-		self_type ret{};
-		if constexpr( is_call_np && is_object ) {
-		}
-		else if constexpr( is_call_np ) {
-			struct te : te_callable1 {
-				v_type val;
-				constexpr te(v_type v) : val(std::move(v)) {}
-				constexpr self_type call() override {
-					if constexpr(requires{ {val()}->std::convertible_to<self_type>; }) return val();
-					else return (val(), self_type{});
-				}
-			};
-			ret = mk_coutner_and_assign<te_callable1, te>(f, std::forward<decltype(v)>(v));
-		}
-		else if constexpr( is_array ) ret = details::mk_te_array<self_type>(f, std::forward<decltype(v)>(v));
-		else if constexpr( is_object ) ret = details::mk_te_object<self_type>(f, std::forward<decltype(v)>(v));
-		return ret;
+		if constexpr( is_call_np || sizeof...(args)!=0 )
+			return details::mk_te_callable<self_type>(f, std::forward<decltype(v)>(v), std::forward<decltype(args)>(args)...);
+		else if constexpr( is_array ) return details::mk_te_array<self_type>(f, std::forward<decltype(v)>(v));
+		else if constexpr( is_object ) return details::mk_te_object<self_type>(f, std::forward<decltype(v)>(v));
+		else return self_type{};
 	}
 
 private:
@@ -239,7 +224,7 @@ public:
 			return requires{ v->call(); } || requires{ v->call({}); }; }, holder); }
 
 	constexpr int contains(const auto& val) const {
-		return visit([this,&val](const auto& v){
+		return !is_none() && visit([this,&val](const auto& v){
 			if constexpr(requires{v->contains(val);}) return v->contains(val);
 			else if constexpr(requires{v.contains(typename std::decay_t<decltype(v)>::key_type{});}) return v.contains(val);
 			else if constexpr(requires{v==val;}) return v==val;
@@ -325,17 +310,6 @@ public:
 		}, holder);
 	}
 
-	constexpr self_type call() {
-		return visit([this](auto& v) -> self_type {
-			if constexpr(requires{ {v->call()}->std::same_as<self_type>; }) return v->call();
-			else if constexpr(requires{ v->call(); }) return (v->call(), self_type{});
-			else {
-				factory::throw_wrong_interface_error("operator()");
-				std::unreachable();
-				return self_type{};
-			}
-		}, holder);
-	}
 	constexpr self_type call(auto&& params) {
 		return visit([this,&params](auto& v) -> self_type {
 			if constexpr(requires{ {v->call(params)}->std::same_as<self_type>; }) return v->call(params);
@@ -428,7 +402,7 @@ public:
 
 
 	constexpr static bool test() {
-		return test_simple_cases() && test_array_cases() && test_callable_cases() && test_object_cases();
+		return test_simple_cases() && test_array_cases() && details::test_callable<self_type>() && test_object_cases();
 	}
 };
 

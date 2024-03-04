@@ -98,7 +98,6 @@ int main(int,char**) {
 
 	static_assert( absd_data1::test() );
 
-	assert(absd_data1::test_callable_cases_rt());
 	assert(check_exception([]{ absd_data1{1}.push_back(absd_data1(2)); }));
 
 	//auto result = bastard<data_type,op_factory>::test_terms<std::unique_ptr,parser>(fwd_ast, result_maker, "(5+2)*3");

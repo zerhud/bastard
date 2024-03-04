@@ -34,6 +34,7 @@ constexpr bool callable2_test() {
 
 	static_assert( data_type::mk_ca([]{return 1;})() == 1 );
 	static_assert( data_type::mk_ca([](int i){return i+1;})(3) == 4 );
+	static_assert( data_type::mk_ca([](int a, int b){return a+b;})(3,2) == 5 );
 
 	static_assert( data_type::mk_ca([](int a, int b){return a+b;}, data_type::mk_param("a"), data_type::mk_param("b"))(1,2) == 3);
 	static_assert( data_type::mk_ca(
