@@ -33,20 +33,6 @@ template<typename factory> constexpr auto mk_float_point_type() {
 	if constexpr(!requires{ typename factory::float_pint_t; }) return double{};
 	else return typename factory::float_pint_t{};
 }
-
-
-template<typename factory, typename data>
-struct type_erasure_callable1 : counter_interface {
-	constexpr virtual ~type_erasure_callable1() noexcept =default ;
-	constexpr virtual data call() =0 ;
-};
-
-template<typename factory, typename data> // cannot to be derived from both: cannot to be constexpr and have virtual base class
-struct type_erasure_callable_both : type_erasure_callable<factory, data> {
-	using type_erasure_callable<factory, data>::call;
-	constexpr virtual data call() =0 ;
-};
-
 template<typename factory, typename data> struct type_erasure_callable_object : type_erasure_callable<factory,data>, type_erasure_object<factory, data> {};
 
 } // namespace details
@@ -76,14 +62,12 @@ struct data {
 	using integer_t = decltype(details::mk_integer_type<factory>());
 	using float_point_t = decltype(details::mk_float_point_type<factory>());
 
-	using te_callable1 = details::type_erasure_callable1<factory, self_type>;
 	using te_callable = details::type_erasure_callable<factory, self_type>;
-	using te_callable_both = details::type_erasure_callable_both<factory, self_type>;
 
 	using holder_t = typename factory::template variant<
 		typename factory::empty_t, bool, integer_t, float_point_t,
 		string_t, array_t*, object_t*,
-		te_callable*, te_callable1*, te_callable_both*,
+		te_callable*,
 		details::type_erasure_object<factory, self_type>*, details::type_erasure_array<factory, self_type>*,
 		details::type_erasure_callable_object<factory, self_type>*
 	>;
@@ -116,7 +100,7 @@ public:
 	constexpr static self_type mk(auto&& v, auto&&... args) requires (!std::is_same_v<std::decay_t<decltype(v)>, factory_t>) {
 		return mk(factory_t{}, std::forward<decltype(v)>(v), std::forward<decltype(args)>(args)...);
 	}
-	constexpr static self_type mk(const factory& f, auto&& v, auto&&... args) {//requires (!details::is_specialization_of<std::decay_t<decltype(v)>, callable>) {
+	constexpr static self_type mk(const factory& f, auto&& v, auto&&... args) {
 		constexpr const bool is_call_np = requires{ v(); };
 		constexpr const bool is_array = requires{ v.at(integer_t{}); };
 		constexpr const bool is_object = requires{ v.at(self_type{}); };

@@ -33,6 +33,5 @@ struct absd_data1 : absd::data<absd_factory<double>, absd_data1> {using base_dat
 int main(int,char**){
 	static_assert( absd_data1::test() );
 	static_assert( absd::details::tests::callable2_test<absd_data1>() );
-	assert(absd_data1::test_callable_cases_rt());
 	return 0;
 }
