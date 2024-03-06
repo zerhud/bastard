@@ -52,7 +52,7 @@ template<typename key, typename value, typename factory> constexpr auto mk_map_t
 }
 
 template<typename factory, typename data>
-struct type_erasure_object : counter_interface {
+struct type_erasure_object  {
 	using factory_t = factory;
 
 	virtual ~type_erasure_object() noexcept =default ;
@@ -98,29 +98,36 @@ template<typename data, typename factory> constexpr auto mk_object_type(const fa
 
 template<typename data_type>
 constexpr auto mk_te_object(const auto& f, auto&& src) {
-	using v_type = std::decay_t<decltype(src)>;
+	using src_type = std::decay_t<decltype(src)>;
 	using te_object = type_erasure_object<typename data_type::factory_t, data_type>;
+	constexpr const bool is_object = requires{ src.orig_val().at(data_type{}); };
+	if constexpr (!is_object) return std::move(src);
+	else {
+		struct te : src_type, te_object {
+			constexpr te(src_type s) : src_type(std::move(s)) {}
 
-	struct te : te_object {
-		v_type val;
-		constexpr te(v_type v) : val(std::move(v)) {}
+			constexpr decltype(sizeof(data_type)) size() const override { return this->orig_val().size(); }
+			constexpr bool is_obj() const override { return true; }
+			constexpr bool contains(const data_type &key) const override { return this->orig_val().contains(key); }
+			constexpr data_type& at(const data_type &ind) override { return this->orig_val().at(ind); }
+			constexpr data_type& put(data_type key, data_type value) override {
+				struct kv {
+					data_type k, v;
+				};
+				this->orig_val().insert(kv{key, value});
+				return this->orig_val().at(key);
+			}
 
-		constexpr bool contains(const data_type& key) const override { return val.contains(key); }
-		constexpr data_type& at(const data_type& ind) override { return val.at(ind); }
-		constexpr data_type& put(data_type key, data_type value) override {
-			struct kv{ data_type k, v; };
-			val.insert( kv{ key, value} );
-			return val.at(key);
-		}
-		constexpr data_type keys(const typename data_type::factory_t& f) const override {
-			data_type ret;
-			ret.mk_empty_array();
-			for(const auto& [k,v]:val) ret.push_back(k);
-			return ret;
-		}
-		constexpr decltype(sizeof(data_type)) size() const override { return val.size(); }
-	};
-	return mk_coutner_and_assign<data_type, te_object, te>(f, std::forward<decltype(src)>(src));
+			constexpr data_type keys(const typename data_type::factory_t &f) const override {
+				data_type ret;
+				ret.mk_empty_array();
+				for (const auto &[k, v]: this->orig_val()) ret.push_back(k);
+				return ret;
+			}
+		};
+
+		return te{std::forward<decltype(src)>(src)};
+	}
 }
 
 } // namespace absd::details

@@ -6,6 +6,7 @@
 
 namespace absd::details {
 
+
 struct inner_counter {
 	unsigned long int ref_counter = 0;
 	constexpr auto increase_counter() { return ++ref_counter; }
@@ -13,9 +14,15 @@ struct inner_counter {
 };
 
 struct counter_interface {
-	virtual ~counter_interface() noexcept =default ;
+	constexpr virtual ~counter_interface() noexcept {}
 	constexpr virtual decltype(inner_counter::ref_counter) increase_counter() =0 ;
 	constexpr virtual decltype(inner_counter::ref_counter) decrease_counter() =0 ;
+};
+
+struct multiobject_tag : counter_interface {
+	constexpr virtual bool is_arr() const { return false; }
+	constexpr virtual bool is_obj() const { return false; }
+	constexpr virtual bool is_cll() const { return false; }
 };
 
 template<typename type>

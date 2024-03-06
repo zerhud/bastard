@@ -33,7 +33,6 @@ template<typename factory> constexpr auto mk_float_point_type() {
 	if constexpr(!requires{ typename factory::float_pint_t; }) return double{};
 	else return typename factory::float_pint_t{};
 }
-template<typename factory, typename data> struct type_erasure_callable_object : type_erasure_callable<factory,data>, type_erasure_object<factory, data> {};
 
 } // namespace details
 
@@ -62,14 +61,10 @@ struct data {
 	using integer_t = decltype(details::mk_integer_type<factory>());
 	using float_point_t = decltype(details::mk_float_point_type<factory>());
 
-	using te_callable = details::type_erasure_callable<factory, self_type>;
-
 	using holder_t = typename factory::template variant<
 		typename factory::empty_t, bool, integer_t, float_point_t,
 		string_t, array_t*, object_t*,
-		te_callable*,
-		details::type_erasure_object<factory, self_type>*, details::type_erasure_array<factory, self_type>*,
-		details::type_erasure_callable_object<factory, self_type>*
+		details::multiobject_tag*
 	>;
 
 	constexpr static auto mk_param(auto&& name) {
@@ -85,36 +80,73 @@ struct data {
 	constexpr static auto mk_ca(auto&& fnc, auto&&... params) {
 		return callable2(std::forward<decltype(fnc)>(fnc), std::forward<decltype(params)>(params)...);
 	}
-private:
-	constexpr static void mk_map_impl(self_type& result, auto&& key, auto&& val, auto&&... tail) {
-		result.put(self_type{std::forward<decltype(key)>(key)}, self_type{std::forward<decltype(val)>(val)});
-		if constexpr (sizeof...(tail) != 0) mk_map_impl(result, std::forward<decltype(tail)>(tail)...);
-	}
-public:
 	constexpr static self_type mk_map(auto&&... args) requires (sizeof...(args) % 2 == 0) {
 		self_type ret;
 		if constexpr (sizeof...(args)==0) ret.mk_empty_object();
-		else mk_map_impl(ret, std::forward<decltype(args)>(args)...);
+		else mk_map_impl(factory_t{}, ret, std::forward<decltype(args)>(args)...);
 		return ret;
 	}
 	constexpr static self_type mk(auto&& v, auto&&... args) requires (!std::is_same_v<std::decay_t<decltype(v)>, factory_t>) {
 		return mk(factory_t{}, std::forward<decltype(v)>(v), std::forward<decltype(args)>(args)...);
 	}
-	constexpr static self_type mk(const factory& f, auto&& v, auto&&... args) {
-		constexpr const bool is_call_np = requires{ v(); };
-		constexpr const bool is_array = requires{ v.at(integer_t{}); };
-		constexpr const bool is_object = requires{ v.at(self_type{}); };
-		if constexpr( is_call_np || sizeof...(args)!=0 )
-			return details::mk_te_callable<self_type>(f, std::forward<decltype(v)>(v), std::forward<decltype(args)>(args)...);
-		else if constexpr( is_array ) return details::mk_te_array<self_type>(f, std::forward<decltype(v)>(v));
-		else if constexpr( is_object ) return details::mk_te_object<self_type>(f, std::forward<decltype(v)>(v));
-		else return self_type{};
+	constexpr static self_type mk(const factory& f, auto&& _v, auto&&... args) {
+		auto v = mk_ca_val(std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...);
+		using val_type = std::decay_t<decltype(v)>;
+		constexpr bool is_callable = details::is_specialization_of<val_type, details::callable2>;
+		struct origin : details::multiobject_tag {
+			val_type val;
+			constexpr origin(val_type val) : val(std::move(val)) {}
+
+			constexpr auto& orig_val() {
+				if constexpr (is_callable) return val.fnc;
+				else return val;
+			}
+			constexpr const auto& orig_val() const {
+				//NOTE: cannot use deducting this here: templates are not allowed :)
+				return const_cast<origin&>(*this).orig_val();
+			}
+
+			constexpr auto& call_val() { return val; }
+		};
+
+		auto arr = details::mk_te_array<self_type>(f, counter_maker < origin > {std::move(v)});
+		auto arr_obj = details::mk_te_object<self_type>(f, std::move(arr));
+		auto aoc = details::mk_te_callable<is_callable, self_type>(f, std::move(arr_obj));
+
+		return mk_and_assign<details::multiobject_tag>(f, std::move(aoc));
 	}
 
 private:
 	template<typename type> constexpr static const bool is_inner_counter_exists = requires(std::remove_pointer_t<std::decay_t<type>>& v){ v.increase_counter(); };
 
 	holder_t holder;
+	details::type_erasure_callable<factory_t, self_type>* multi_callable=nullptr;
+	details::type_erasure_array<self_type>* multi_array=nullptr;
+	details::type_erasure_object<factory_t, self_type>* multi_object=nullptr;
+
+	template<typename to>
+	constexpr static self_type mk_and_assign(const auto& f, auto&& v) {
+		self_type ret;
+		auto tmp = f.mk_ptr(std::forward<decltype(v)>(v));
+		auto* ptr = tmp.get();
+		ret.assign(std::move(tmp));
+		if constexpr (requires{ret.multi_callable = ptr;}) ret.multi_callable = ptr;
+		if constexpr (requires{ret.multi_array = ptr;}) ret.multi_array = ptr;
+		if constexpr (requires{ret.multi_object = ptr;}) ret.multi_object = ptr;
+		return ret;
+	}
+	constexpr static void mk_map_impl(const auto& f, self_type& result, auto&& key, auto&& val, auto&&... tail) {
+		result.put(self_type{std::forward<decltype(key)>(key)}, self_type{std::forward<decltype(val)>(val)});
+		if constexpr (sizeof...(tail) != 0) mk_map_impl(f, result, std::forward<decltype(tail)>(tail)...);
+	}
+
+	constexpr static auto mk_ca_val(auto&& v, auto&&... args) {
+		constexpr bool np = requires{ v(); };
+		constexpr bool wp = sizeof...(args) > 0;
+		if constexpr (np || wp)
+			return mk_ca(std::forward<decltype(v)>(v), std::forward<decltype(args)>(args)...);
+		else return std::move(v);
+	}
 
 	constexpr void allocate() noexcept {
 		visit([](auto& v){
@@ -125,13 +157,15 @@ private:
 	}
 	constexpr void deallocate() {
 		visit([this](auto& v){
-			if constexpr(is_inner_counter_exists<decltype(v)>) {
-				if(v->decrease_counter()==0) {
-					factory::deallocate(v);
-					holder = typename factory::empty_t{};
-				}
-			}
-			}, holder);
+			if constexpr(is_inner_counter_exists<decltype(v)>) deallocate(v);
+		}, holder);
+	}
+
+	constexpr void deallocate(auto* v) {
+		if(v->decrease_counter()==0) {
+			factory::deallocate(v);
+			holder = typename factory::empty_t{};
+		}
 	}
 
 	template<typename type>
@@ -148,6 +182,17 @@ private:
 		tmp.release();
 		return ret;
 	}
+
+	constexpr void copy_multi_pointers(const auto& other) noexcept {
+		multi_callable = other.multi_callable;
+		multi_array = other.multi_array;
+		multi_object = other.multi_object;
+	}
+	constexpr void null_multi_pointers() noexcept {
+		multi_callable = nullptr;
+		multi_array = nullptr;
+		multi_object = nullptr;
+	}
 public:
 
 	constexpr data() {}
@@ -158,11 +203,11 @@ public:
 
 	constexpr data(integer_t v) : holder(v) {}
 	constexpr data(float_point_t v) : holder(v) {}
-	constexpr data(self_type&& v) : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; }
-	constexpr data(const self_type& v) : holder(v.holder) { allocate(); }
-	constexpr data(const data& v) : holder(v.holder) { allocate(); }
+	constexpr data(self_type&& v) : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; copy_multi_pointers(v); }
+	constexpr data(const self_type& v) : holder(v.holder) { allocate(); copy_multi_pointers(v); }
+	constexpr data(const data& v) : holder(v.holder) { allocate(); copy_multi_pointers(v); }
 	//NOTE: bug in gcc workaround: use holder = declytpe(holder){v.holder} ?
-	constexpr data(data&& v) : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; }
+	constexpr data(data&& v) : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; copy_multi_pointers(v); }
 	constexpr ~data() { deallocate(); }
 
 	constexpr self_type& assign() {
@@ -182,14 +227,14 @@ public:
 		return static_cast<self_type&>(*this);
 	}
 
-	constexpr auto& operator=(const data& v) { return assign(v.holder); }
-	constexpr auto& operator=(const self_type& v) { return assign(v.holder); }
-	constexpr auto& operator=(data&& v) { return assign(std::move(v.holder)); }
-	constexpr auto& operator=(self_type&& v) { return assign(std::move(v.holder)); }
+	constexpr auto& operator=(const data& v) { copy_multi_pointers(v); return assign(v.holder); }
+	constexpr auto& operator=(const self_type& v) { copy_multi_pointers(v); return assign(v.holder); }
+	constexpr auto& operator=(data&& v) { copy_multi_pointers(v); return assign(std::move(v.holder)); }
+	constexpr auto& operator=(self_type&& v) { copy_multi_pointers(v); return assign(std::move(v.holder)); }
 
-	constexpr auto& operator=(string_t v){ return assign(std::move(v)); }
-	constexpr auto& operator=(integer_t v){ return assign(v); }
-	constexpr auto& operator=(float_point_t v){ return assign(v); }
+	constexpr auto& operator=(string_t v){ null_multi_pointers(); return assign(std::move(v)); }
+	constexpr auto& operator=(integer_t v){ null_multi_pointers(); return assign(v); }
+	constexpr auto& operator=(float_point_t v){ null_multi_pointers(); return assign(v); }
 
 	constexpr explicit operator bool() const { return get<bool>(holder); }
 	constexpr operator string_t() const { return get<string_t>(holder); }
@@ -202,12 +247,23 @@ public:
 	constexpr bool is_bool() const { return holder.index() == 1; }
 	constexpr bool is_string() const { return holder.index() == 4; }
 	constexpr bool is_float_point() const { return holder.index() == 3; }
-	constexpr bool is_array() const { return visit( [](const auto& v){ return requires(std::decay_t<decltype(v)> vv){ vv->at( integer_t{} ); }; }, holder); }
-	constexpr bool is_object() const { return visit( [](const auto& v){ return requires(std::decay_t<decltype(v)> vv){ vv->at( crtp{} ); }; }, holder); }
-	constexpr bool is_callable() const { return visit( [](const auto& v) {
-			return requires{ v->call(); } || requires{ v->call({}); }; }, holder); }
+	constexpr bool is_array() const {
+		if(holds_alternative<details::multiobject_tag*>(holder)) return get<details::multiobject_tag*>(holder)->is_arr();
+		return visit( [](const auto& v){ return requires(std::decay_t<decltype(v)> vv){ vv->at( integer_t{} ); }; }, holder);
+	}
+	constexpr bool is_object() const {
+		if(holds_alternative<details::multiobject_tag*>(holder)) return get<details::multiobject_tag*>(holder)->is_obj();
+		return visit( [](const auto& v){ return requires(std::decay_t<decltype(v)> vv){ vv->at( crtp{} ); }; }, holder);
+	}
+	constexpr bool is_callable() const {
+		if(holds_alternative<details::multiobject_tag*>(holder)) return get<details::multiobject_tag*>(holder)->is_cll();
+		return visit( [](const auto& v) { return requires{ v->call({}); }; }, holder);
+	}
 
 	constexpr int contains(const auto& val) const {
+		if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_obj()) {
+			return multi_object->contains(val);
+		}
 		return !is_none() && visit([this,&val](const auto& v){
 			if constexpr(requires{v->contains(val);}) return v->contains(val);
 			else if constexpr(requires{v.contains(typename std::decay_t<decltype(v)>::key_type{});}) return v.contains(val);
@@ -226,6 +282,9 @@ public:
 			else return sizeof(v); }, holder);
 	}
 	constexpr auto keys() const {
+		if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_obj()) {
+			return multi_object->keys(factory{});
+		}
 		return visit( [](const auto& v){
 			if constexpr(requires{ v->keys(factory{}); }) return v->keys(factory{});
 			else {
@@ -240,6 +299,9 @@ public:
 	constexpr self_type& mk_empty_object() { return assign(factory::mk_ptr(details::mk_object_type<crtp>(factory{}))); }
 	constexpr self_type& push_back(self_type d) {
 		if(is_none()) mk_empty_array();
+		else if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_arr()) {
+			return multi_array->emplace_back(std::move(d));
+		}
 		return visit([this,d=std::move(d)](auto& v) -> self_type& {
 			if constexpr(requires{ v->emplace_back(std::move(d)); }) { return v->emplace_back(std::move(d)); }
 			else {
@@ -251,6 +313,9 @@ public:
 	}
 	constexpr self_type& put(self_type key, self_type value) {
 		if(is_none()) mk_empty_object();
+		else if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_obj()) {
+			return multi_object->put(key, value);
+		}
 		return visit([this,&key,&value](auto& v) -> self_type& {
 			if constexpr(requires{ v->put(key,value); }) return v->put(key, value);
 			else {
@@ -262,7 +327,10 @@ public:
 	}
 	constexpr const self_type& operator[](integer_t ind) const {return const_cast<base_data_type&>(*this)[ind];}
 	constexpr self_type& operator[](integer_t ind){
-		return visit([this,ind](auto& v)->self_type&{ 
+		if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_arr()) {
+			return multi_array->at(ind);
+		}
+		return visit([this,ind](auto& v)->self_type&{
 			if constexpr(requires{ v->emplace_back(self_type{}); v->at(ind); }) { return v->at(ind); }
 			else {
 				factory::throw_wrong_interface_error("operator[ind]");
@@ -273,6 +341,9 @@ public:
 	}
 	constexpr const self_type& operator[](const self_type& key) const { return const_cast<base_data_type&>(*this)[std::move(key)]; }
 	constexpr self_type& operator[](const self_type& key){
+		if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_obj()) {
+			return multi_object->at(key);
+		}
 		return visit([this,&key](auto&v)->self_type& {
 			if constexpr(requires{ v->at(key); }) return v->at(key);
 			else {
@@ -283,18 +354,26 @@ public:
 		}, holder);
 	}
 
-	constexpr self_type cmpget_workaround(const string_t& key) {
+	constexpr self_type cmpget_workaround(const string_t& key) const {
+		if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_obj()) {
+			if(!multi_object) std::unreachable();
+			return self_type{multi_object->contains(self_type{key})};
+		}
 		return visit([this,&key](auto&v)->self_type {
 			if constexpr(requires{ v->cmpget_workaround(key); }) return v->cmpget_workaround(key);
 			else {
 				factory::throw_wrong_interface_error("cmpget_workaround");
 				std::unreachable();
-				return static_cast<self_type&>(*this);
+				return self_type{false};
 			}
 		}, holder);
 	}
 
 	constexpr self_type call(auto&& params) {
+		if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_cll()) {
+			if(!multi_callable) std::unreachable();
+			return multi_callable->call(params);
+		}
 		return visit([this,&params](auto& v) -> self_type {
 			if constexpr(requires{ {v->call(params)}->std::same_as<self_type>; }) return v->call(params);
 			else if constexpr(requires{ v->call(params); }) return (v->call(params), self_type{});

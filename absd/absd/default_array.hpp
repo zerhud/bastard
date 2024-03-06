@@ -29,28 +29,33 @@ template<typename data, typename factory> constexpr auto mk_array_type(const fac
 	else return typename factory::array_t{};
 }
 
-template<typename factory, typename data>
-struct type_erasure_array : counter_interface {
+template<typename data>
+struct type_erasure_array {
 	constexpr virtual ~type_erasure_array() noexcept =default ;
 
 	constexpr virtual data& emplace_back(data d) =0 ;
 	constexpr virtual data& at(typename data::integer_t ind) =0 ;
 	constexpr virtual decltype(sizeof(data)) size() const =0 ;
 };
-
 template<typename data_type>
 constexpr auto mk_te_array(const auto& f, auto&& src) {
-	using v_type = std::decay_t<decltype(src)>;
-	using te_array = type_erasure_array<typename data_type::factory_t, data_type>;
-	struct te : te_array {
-		v_type val;
-		constexpr te(v_type v) : val(std::move(v)) {}
+	using int_t = data_type::integer_t;
+	using src_type = std::decay_t<decltype(src)>;
+	using te_array = type_erasure_array<data_type>;
+	constexpr const bool is_array = requires{ src.orig_val().at(int_t{}); };
+	if constexpr (!is_array) return std::move(src);
+	else {
+		struct te_ar2 : src_type, te_array {
+			constexpr te_ar2(src_type v) : src_type(std::move(v)) {}
+			constexpr ~te_ar2() noexcept override {}
 
-		constexpr data_type& emplace_back(data_type d) override { return val.emplace_back(std::move(d)); }
-		constexpr data_type& at(typename data_type::integer_t ind) override { return val.at(ind); }
-		constexpr decltype(sizeof(data_type)) size() const override { return val.size(); }
-	};
-	return mk_coutner_and_assign<data_type, te_array, te>(f, std::forward<decltype(src)>(src));
+			constexpr bool is_arr() const override { return true; }
+			constexpr data_type& emplace_back(data_type d) override { return this->orig_val().emplace_back(std::move(d)); }
+			constexpr data_type& at(typename data_type::integer_t ind) override { return this->orig_val().at(ind); }
+			constexpr decltype(sizeof(data_type)) size() const override { return this->orig_val().size(); }
+		};
+		return te_ar2{std::move(src)};
+	}
 }
 
 } // namespace absd::details
