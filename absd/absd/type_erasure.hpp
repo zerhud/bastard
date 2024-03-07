@@ -6,6 +6,8 @@
 
 namespace absd::details {
 
+template<typename type, template<typename...>class tmpl> constexpr const bool is_specialization_of = false;
+template<template<typename...>class type, typename... args> constexpr const bool is_specialization_of<type<args...>, type> = true;
 
 struct inner_counter {
 	unsigned long int ref_counter = 0;
@@ -39,5 +41,22 @@ constexpr static data_type mk_coutner_and_assign(const auto& f, auto&& v) {
 	tmp.release();
 	return ret;
 }
+
+template<typename val_type>
+struct origin : details::multiobject_tag {
+	val_type val;
+	constexpr origin(val_type val) : val(std::move(val)) {}
+
+	constexpr auto& orig_val() {
+		if constexpr (is_specialization_of<val_type, details::callable2>) return val.fnc;
+		else return val;
+	}
+	constexpr const auto& orig_val() const {
+		//TODO: use deducing this when gcc14
+		return const_cast<origin&>(*this).orig_val();
+	}
+
+	constexpr auto& call_val() { return val; }
+};
 
 } // namespace absd::details

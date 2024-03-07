@@ -22,9 +22,6 @@ namespace absd {
 
 namespace details {
 
-template<typename type, template<typename...>class tmpl> constexpr const bool is_specialization_of = false;
-template<template<typename...>class type, typename... args> constexpr const bool is_specialization_of<type<args...>, type> = true;
-
 template<typename factory> constexpr auto mk_integer_type() {
 	if constexpr(!requires{ typename factory::integer_t; }) return int{};
 	else return typename factory::integer_t{};
@@ -92,28 +89,14 @@ struct data {
 	constexpr static self_type mk(const factory& f, auto&& _v, auto&&... args) {
 		auto v = mk_ca_val(std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...);
 		using val_type = std::decay_t<decltype(v)>;
+
 		constexpr bool is_callable = details::is_specialization_of<val_type, details::callable2>;
-		struct origin : details::multiobject_tag {
-			val_type val;
-			constexpr origin(val_type val) : val(std::move(val)) {}
 
-			constexpr auto& orig_val() {
-				if constexpr (is_callable) return val.fnc;
-				else return val;
-			}
-			constexpr const auto& orig_val() const {
-				//NOTE: cannot use deducting this here: templates are not allowed :)
-				return const_cast<origin&>(*this).orig_val();
-			}
-
-			constexpr auto& call_val() { return val; }
-		};
-
-		auto arr = details::mk_te_array<self_type>(f, counter_maker < origin > {std::move(v)});
+		auto arr = details::mk_te_array<self_type>(f, counter_maker < details::origin<val_type> > {std::move(v)});
 		auto arr_obj = details::mk_te_object<self_type>(f, std::move(arr));
 		auto aoc = details::mk_te_callable<is_callable, self_type>(f, std::move(arr_obj));
 
-		return mk_and_assign<details::multiobject_tag>(f, std::move(aoc));
+		return mk_ptr_and_assign<details::multiobject_tag>(f, std::move(aoc));
 	}
 
 private:
@@ -125,7 +108,7 @@ private:
 	details::type_erasure_object<factory_t, self_type>* multi_object=nullptr;
 
 	template<typename to>
-	constexpr static self_type mk_and_assign(const auto& f, auto&& v) {
+	constexpr static self_type mk_ptr_and_assign(const auto& f, auto&& v) {
 		self_type ret;
 		auto tmp = f.mk_ptr(std::forward<decltype(v)>(v));
 		auto* ptr = tmp.get();
