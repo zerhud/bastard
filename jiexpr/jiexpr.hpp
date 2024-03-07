@@ -248,10 +248,10 @@ struct bastard {
 	}
 	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, var_expr> ) {
 		//cmpget_workwaroud for constexpr bug with strings
-		auto cur = env->cmpget_workaround(get<string_t>(*op.path.at(0)));
+		auto cur = (*env)[data_type{get<string_t>(*op.path.at(0))}];
 		for(auto pos = ++op.path.begin();pos!=op.path.end();++pos) {
 			auto& item = **pos;
-			if(holds_alternative<string_t>(item)) cur = cur.cmpget_workaround(get<string_t>(item));
+			if(holds_alternative<string_t>(item)) cur = cur[data_type{get<string_t>(item)}];
 			else {
 				auto key = visit(*this, item);
 				if(key.is_int()) cur = cur[(integer_t)key];

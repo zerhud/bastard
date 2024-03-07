@@ -33,17 +33,6 @@ template<typename factory> constexpr auto mk_float_point_type() {
 
 } // namespace details
 
-// просто создать класс данных от фабрики, он должен содержать
-//
-// - вызываемый объект с двумя параметрами:
-//   - список позиционных параметров и
-//   - карта именованных параметров
-//   - также должен возращать дефолтные параметы (получит в карте именнованых, если не указаны)
-//   - дефолтный объект должен работать на подобии std::function - type erasure
-// 
-// - так как std::{,unordered_}map (похоже) не может быть использована за неимением constexpr
-//   методов, то операции с ней нужно проверить в runtime
-
 template<typename factory, typename crtp>
 struct data {
 	static_assert( noexcept( std::declval<factory>().deallocate((int*)nullptr) ), "for safity delete allocated objects the dealocate method must to be noexcept" );
@@ -96,7 +85,7 @@ struct data {
 		auto arr_obj = details::mk_te_object<self_type>(f, std::move(arr));
 		auto aoc = details::mk_te_callable<is_callable, self_type>(f, std::move(arr_obj));
 
-		return mk_ptr_and_assign<details::multiobject_tag>(f, std::move(aoc));
+		return mk_ptr_and_assign(f, std::move(aoc));
 	}
 
 private:
@@ -107,7 +96,6 @@ private:
 	details::type_erasure_array<self_type>* multi_array=nullptr;
 	details::type_erasure_object<factory_t, self_type>* multi_object=nullptr;
 
-	template<typename to>
 	constexpr static self_type mk_ptr_and_assign(const auto& f, auto&& v) {
 		self_type ret;
 		auto tmp = f.mk_ptr(std::forward<decltype(v)>(v));
@@ -153,18 +141,10 @@ private:
 
 	template<typename type>
 	struct counter_maker : details::inner_counter, type {
-		constexpr counter_maker(auto&&... args) : type(std::forward<decltype(args)>(args)...) {}
+		constexpr explicit counter_maker(auto&&... args) : type(std::forward<decltype(args)>(args)...) {}
 		constexpr decltype(inner_counter::ref_counter) increase_counter() override { return inner_counter::increase_counter(); }
 		constexpr decltype(inner_counter::ref_counter) decrease_counter() override { return inner_counter::decrease_counter(); }
 	};
-	template<typename from, typename type>
-	constexpr static self_type mk_coutner_and_assign(const factory& f, auto&& v) {
-		self_type ret;
-		auto tmp = f.mk_ptr(counter_maker<type>(std::forward<decltype(v)>(v)));
-		ret.assign(static_cast<from*>(tmp.get()));
-		tmp.release();
-		return ret;
-	}
 
 	constexpr void copy_multi_pointers(const auto& other) noexcept {
 		multi_callable = other.multi_callable;
@@ -191,7 +171,7 @@ private:
 	}
 public:
 
-	constexpr data() {}
+	constexpr data() =default ;
 	constexpr data(auto v) requires (std::is_same_v<decltype(v), bool>) : holder(v) {}
 
 	constexpr data(string_t v) : holder(v) {} //NOTE: bug in gcc https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111284
@@ -199,11 +179,11 @@ public:
 
 	constexpr data(integer_t v) : holder(v) {}
 	constexpr data(float_point_t v) : holder(v) {}
-	constexpr data(self_type&& v) : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; copy_multi_pointers(v); }
+	constexpr data(self_type&& v) noexcept : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; copy_multi_pointers(v); }
 	constexpr data(const self_type& v) : holder(v.holder) { allocate(); copy_multi_pointers(v); }
 	constexpr data(const data& v) : holder(v.holder) { allocate(); copy_multi_pointers(v); }
 	//NOTE: bug in gcc workaround: use holder = declytpe(holder){v.holder} ?
-	constexpr data(data&& v) : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; copy_multi_pointers(v); }
+	constexpr data(data&& v) noexcept : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; copy_multi_pointers(v); }
 	constexpr ~data() { deallocate(); }
 
 	constexpr self_type& assign() {
@@ -225,8 +205,8 @@ public:
 
 	constexpr auto& operator=(const data& v) { copy_multi_pointers(v); return assign(v.holder); }
 	constexpr auto& operator=(const self_type& v) { copy_multi_pointers(v); return assign(v.holder); }
-	constexpr auto& operator=(data&& v) { copy_multi_pointers(v); return assign(std::move(v.holder)); }
-	constexpr auto& operator=(self_type&& v) { copy_multi_pointers(v); return assign(std::move(v.holder)); }
+	constexpr auto& operator=(data&& v) noexcept { copy_multi_pointers(v); return assign(std::move(v.holder)); }
+	constexpr auto& operator=(self_type&& v) noexcept { copy_multi_pointers(v); return assign(std::move(v.holder)); }
 
 	constexpr auto& operator=(string_t v){ null_multi_pointers(); return assign(std::move(v)); }
 	constexpr auto& operator=(integer_t v){ null_multi_pointers(); return assign(v); }
@@ -237,23 +217,22 @@ public:
 	constexpr operator integer_t() const { return get<integer_t>(holder); }
 	constexpr operator float_point_t() const { return get<float_point_t>(holder); }
 
-	constexpr auto cur_type_index() const { return holder.index(); }
-	constexpr bool is_int() const { return holder.index() == 2; }
-	constexpr bool is_none() const { return holder.index() == 0; }
-	constexpr bool is_bool() const { return holder.index() == 1; }
-	constexpr bool is_string() const { return holder.index() == 4; }
-	constexpr bool is_float_point() const { return holder.index() == 3; }
-	constexpr bool is_array() const {
+	[[nodiscard]] constexpr bool is_int() const { return holder.index() == 2; }
+	[[nodiscard]] constexpr bool is_none() const { return holder.index() == 0; }
+	[[nodiscard]] constexpr bool is_bool() const { return holder.index() == 1; }
+	[[nodiscard]] constexpr bool is_string() const { return holder.index() == 4; }
+	[[nodiscard]] constexpr bool is_float_point() const { return holder.index() == 3; }
+	[[nodiscard]] constexpr bool is_array() const {
 		return visit( [](const auto& v){ return is_multiptr_arr(v) || requires(std::decay_t<decltype(v)> vv){ vv->at( integer_t{} ); }; }, holder);
 	}
-	constexpr bool is_object() const {
+	[[nodiscard]] constexpr bool is_object() const {
 		return visit( [](const auto& v){ return is_multiptr_obj(v) || requires(std::decay_t<decltype(v)> vv){ vv->at( crtp{} ); }; }, holder);
 	}
-	constexpr bool is_callable() const {
+	[[nodiscard]] constexpr bool is_callable() const {
 		return visit( [](const auto& v) { return is_multiptr_cll(v) || requires{ v->call({}); }; }, holder);
 	}
 
-	constexpr bool contains(const auto& val) const {
+	[[nodiscard]] constexpr bool contains(const auto& val) const {
 		return !is_none() && visit([this,&val](const auto& v){
 			if(is_multiptr_obj(v)) return multi_object->contains(val);
 			if constexpr(requires{v->contains(val);}) return v->contains(val);
@@ -266,7 +245,7 @@ public:
 			}
 		}, holder);
 	}
-	constexpr auto size() const {
+	[[nodiscard]] constexpr auto size() const {
 		return visit( [this](const auto& v){
 			if(is_multiptr_obj(v)) return multi_object->size();
 			else if(is_multiptr_arr(v)) return multi_array->size();
@@ -274,7 +253,7 @@ public:
 			else if constexpr(requires{ v->size(); }) return v->size();
 			else return sizeof(v); }, holder);
 	}
-	constexpr auto keys() const {
+	[[nodiscard]] constexpr auto keys() const {
 		return visit( [this](const auto& v){
 			if(is_multiptr_obj(v)) return multi_object->keys(factory{});
 			if constexpr(requires{ v->keys(factory{}); }) return v->keys(factory{});
@@ -312,8 +291,8 @@ public:
 			}
 		}, holder);
 	}
-	constexpr const self_type& operator[](integer_t ind) const {return const_cast<base_data_type&>(*this)[ind];}
-	constexpr self_type& operator[](integer_t ind){
+	[[nodiscard]] constexpr const self_type& operator[](integer_t ind) const {return const_cast<base_data_type&>(*this)[ind];}
+	[[nodiscard]] constexpr self_type& operator[](integer_t ind){
 		return visit([this,ind](auto& v)->self_type&{
 			if(is_multiptr_arr(v)) return multi_array->at(ind);
 			if constexpr(requires{ v->emplace_back(self_type{}); v->at(ind); }) { return v->at(ind); }
@@ -324,8 +303,8 @@ public:
 			}
 		}, holder);
 	}
-	constexpr const self_type& operator[](const self_type& key) const { return const_cast<base_data_type&>(*this)[std::move(key)]; }
-	constexpr self_type& operator[](const self_type& key){
+	[[nodiscard]] constexpr const self_type& operator[](const self_type& key) const { return const_cast<base_data_type&>(*this)[std::move(key)]; }
+	[[nodiscard]] constexpr self_type& operator[](const self_type& key){
 		return visit([this,&key](auto&v)->self_type& {
 			if(is_multiptr_obj(v)) return multi_object->at(key);
 			if constexpr(requires{ v->at(key); }) return v->at(key);
@@ -337,19 +316,19 @@ public:
 		}, holder);
 	}
 
-	constexpr self_type cmpget_workaround(const string_t& key) const {
-		return visit([this,&key](auto&v)->self_type {
+	[[nodiscard]] constexpr bool cmpget_workaround(const string_t& key) const {
+		return visit([this,&key](auto&v)->bool {
 			if(is_multiptr_obj(v)) return multi_object->contains(self_type{key});
 			if constexpr(requires{ v->cmpget_workaround(key); }) return v->cmpget_workaround(key);
 			else {
 				factory::throw_wrong_interface_error("cmpget_workaround");
 				std::unreachable();
-				return self_type{false};
+				return false;
 			}
 		}, holder);
 	}
 
-	constexpr self_type call(auto&& params) {
+	[[nodiscard]] constexpr self_type call(auto&& params) {
 		return visit([this,&params](auto& v) -> self_type {
 			if(is_multiptr_cll(v)) return multi_callable->call(params);
 			if constexpr(requires{ {v->call(params)}->std::same_as<self_type>; }) return v->call(params);
@@ -362,7 +341,7 @@ public:
 		}, holder);
 	}
 
-	friend constexpr bool operator==(const self_type& left, const self_type& right) {
+	[[nodiscard]] friend constexpr bool operator==(const self_type& left, const self_type& right) {
 		return left.holder.index() == right.holder.index() && visit([](const auto& l, const auto& r){
 			if constexpr(requires{ l==r; }) return l==r;
 			else return false;
