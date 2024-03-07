@@ -176,6 +176,19 @@ private:
 		multi_array = nullptr;
 		multi_object = nullptr;
 	}
+
+	constexpr static bool is_multiptr_obj(auto&& v) {
+		if constexpr (std::is_same_v<std::decay_t<decltype(v)>, details::multiobject_tag*>) return v->is_obj();
+		else return false;
+	}
+	constexpr static bool is_multiptr_arr(auto&& v) {
+		if constexpr (std::is_same_v<std::decay_t<decltype(v)>, details::multiobject_tag*>) return v->is_arr();
+		else return false;
+	}
+	constexpr static bool is_multiptr_cll(auto&& v) {
+		if constexpr (std::is_same_v<std::decay_t<decltype(v)>, details::multiobject_tag*>) return v->is_cll();
+		else return false;
+	}
 public:
 
 	constexpr data() {}
@@ -231,23 +244,18 @@ public:
 	constexpr bool is_string() const { return holder.index() == 4; }
 	constexpr bool is_float_point() const { return holder.index() == 3; }
 	constexpr bool is_array() const {
-		if(holds_alternative<details::multiobject_tag*>(holder)) return get<details::multiobject_tag*>(holder)->is_arr();
-		return visit( [](const auto& v){ return requires(std::decay_t<decltype(v)> vv){ vv->at( integer_t{} ); }; }, holder);
+		return visit( [](const auto& v){ return is_multiptr_arr(v) || requires(std::decay_t<decltype(v)> vv){ vv->at( integer_t{} ); }; }, holder);
 	}
 	constexpr bool is_object() const {
-		if(holds_alternative<details::multiobject_tag*>(holder)) return get<details::multiobject_tag*>(holder)->is_obj();
-		return visit( [](const auto& v){ return requires(std::decay_t<decltype(v)> vv){ vv->at( crtp{} ); }; }, holder);
+		return visit( [](const auto& v){ return is_multiptr_obj(v) || requires(std::decay_t<decltype(v)> vv){ vv->at( crtp{} ); }; }, holder);
 	}
 	constexpr bool is_callable() const {
-		if(holds_alternative<details::multiobject_tag*>(holder)) return get<details::multiobject_tag*>(holder)->is_cll();
-		return visit( [](const auto& v) { return requires{ v->call({}); }; }, holder);
+		return visit( [](const auto& v) { return is_multiptr_cll(v) || requires{ v->call({}); }; }, holder);
 	}
 
-	constexpr int contains(const auto& val) const {
-		if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_obj()) {
-			return multi_object->contains(val);
-		}
+	constexpr bool contains(const auto& val) const {
 		return !is_none() && visit([this,&val](const auto& v){
+			if(is_multiptr_obj(v)) return multi_object->contains(val);
 			if constexpr(requires{v->contains(val);}) return v->contains(val);
 			else if constexpr(requires{v.contains(typename std::decay_t<decltype(v)>::key_type{});}) return v.contains(val);
 			else if constexpr(requires{v==val;}) return v==val;
@@ -259,16 +267,16 @@ public:
 		}, holder);
 	}
 	constexpr auto size() const {
-		return visit( [](const auto& v){
+		return visit( [this](const auto& v){
+			if(is_multiptr_obj(v)) return multi_object->size();
+			else if(is_multiptr_arr(v)) return multi_array->size();
 			if constexpr(requires{ v.size(); }) return v.size();
 			else if constexpr(requires{ v->size(); }) return v->size();
 			else return sizeof(v); }, holder);
 	}
 	constexpr auto keys() const {
-		if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_obj()) {
-			return multi_object->keys(factory{});
-		}
-		return visit( [](const auto& v){
+		return visit( [this](const auto& v){
+			if(is_multiptr_obj(v)) return multi_object->keys(factory{});
 			if constexpr(requires{ v->keys(factory{}); }) return v->keys(factory{});
 			else {
 				factory::throw_wrong_interface_error("keys");
@@ -282,10 +290,8 @@ public:
 	constexpr self_type& mk_empty_object() { return assign(factory::mk_ptr(details::mk_object_type<crtp>(factory{}))); }
 	constexpr self_type& push_back(self_type d) {
 		if(is_none()) mk_empty_array();
-		else if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_arr()) {
-			return multi_array->emplace_back(std::move(d));
-		}
 		return visit([this,d=std::move(d)](auto& v) -> self_type& {
+			if(is_multiptr_arr(v)) return multi_array->emplace_back(std::move(d));
 			if constexpr(requires{ v->emplace_back(std::move(d)); }) { return v->emplace_back(std::move(d)); }
 			else {
 				factory::throw_wrong_interface_error("push_back");
@@ -296,10 +302,8 @@ public:
 	}
 	constexpr self_type& put(self_type key, self_type value) {
 		if(is_none()) mk_empty_object();
-		else if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_obj()) {
-			return multi_object->put(key, value);
-		}
 		return visit([this,&key,&value](auto& v) -> self_type& {
+			if(is_multiptr_obj(v)) return multi_object->put(key, value);
 			if constexpr(requires{ v->put(key,value); }) return v->put(key, value);
 			else {
 				factory::throw_wrong_interface_error("put");
@@ -310,10 +314,8 @@ public:
 	}
 	constexpr const self_type& operator[](integer_t ind) const {return const_cast<base_data_type&>(*this)[ind];}
 	constexpr self_type& operator[](integer_t ind){
-		if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_arr()) {
-			return multi_array->at(ind);
-		}
 		return visit([this,ind](auto& v)->self_type&{
+			if(is_multiptr_arr(v)) return multi_array->at(ind);
 			if constexpr(requires{ v->emplace_back(self_type{}); v->at(ind); }) { return v->at(ind); }
 			else {
 				factory::throw_wrong_interface_error("operator[ind]");
@@ -324,10 +326,8 @@ public:
 	}
 	constexpr const self_type& operator[](const self_type& key) const { return const_cast<base_data_type&>(*this)[std::move(key)]; }
 	constexpr self_type& operator[](const self_type& key){
-		if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_obj()) {
-			return multi_object->at(key);
-		}
 		return visit([this,&key](auto&v)->self_type& {
+			if(is_multiptr_obj(v)) return multi_object->at(key);
 			if constexpr(requires{ v->at(key); }) return v->at(key);
 			else {
 				factory::throw_wrong_interface_error("operator[key]");
@@ -338,11 +338,8 @@ public:
 	}
 
 	constexpr self_type cmpget_workaround(const string_t& key) const {
-		if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_obj()) {
-			if(!multi_object) std::unreachable();
-			return self_type{multi_object->contains(self_type{key})};
-		}
 		return visit([this,&key](auto&v)->self_type {
+			if(is_multiptr_obj(v)) return multi_object->contains(self_type{key});
 			if constexpr(requires{ v->cmpget_workaround(key); }) return v->cmpget_workaround(key);
 			else {
 				factory::throw_wrong_interface_error("cmpget_workaround");
@@ -353,11 +350,8 @@ public:
 	}
 
 	constexpr self_type call(auto&& params) {
-		if(holds_alternative<details::multiobject_tag*>(holder) && get<details::multiobject_tag*>(holder)->is_cll()) {
-			if(!multi_callable) std::unreachable();
-			return multi_callable->call(params);
-		}
 		return visit([this,&params](auto& v) -> self_type {
+			if(is_multiptr_cll(v)) return multi_callable->call(params);
 			if constexpr(requires{ {v->call(params)}->std::same_as<self_type>; }) return v->call(params);
 			else if constexpr(requires{ v->call(params); }) return (v->call(params), self_type{});
 			else {
@@ -375,82 +369,13 @@ public:
 			}, left.holder, right.holder);
 	}
 
-	constexpr static bool test_simple_cases() {
-		struct data_type : data<factory,data_type> {using data<factory,data_type>::operator=;};
+	constexpr static bool test_simple_cases() ;
+	constexpr static bool test_array_cases() ;
+	constexpr static bool test_object_cases() ;
 
-		static_assert( data_type{}.is_none(), "data is empty by defualt" );
-		static_assert( data_type{ (integer_t)10 }.is_none() == false );
-		static_assert( data_type{ (integer_t)10 }.assign().is_none() );
-		static_assert( data_type{ (float_point_t).5 }.is_int() == false );
-		static_assert( data_type{ (float_point_t).5 }.assign( (integer_t)3 ).is_int() );
-		static_assert( data_type{ string_t{} }.is_string() == true );
-		static_assert( data_type{ string_t{} }.is_array() == false );
-		static_assert( []{ data_type d; d=10; return (integer_t)d; }() == 10 );
-	//NOTE: string cannot to be tested in compile time due gcc bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111284
-	//	static_assert( []{ data_type d; d="hel"; auto ret = ((string_t)d)[2]; return ret; }() == 'l' );
-		static_assert( data_type{ integer_t{} }.size() == sizeof(integer_t) );
-		static_assert( data_type{ string_t{"hello"} }.size() == 5 );
-		static_assert( data_type{3} == data_type{3});
-		return true;
-	}
-
-	constexpr static bool test_array_cases() {
-		struct data_type : data<factory,data_type> {using data<factory,data_type>::operator=;};
-
-		static_assert( data_type{}.mk_empty_array().is_array() == true );
-		static_assert( data_type{}.mk_empty_array().is_object() == false );
-		static_assert( data_type{(integer_t)10}.mk_empty_array().is_array() == true );
-		static_assert( []{ data_type d; d.mk_empty_array(); d.push_back(data_type{(integer_t)10}); return (integer_t)d[0]; }() == 10 );
-		static_assert( []{ data_type d; d.mk_empty_array(); d.push_back(data_type{(integer_t)10}); auto dd = d; return (integer_t)dd[0]; }() == 10 );
-		static_assert( []{ data_type d; d.mk_empty_array(); d.push_back(data_type{(integer_t)10}); auto dd = std::move(d); return (integer_t)dd[0]; }() == 10 );
-		static_assert( []{ data_type d; d.mk_empty_array(); d.push_back(data_type{(integer_t)10}); auto dd = std::move(d); return dd.size(); }() == 1 );
-
-		static_assert( []{
-			auto vec = factory{}.template mk_vec<data_type>();
-			vec.emplace_back(data_type{(integer_t)1});
-			vec.emplace_back(data_type{(integer_t)3});
-			auto d = data_type::mk(std::move(vec));
-			return (integer_t)d[1]; }() == 3);
-
-		return true;
-	}
-
-	constexpr static bool test_object_cases() {
-		struct data_type : data<factory,data_type> {using data<factory,data_type>::operator=;};
-
-		static_assert( data_type{}.mk_empty_object().is_object() == true );
-		static_assert( data_type{}.mk_empty_object().is_array() == false );
-		static_assert( []{data_type d{}; d.mk_empty_object(); d.put(data_type{1}, data_type{7}); return (integer_t)d[data_type{1}];}() == 7 );
-		static_assert( []{ data_type d; d.put(data_type{1}, data_type{7}); d.put(data_type{2}, data_type{8}); return d.size(); }() == 2 );
-		static_assert( []{ data_type d;
-			d.put(data_type{1}, data_type{7});
-			d.put(data_type{2}, data_type{8});
-			auto keys = d.keys();
-			return (keys.size() == 2) + (2*((integer_t)keys[0] == 1)) + (4*((integer_t)keys[1] == 2)); }() == 7 );
-
-		static_assert( []{
-			details::constexpr_kinda_map<factory,data_type,data_type> v;
-			v.insert(std::make_pair(data_type{1}, data_type{2}));
-			return v.contains(data_type{1});
-		}() );
-		static_assert( (integer_t)[]{
-			details::constexpr_kinda_map<factory,data_type,data_type> v;
-			v.insert(std::make_pair(data_type{1}, data_type{3}));
-			return data_type::mk(std::move(v))[data_type{1}];}() == 3 );
-
-		static_assert( []{
-			data_type d;d.mk_empty_object();
-			d.put(data_type{1}, data_type{7});
-			return d.contains(data_type{1}) + (2*!d.contains(data_type{7}));
-		}() == 3);
-		return true;
-	}
-
-
-	constexpr static bool test() {
-		return test_simple_cases() && test_array_cases() && details::test_callable<self_type>() && test_object_cases();
-	}
+	constexpr static bool test() ;
 };
 
-
 } // namespace absd
+
+#include "absd/impl_tests.ipp"
