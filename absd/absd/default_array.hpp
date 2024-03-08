@@ -13,12 +13,10 @@ template<typename factory, typename data>
 struct array : inner_counter {
 	using vec_content = data;
 
-	[[no_unique_address]] factory f;
 	std::decay_t<decltype(std::declval<factory>().template mk_vec<vec_content>())> holder;
 
 
-	constexpr array(factory _f) requires (requires{ _f.template mk_vec<vec_content>(); }) : f(std::move(_f)), holder(f.template mk_vec<vec_content>()) {}
-	constexpr array(factory _f) requires (!requires{ _f.template mk_vec<vec_content>(); }) : f(std::move(_f)) {}
+	constexpr array(factory f) requires (requires{ f.template mk_vec<vec_content>(); }) : holder(f.template mk_vec<vec_content>()) {}
 
 	constexpr data& emplace_back(data d) { return holder.emplace_back(std::move(d)); }
 	constexpr data& at(std::integral auto ind) { return holder.at(ind); }
