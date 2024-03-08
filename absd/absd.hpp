@@ -33,16 +33,15 @@ template<typename factory> constexpr auto mk_float_point_type() {
 
 } // namespace details
 
-template<typename factory, typename crtp>
+template<typename factory>
 struct data {
 	static_assert( noexcept( std::declval<factory>().deallocate((int*)nullptr) ), "for safity delete allocated objects the dealocate method must to be noexcept" );
 
 	using factory_t = factory;
-	using self_type = crtp;//data<factory, crtp>;
+	using self_type = data<factory>;
 	template<typename functor> using callable2 = details::callable2<self_type, functor>;
-	using base_data_type = data<factory, crtp>;
-	using array_t = decltype(details::mk_array_type<crtp>(std::declval<factory>()));
-	using object_t = decltype(details::mk_object_type<crtp>(std::declval<factory>()));
+	using array_t = decltype(details::mk_array_type<self_type >(std::declval<factory>()));
+	using object_t = decltype(details::mk_object_type<self_type >(std::declval<factory>()));
 	using string_t = typename factory::string_t;
 	using integer_t = decltype(details::mk_integer_type<factory>());
 	using float_point_t = decltype(details::mk_float_point_type<factory>());
@@ -172,15 +171,15 @@ private:
 public:
 
 	constexpr data() =default ;
-	constexpr data(auto v) requires (std::is_same_v<decltype(v), bool>) : holder(v) {}
+	constexpr explicit data(auto v) requires (
+		   std::is_same_v<decltype(v), bool>
+		|| std::is_same_v<decltype(v), string_t>
+		|| std::is_same_v<decltype(v), integer_t>
+		|| std::is_same_v<decltype(v), float_point_t>
+	) : holder(v) {} //NOTE: cannot move here due bug in gcc https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111284
 
-	constexpr data(string_t v) : holder(v) {} //NOTE: bug in gcc https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111284
-	constexpr data(const typename string_t::value_type* v) : holder(string_t(v)) {}
+	constexpr explicit data(const typename string_t::value_type* v) : holder(string_t(v)) {}
 
-	constexpr data(integer_t v) : holder(v) {}
-	constexpr data(float_point_t v) : holder(v) {}
-	constexpr data(self_type&& v) noexcept : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; copy_multi_pointers(v); }
-	constexpr data(const self_type& v) : holder(v.holder) { allocate(); copy_multi_pointers(v); }
 	constexpr data(const data& v) : holder(v.holder) { allocate(); copy_multi_pointers(v); }
 	//NOTE: bug in gcc workaround: use holder = declytpe(holder){v.holder} ?
 	constexpr data(data&& v) noexcept : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; copy_multi_pointers(v); }
@@ -204,9 +203,7 @@ public:
 	}
 
 	constexpr auto& operator=(const data& v) { copy_multi_pointers(v); return assign(v.holder); }
-	constexpr auto& operator=(const self_type& v) { copy_multi_pointers(v); return assign(v.holder); }
 	constexpr auto& operator=(data&& v) noexcept { copy_multi_pointers(v); return assign(std::move(v.holder)); }
-	constexpr auto& operator=(self_type&& v) noexcept { copy_multi_pointers(v); return assign(std::move(v.holder)); }
 
 	constexpr auto& operator=(string_t v){ null_multi_pointers(); return assign(std::move(v)); }
 	constexpr auto& operator=(integer_t v){ null_multi_pointers(); return assign(v); }
@@ -226,7 +223,7 @@ public:
 		return visit( [](const auto& v){ return is_multiptr_arr(v) || requires(std::decay_t<decltype(v)> vv){ vv->at( integer_t{} ); }; }, holder);
 	}
 	[[nodiscard]] constexpr bool is_object() const {
-		return visit( [](const auto& v){ return is_multiptr_obj(v) || requires(std::decay_t<decltype(v)> vv){ vv->at( crtp{} ); }; }, holder);
+		return visit( [](const auto& v){ return is_multiptr_obj(v) || requires(std::decay_t<decltype(v)> vv){ vv->at( self_type {} ); }; }, holder);
 	}
 	[[nodiscard]] constexpr bool is_callable() const {
 		return visit( [](const auto& v) { return is_multiptr_cll(v) || requires{ v->call({}); }; }, holder);
@@ -265,8 +262,8 @@ public:
 			}, holder);
 	}
 
-	constexpr self_type& mk_empty_array() { return assign(factory::mk_ptr(details::mk_array_type<crtp>(factory{}))); }
-	constexpr self_type& mk_empty_object() { return assign(factory::mk_ptr(details::mk_object_type<crtp>(factory{}))); }
+	constexpr self_type& mk_empty_array() { return assign(factory::mk_ptr(details::mk_array_type<self_type >(factory{}))); }
+	constexpr self_type& mk_empty_object() { return assign(factory::mk_ptr(details::mk_object_type<self_type >(factory{}))); }
 	constexpr self_type& push_back(self_type d) {
 		if(is_none()) mk_empty_array();
 		return visit([this,d=std::move(d)](auto& v) -> self_type& {
@@ -291,7 +288,7 @@ public:
 			}
 		}, holder);
 	}
-	[[nodiscard]] constexpr const self_type& operator[](integer_t ind) const {return const_cast<base_data_type&>(*this)[ind];}
+	[[nodiscard]] constexpr const self_type& operator[](integer_t ind) const {return const_cast<self_type&>(*this)[ind];}
 	[[nodiscard]] constexpr self_type& operator[](integer_t ind){
 		return visit([this,ind](auto& v)->self_type&{
 			if(is_multiptr_arr(v)) return multi_array->at(ind);
@@ -303,7 +300,7 @@ public:
 			}
 		}, holder);
 	}
-	[[nodiscard]] constexpr const self_type& operator[](const self_type& key) const { return const_cast<base_data_type&>(*this)[std::move(key)]; }
+	[[nodiscard]] constexpr const self_type& operator[](const self_type& key) const { return const_cast<self_type&>(*this)[std::move(key)]; }
 	[[nodiscard]] constexpr self_type& operator[](const self_type& key){
 		return visit([this,&key](auto&v)->self_type& {
 			if(is_multiptr_obj(v)) return multi_object->at(key);

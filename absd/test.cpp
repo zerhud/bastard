@@ -28,7 +28,7 @@ struct absd_factory {
 	}
 };
 
-struct absd_data1 : absd::data<absd_factory<double>, absd_data1> {using base_data_type::operator=;};
+using absd_data1 = absd::data<absd_factory<double>>;
 
 int main(int,char**){
 	static_assert( absd_data1::test() );

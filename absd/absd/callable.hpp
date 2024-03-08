@@ -42,6 +42,7 @@ private:
 
 template<typename data_type, typename functor> template<auto ind>
 constexpr auto callable2<data_type, functor>::call_with_combined_params(const auto& user_params, auto&&... params) const {
+	static_assert( sizeof...(params) < 501, "too many parameters :)" );
 	if constexpr (requires{fnc(std::forward<decltype(params)>(params)...);}) return fnc(std::forward<decltype(params)>(params)...);
 	else {
 		if(user_params.contains(data_type{ind})) return call_with_combined_params<ind+1>(user_params, std::forward<decltype(params)>(params)..., user_params[data_type{ind}]);
