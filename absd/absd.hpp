@@ -17,6 +17,7 @@
 #include "absd/default_array.hpp"
 #include "absd/default_object.hpp"
 #include "absd/default_callable.hpp"
+#include "absd/exceptions.hpp"
 
 namespace absd {
 
@@ -169,6 +170,9 @@ private:
 		if constexpr (std::is_same_v<std::decay_t<decltype(v)>, details::multiobject_tag*>) return v->is_cll();
 		else return false;
 	}
+
+	template<typename interface, typename ret_val_t=self_type>
+	constexpr static auto throw_wrong_interface_error(ret_val_t ret_val = self_type{});
 public:
 
 	constexpr data() =default ;
@@ -235,11 +239,7 @@ public:
 			if(is_multiptr_obj(v)) return multi_object->contains(val);
 			if constexpr(requires{v.contains(typename std::decay_t<decltype(v)>::key_type{});}) return v.contains(val);
 			else if constexpr(requires{v==val;}) return v==val;
-			else {
-				factory::throw_wrong_interface_error("contains");
-				std::unreachable();
-				return false;
-			}
+			else throw_wrong_interface_error<details::interfaces::contains>();
 		}, holder);
 	}
 	[[nodiscard]] constexpr auto size() const {
@@ -253,12 +253,8 @@ public:
 	[[nodiscard]] constexpr auto keys() const {
 		return visit( [this](const auto& v){
 			if(is_multiptr_obj(v)) return multi_object->keys(factory{});
-			else {
-				factory::throw_wrong_interface_error("keys");
-				std::unreachable();
-				return self_type{};
-			}
-			}, holder);
+			else throw_wrong_interface_error<details::interfaces::keys>();
+		}, holder);
 	}
 
 	constexpr self_type& mk_empty_array() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, factory{}.template mk_vec<self_type>())); return *this; }
@@ -268,66 +264,42 @@ public:
 		return visit([this,d=std::move(d)](auto& v) -> self_type& {
 			if(is_multiptr_arr(v)) return multi_array->emplace_back(std::move(d));
 			if constexpr(requires{ v.push_back(std::move(d)); }) { return v.push_back(std::move(d)); }
-			else {
-				factory::throw_wrong_interface_error("push_back");
-				std::unreachable();
-				return static_cast<self_type&>(*this);
-			}
+			else throw_wrong_interface_error<details::interfaces::push_back>();
 		}, holder);
 	}
 	constexpr self_type& put(self_type key, self_type value) {
 		if(is_none()) mk_empty_object();
 		return visit([this,&key,&value](auto& v) -> self_type& {
 			if(is_multiptr_obj(v)) return multi_object->put(key, value);
-			else {
-				factory::throw_wrong_interface_error("put");
-				std::unreachable();
-				return static_cast<self_type&>(*this);
-			}
+			else throw_wrong_interface_error<details::interfaces::put>();
 		}, holder);
 	}
 	[[nodiscard]] constexpr const self_type& operator[](integer_t ind) const {return const_cast<self_type&>(*this)[ind];}
 	[[nodiscard]] constexpr self_type& operator[](integer_t ind){
 		return visit([this,ind](auto& v)->self_type&{
 			if(is_multiptr_arr(v)) return multi_array->at(ind);
-			else {
-				factory::throw_wrong_interface_error("operator[ind]");
-				std::unreachable();
-				return static_cast<self_type&>(*this);
-			}
+			else throw_wrong_interface_error<details::interfaces::at_ind>();
 		}, holder);
 	}
 	[[nodiscard]] constexpr const self_type& operator[](const self_type& key) const { return const_cast<self_type&>(*this)[std::move(key)]; }
 	[[nodiscard]] constexpr self_type& operator[](const self_type& key){
 		return visit([this,&key](auto&v)->self_type& {
 			if(is_multiptr_obj(v)) return multi_object->at(key);
-			else {
-				factory::throw_wrong_interface_error("operator[key]");
-				std::unreachable();
-				return static_cast<self_type&>(*this);
-			}
+			else throw_wrong_interface_error<details::interfaces::at_key>();
 		}, holder);
 	}
 
 	[[nodiscard]] constexpr bool cmpget_workaround(const string_t& key) const {
 		return visit([this,&key](auto&v)->bool {
 			if(is_multiptr_obj(v)) return multi_object->contains(self_type{key});
-			else {
-				factory::throw_wrong_interface_error("cmpget_workaround");
-				std::unreachable();
-				return false;
-			}
+			else throw_wrong_interface_error<details::interfaces::cmpget_workaround>();
 		}, holder);
 	}
 
 	[[nodiscard]] constexpr self_type call(auto&& params) {
 		return visit([this,&params](auto& v) -> self_type {
 			if(is_multiptr_cll(v)) return multi_callable->call(params);
-			else {
-				factory::throw_wrong_interface_error("operator()");
-				std::unreachable();
-				return self_type{};
-			}
+			else throw_wrong_interface_error<details::interfaces::call>();
 		}, holder);
 	}
 
@@ -348,3 +320,4 @@ public:
 } // namespace absd
 
 #include "absd/impl_tests.ipp"
+#include "absd/impl.ipp"

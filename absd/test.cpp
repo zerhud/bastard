@@ -23,6 +23,10 @@ struct absd_factory {
 	constexpr static void throw_wrong_interface_error(auto&& op) {
 		throw std::runtime_error("cannot perform operation "s + op);
 	}
+	template<typename interface>
+	constexpr static void throw_wrong_interface_error2() {
+		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
+	}
 	constexpr static void throw_wrong_parameters_count(auto cnt) {
 		throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
 	}
