@@ -40,15 +40,15 @@ struct data {
 	using factory_t = factory;
 	using self_type = data<factory>;
 	template<typename functor> using callable2 = details::callable2<self_type, functor>;
-	using array_t = decltype(details::mk_array_type<self_type >(std::declval<factory>()));
-	using object_t = decltype(details::mk_object_type<self_type >(std::declval<factory>()));
+	//using array_t = decltype(details::mk_array_type<self_type >(std::declval<factory>()));
+	//using object_t = decltype(details::mk_object_type<self_type >(std::declval<factory>()));
 	using string_t = typename factory::string_t;
 	using integer_t = decltype(details::mk_integer_type<factory>());
 	using float_point_t = decltype(details::mk_float_point_type<factory>());
 
 	using holder_t = typename factory::template variant<
 		typename factory::empty_t, bool, integer_t, float_point_t,
-		string_t, array_t*, object_t*,
+		string_t,// array_t*, object_t*,
 		details::multiobject_tag*
 	>;
 
@@ -75,16 +75,7 @@ struct data {
 		return mk(factory_t{}, std::forward<decltype(v)>(v), std::forward<decltype(args)>(args)...);
 	}
 	constexpr static self_type mk(const factory& f, auto&& _v, auto&&... args) {
-		auto v = mk_ca_val(std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...);
-		using val_type = std::decay_t<decltype(v)>;
-
-		constexpr bool is_callable = details::is_specialization_of<val_type, details::callable2>;
-
-		auto arr = details::mk_te_array<self_type>(f, counter_maker < details::origin<val_type> > {std::move(v)});
-		auto arr_obj = details::mk_te_object<self_type>(f, std::move(arr));
-		auto aoc = details::mk_te_callable<is_callable, self_type>(f, std::move(arr_obj));
-
-		return mk_ptr_and_assign(f, std::move(aoc));
+		return mk_ptr_and_assign(f, inner_mk(f, std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...));
 	}
 
 private:
@@ -95,15 +86,28 @@ private:
 	details::type_erasure_array<self_type>* multi_array=nullptr;
 	details::type_erasure_object<factory_t, self_type>* multi_object=nullptr;
 
+	constexpr static auto inner_mk(const factory& f, auto&& _v, auto&&... args) {
+		auto v = mk_ca_val(std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...);
+		using val_type = std::decay_t<decltype(v)>;
+
+		constexpr bool is_callable = details::is_specialization_of<val_type, details::callable2>;
+
+		auto arr = details::mk_te_array<self_type>(f, counter_maker < details::origin<val_type> > {std::move(v)});
+		auto arr_obj = details::mk_te_object<self_type>(f, std::move(arr));
+		return details::mk_te_callable<is_callable, self_type>(f, std::move(arr_obj));
+	}
 	constexpr static self_type mk_ptr_and_assign(const auto& f, auto&& v) {
 		self_type ret;
+		mk_ptr_and_assign(ret, f, std::forward<decltype(v)>(v));
+		return ret;
+	}
+	constexpr static void mk_ptr_and_assign(self_type& ret, const auto& f, auto&& v) {
 		auto tmp = f.mk_ptr(std::forward<decltype(v)>(v));
 		auto* ptr = tmp.get();
 		ret.assign(std::move(tmp));
 		if constexpr (requires{ret.multi_callable = ptr;}) ret.multi_callable = ptr;
 		if constexpr (requires{ret.multi_array = ptr;}) ret.multi_array = ptr;
 		if constexpr (requires{ret.multi_object = ptr;}) ret.multi_object = ptr;
-		return ret;
 	}
 	constexpr static void mk_map_impl(const auto& f, self_type& result, auto&& key, auto&& val, auto&&... tail) {
 		result.put(self_type{std::forward<decltype(key)>(key)}, self_type{std::forward<decltype(val)>(val)});
@@ -262,8 +266,10 @@ public:
 			}, holder);
 	}
 
-	constexpr self_type& mk_empty_array() { return assign(factory::mk_ptr(details::mk_array_type<self_type >(factory{}))); }
-	constexpr self_type& mk_empty_object() { return assign(factory::mk_ptr(details::mk_object_type<self_type >(factory{}))); }
+	constexpr self_type& mk_empty_array() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, factory{}.template mk_vec<self_type>())); return *this; }
+	constexpr self_type& mk_empty_object() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, details::mk_map_type<self_type, self_type>(factory{}))); return *this; }
+	//constexpr self_type& mk_empty_array() { return assign(factory::mk_ptr(details::mk_array_type<self_type>(factory{}))); }
+	//constexpr self_type& mk_empty_object() { return assign(factory::mk_ptr(details::mk_object_type<self_type>(factory{}))); }
 	constexpr self_type& push_back(self_type d) {
 		if(is_none()) mk_empty_array();
 		return visit([this,d=std::move(d)](auto& v) -> self_type& {

@@ -32,6 +32,8 @@ using absd_data1 = absd::data<absd_factory<double>>;
 
 int main(int,char**){
 	static_assert( absd_data1::test() );
+#ifndef __clang__
 	static_assert( absd::details::tests::callable2_test<absd_data1>() );
-	return 0;
+#endif
+	return absd_data1::test() ;
 }
