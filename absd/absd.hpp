@@ -40,15 +40,12 @@ struct data {
 	using factory_t = factory;
 	using self_type = data<factory>;
 	template<typename functor> using callable2 = details::callable2<self_type, functor>;
-	//using array_t = decltype(details::mk_array_type<self_type >(std::declval<factory>()));
-	//using object_t = decltype(details::mk_object_type<self_type >(std::declval<factory>()));
 	using string_t = typename factory::string_t;
 	using integer_t = decltype(details::mk_integer_type<factory>());
 	using float_point_t = decltype(details::mk_float_point_type<factory>());
 
 	using holder_t = typename factory::template variant<
-		typename factory::empty_t, bool, integer_t, float_point_t,
-		string_t,// array_t*, object_t*,
+		typename factory::empty_t, bool, integer_t, float_point_t, string_t,
 		details::multiobject_tag*
 	>;
 
@@ -236,8 +233,7 @@ public:
 	[[nodiscard]] constexpr bool contains(const auto& val) const {
 		return !is_none() && visit([this,&val](const auto& v){
 			if(is_multiptr_obj(v)) return multi_object->contains(val);
-			if constexpr(requires{v->contains(val);}) return v->contains(val);
-			else if constexpr(requires{v.contains(typename std::decay_t<decltype(v)>::key_type{});}) return v.contains(val);
+			if constexpr(requires{v.contains(typename std::decay_t<decltype(v)>::key_type{});}) return v.contains(val);
 			else if constexpr(requires{v==val;}) return v==val;
 			else {
 				factory::throw_wrong_interface_error("contains");
@@ -257,7 +253,6 @@ public:
 	[[nodiscard]] constexpr auto keys() const {
 		return visit( [this](const auto& v){
 			if(is_multiptr_obj(v)) return multi_object->keys(factory{});
-			if constexpr(requires{ v->keys(factory{}); }) return v->keys(factory{});
 			else {
 				factory::throw_wrong_interface_error("keys");
 				std::unreachable();
@@ -268,13 +263,11 @@ public:
 
 	constexpr self_type& mk_empty_array() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, factory{}.template mk_vec<self_type>())); return *this; }
 	constexpr self_type& mk_empty_object() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, details::mk_map_type<self_type, self_type>(factory{}))); return *this; }
-	//constexpr self_type& mk_empty_array() { return assign(factory::mk_ptr(details::mk_array_type<self_type>(factory{}))); }
-	//constexpr self_type& mk_empty_object() { return assign(factory::mk_ptr(details::mk_object_type<self_type>(factory{}))); }
 	constexpr self_type& push_back(self_type d) {
 		if(is_none()) mk_empty_array();
 		return visit([this,d=std::move(d)](auto& v) -> self_type& {
 			if(is_multiptr_arr(v)) return multi_array->emplace_back(std::move(d));
-			if constexpr(requires{ v->emplace_back(std::move(d)); }) { return v->emplace_back(std::move(d)); }
+			if constexpr(requires{ v.push_back(std::move(d)); }) { return v.push_back(std::move(d)); }
 			else {
 				factory::throw_wrong_interface_error("push_back");
 				std::unreachable();
@@ -286,7 +279,6 @@ public:
 		if(is_none()) mk_empty_object();
 		return visit([this,&key,&value](auto& v) -> self_type& {
 			if(is_multiptr_obj(v)) return multi_object->put(key, value);
-			if constexpr(requires{ v->put(key,value); }) return v->put(key, value);
 			else {
 				factory::throw_wrong_interface_error("put");
 				std::unreachable();
@@ -298,7 +290,6 @@ public:
 	[[nodiscard]] constexpr self_type& operator[](integer_t ind){
 		return visit([this,ind](auto& v)->self_type&{
 			if(is_multiptr_arr(v)) return multi_array->at(ind);
-			if constexpr(requires{ v->emplace_back(self_type{}); v->at(ind); }) { return v->at(ind); }
 			else {
 				factory::throw_wrong_interface_error("operator[ind]");
 				std::unreachable();
@@ -310,7 +301,6 @@ public:
 	[[nodiscard]] constexpr self_type& operator[](const self_type& key){
 		return visit([this,&key](auto&v)->self_type& {
 			if(is_multiptr_obj(v)) return multi_object->at(key);
-			if constexpr(requires{ v->at(key); }) return v->at(key);
 			else {
 				factory::throw_wrong_interface_error("operator[key]");
 				std::unreachable();
@@ -322,7 +312,6 @@ public:
 	[[nodiscard]] constexpr bool cmpget_workaround(const string_t& key) const {
 		return visit([this,&key](auto&v)->bool {
 			if(is_multiptr_obj(v)) return multi_object->contains(self_type{key});
-			if constexpr(requires{ v->cmpget_workaround(key); }) return v->cmpget_workaround(key);
 			else {
 				factory::throw_wrong_interface_error("cmpget_workaround");
 				std::unreachable();
@@ -334,8 +323,6 @@ public:
 	[[nodiscard]] constexpr self_type call(auto&& params) {
 		return visit([this,&params](auto& v) -> self_type {
 			if(is_multiptr_cll(v)) return multi_callable->call(params);
-			if constexpr(requires{ {v->call(params)}->std::same_as<self_type>; }) return v->call(params);
-			else if constexpr(requires{ v->call(params); }) return (v->call(params), self_type{});
 			else {
 				factory::throw_wrong_interface_error("operator()");
 				std::unreachable();
