@@ -172,7 +172,7 @@ private:
 	}
 
 	template<typename interface, typename ret_val_t=self_type>
-	constexpr static auto throw_wrong_interface_error(ret_val_t ret_val = self_type{});
+	constexpr static ret_val_t throw_wrong_interface_error(ret_val_t ret_val = self_type{});
 public:
 
 	constexpr data() =default ;
@@ -239,7 +239,7 @@ public:
 			if(is_multiptr_obj(v)) return multi_object->contains(val);
 			if constexpr(requires{v.contains(typename std::decay_t<decltype(v)>::key_type{});}) return v.contains(val);
 			else if constexpr(requires{v==val;}) return v==val;
-			else throw_wrong_interface_error<details::interfaces::contains>();
+			else return throw_wrong_interface_error<details::interfaces::contains>(false);
 		}, holder);
 	}
 	[[nodiscard]] constexpr auto size() const {
@@ -253,7 +253,7 @@ public:
 	[[nodiscard]] constexpr auto keys() const {
 		return visit( [this](const auto& v){
 			if(is_multiptr_obj(v)) return multi_object->keys(factory{});
-			else throw_wrong_interface_error<details::interfaces::keys>();
+			else return throw_wrong_interface_error<details::interfaces::keys>();
 		}, holder);
 	}
 
@@ -264,28 +264,28 @@ public:
 		return visit([this,d=std::move(d)](auto& v) -> self_type& {
 			if(is_multiptr_arr(v)) return multi_array->emplace_back(std::move(d));
 			if constexpr(requires{ v.push_back(std::move(d)); }) { return v.push_back(std::move(d)); }
-			else throw_wrong_interface_error<details::interfaces::push_back>();
+			else return throw_wrong_interface_error<details::interfaces::push_back,self_type&>(*this);
 		}, holder);
 	}
 	constexpr self_type& put(self_type key, self_type value) {
 		if(is_none()) mk_empty_object();
 		return visit([this,&key,&value](auto& v) -> self_type& {
 			if(is_multiptr_obj(v)) return multi_object->put(key, value);
-			else throw_wrong_interface_error<details::interfaces::put>();
+			else return throw_wrong_interface_error<details::interfaces::put,self_type&>(*this);
 		}, holder);
 	}
 	[[nodiscard]] constexpr const self_type& operator[](integer_t ind) const {return const_cast<self_type&>(*this)[ind];}
 	[[nodiscard]] constexpr self_type& operator[](integer_t ind){
 		return visit([this,ind](auto& v)->self_type&{
 			if(is_multiptr_arr(v)) return multi_array->at(ind);
-			else throw_wrong_interface_error<details::interfaces::at_ind>();
+			else return throw_wrong_interface_error<details::interfaces::at_ind, self_type&>(*this);
 		}, holder);
 	}
 	[[nodiscard]] constexpr const self_type& operator[](const self_type& key) const { return const_cast<self_type&>(*this)[std::move(key)]; }
 	[[nodiscard]] constexpr self_type& operator[](const self_type& key){
 		return visit([this,&key](auto&v)->self_type& {
 			if(is_multiptr_obj(v)) return multi_object->at(key);
-			else throw_wrong_interface_error<details::interfaces::at_key>();
+			else return throw_wrong_interface_error<details::interfaces::at_key, self_type&>(*this);
 		}, holder);
 	}
 
