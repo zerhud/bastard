@@ -73,7 +73,9 @@ struct data {
 		return mk(factory_t{}, std::forward<decltype(v)>(v), std::forward<decltype(args)>(args)...);
 	}
 	constexpr static self_type mk(const factory& f, auto&& _v, auto&&... args) {
-		return mk_ptr_and_assign(f, inner_mk(f, std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...));
+		self_type ret;
+		mk_ptr_and_assign(ret, f, inner_mk(f, std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...));
+		return ret;
 	}
 
 private:
@@ -84,41 +86,11 @@ private:
 	details::type_erasure_array<self_type>* multi_array=nullptr;
 	details::type_erasure_object<factory_t, self_type>* multi_object=nullptr;
 
-	constexpr static auto inner_mk(const factory& f, auto&& _v, auto&&... args) {
-		auto v = mk_ca_val(std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...);
-		using val_type = std::decay_t<decltype(v)>;
+	constexpr static auto inner_mk(const factory& f, auto&& _v, auto&&... args);
+	constexpr static void mk_ptr_and_assign(self_type& ret, const auto& f, auto&& v);
+	constexpr static void mk_map_impl(const auto& f, self_type& result, auto&& key, auto&& val, auto&&... tail);
 
-		constexpr bool is_callable = details::is_specialization_of<val_type, details::callable2>;
-
-		auto arr = details::mk_te_array<self_type>(f, counter_maker < details::origin<val_type> > {std::move(v)});
-		auto arr_obj = details::mk_te_object<self_type>(f, std::move(arr));
-		return details::mk_te_callable<is_callable, self_type>(f, std::move(arr_obj));
-	}
-	constexpr static self_type mk_ptr_and_assign(const auto& f, auto&& v) {
-		self_type ret;
-		mk_ptr_and_assign(ret, f, std::forward<decltype(v)>(v));
-		return ret;
-	}
-	constexpr static void mk_ptr_and_assign(self_type& ret, const auto& f, auto&& v) {
-		auto tmp = f.mk_ptr(std::forward<decltype(v)>(v));
-		auto* ptr = tmp.get();
-		ret.assign(std::move(tmp));
-		if constexpr (requires{ret.multi_callable = ptr;}) ret.multi_callable = ptr;
-		if constexpr (requires{ret.multi_array = ptr;}) ret.multi_array = ptr;
-		if constexpr (requires{ret.multi_object = ptr;}) ret.multi_object = ptr;
-	}
-	constexpr static void mk_map_impl(const auto& f, self_type& result, auto&& key, auto&& val, auto&&... tail) {
-		result.put(self_type{std::forward<decltype(key)>(key)}, self_type{std::forward<decltype(val)>(val)});
-		if constexpr (sizeof...(tail) != 0) mk_map_impl(f, result, std::forward<decltype(tail)>(tail)...);
-	}
-
-	constexpr static auto mk_ca_val(auto&& v, auto&&... args) {
-		constexpr bool np = requires{ v(); };
-		constexpr bool wp = sizeof...(args) > 0;
-		if constexpr (np || wp)
-			return mk_ca(std::forward<decltype(v)>(v), std::forward<decltype(args)>(args)...);
-		else return std::move(v);
-	}
+	constexpr static auto mk_ca_val(auto&& v, auto&&... args);
 
 	constexpr void allocate() noexcept {
 		visit([](auto& v){
@@ -234,60 +206,18 @@ public:
 		return visit( [](const auto& v) { return is_multiptr_cll(v) || requires{ v->call({}); }; }, holder);
 	}
 
-	[[nodiscard]] constexpr bool contains(const auto& val) const {
-		return !is_none() && visit([this,&val](const auto& v){
-			if(is_multiptr_obj(v)) return multi_object->contains(val);
-			if constexpr(requires{v.contains(typename std::decay_t<decltype(v)>::key_type{});}) return v.contains(val);
-			else if constexpr(requires{v==val;}) return v==val;
-			else return throw_wrong_interface_error<details::interfaces::contains>(false);
-		}, holder);
-	}
-	[[nodiscard]] constexpr auto size() const {
-		return visit( [this](const auto& v){
-			if(is_multiptr_obj(v)) return multi_object->size();
-			else if(is_multiptr_arr(v)) return multi_array->size();
-			if constexpr(requires{ v.size(); }) return v.size();
-			else if constexpr(requires{ v->size(); }) return v->size();
-			else return sizeof(v); }, holder);
-	}
-	[[nodiscard]] constexpr auto keys() const {
-		return visit( [this](const auto& v){
-			if(is_multiptr_obj(v)) return multi_object->keys(factory{});
-			else return throw_wrong_interface_error<details::interfaces::keys>();
-		}, holder);
-	}
+	[[nodiscard]] constexpr bool contains(const auto& val) const;
+	[[nodiscard]] constexpr auto size() const;
+	[[nodiscard]] constexpr auto keys() const;
 
 	constexpr self_type& mk_empty_array() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, factory{}.template mk_vec<self_type>())); return *this; }
 	constexpr self_type& mk_empty_object() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, details::mk_map_type<self_type, self_type>(factory{}))); return *this; }
-	constexpr self_type& push_back(self_type d) {
-		if(is_none()) mk_empty_array();
-		return visit([this,d=std::move(d)](auto& v) -> self_type& {
-			if(is_multiptr_arr(v)) return multi_array->emplace_back(std::move(d));
-			if constexpr(requires{ v.push_back(std::move(d)); }) { return v.push_back(std::move(d)); }
-			else return throw_wrong_interface_error<details::interfaces::push_back,self_type&>(*this);
-		}, holder);
-	}
-	constexpr self_type& put(self_type key, self_type value) {
-		if(is_none()) mk_empty_object();
-		return visit([this,&key,&value](auto& v) -> self_type& {
-			if(is_multiptr_obj(v)) return multi_object->put(key, value);
-			else return throw_wrong_interface_error<details::interfaces::put,self_type&>(*this);
-		}, holder);
-	}
+	constexpr self_type& push_back(self_type d);
+	constexpr self_type& put(self_type key, self_type value);
 	[[nodiscard]] constexpr const self_type& operator[](integer_t ind) const {return const_cast<self_type&>(*this)[ind];}
-	[[nodiscard]] constexpr self_type& operator[](integer_t ind){
-		return visit([this,ind](auto& v)->self_type&{
-			if(is_multiptr_arr(v)) return multi_array->at(ind);
-			else return throw_wrong_interface_error<details::interfaces::at_ind, self_type&>(*this);
-		}, holder);
-	}
+	[[nodiscard]] constexpr self_type& operator[](integer_t ind);
 	[[nodiscard]] constexpr const self_type& operator[](const self_type& key) const { return const_cast<self_type&>(*this)[std::move(key)]; }
-	[[nodiscard]] constexpr self_type& operator[](const self_type& key){
-		return visit([this,&key](auto&v)->self_type& {
-			if(is_multiptr_obj(v)) return multi_object->at(key);
-			else return throw_wrong_interface_error<details::interfaces::at_key, self_type&>(*this);
-		}, holder);
-	}
+	[[nodiscard]] constexpr self_type& operator[](const self_type& key);
 
 	[[nodiscard]] constexpr bool cmpget_workaround(const string_t& key) const {
 		return visit([this,&key](auto&v)->bool {
@@ -296,12 +226,7 @@ public:
 		}, holder);
 	}
 
-	[[nodiscard]] constexpr self_type call(auto&& params) {
-		return visit([this,&params](auto& v) -> self_type {
-			if(is_multiptr_cll(v)) return multi_callable->call(params);
-			else throw_wrong_interface_error<details::interfaces::call>();
-		}, holder);
-	}
+	[[nodiscard]] constexpr self_type call(auto&& params);
 
 	[[nodiscard]] friend constexpr bool operator==(const self_type& left, const self_type& right) {
 		return left.holder.index() == right.holder.index() && visit([](const auto& l, const auto& r){
