@@ -211,64 +211,66 @@ struct bastard {
 	constexpr data_type operator()(integer_t v) const { return data_type{ v }; }
 	constexpr data_type operator()(float_point_t v) const { return data_type{ v }; }
 	constexpr data_type operator()(bool v) const { return data_type{ v }; }
-	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_division> ) {
-		if(!op.left) std::unreachable();
-		if(!op.right) std::unreachable();
-		return ops.template int_div<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
-	}
-	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_fp_div> ) {
-		return ops.template fp_div<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
-	}
-	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_multipli> ) {
-		return ops.template mul<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
-	}
-	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_substruct> ) {
-		return ops.template sub<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
-	}
-	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_addition> ) {
-		return ops.template add<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
-	}
-	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_power> ) {
-		return ops.template pow<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
-	}
-	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_not> ) {
-		return ops.template negate<data_type>( visit(*this,*op.expr) );
-	}
-	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_and> ) {
-		return ops.template do_and<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
-	}
-	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_or> ) {
-		return ops.template do_or<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
-	}
-	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, list_expr> ) {
-		data_type ret;
-		ret.mk_empty_array();
-		for(auto&& item:op.list) ret.push_back(visit(*this, *item));
-		return ret;
-	}
-	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, var_expr> ) {
-		//cmpget_workwaroud for constexpr bug with strings
-		auto cur = (*env)[data_type{get<string_t>(*op.path.at(0))}];
-		for(auto pos = ++op.path.begin();pos!=op.path.end();++pos) {
-			auto& item = **pos;
-			if(holds_alternative<string_t>(item)) cur = cur[data_type{get<string_t>(item)}];
-			else {
-				auto key = visit(*this, item);
-				if(key.is_int()) cur = cur[(integer_t)key];
-				else cur = cur[key];
-			}
-		}
-		return cur;
-	}
-	constexpr data_type operator()(const auto& op) requires( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, fnc_call_expr> ) {
-		auto fnc = (*this)(op.name);
-		data_type params;
-		params.mk_empty_object();
-		return fnc.call(std::move(params));
-	}
 	constexpr data_type operator()(const auto& op) const {
-		std::unreachable(); // your specialization doesn't work :(
-		return data_type{ (integer_t)__LINE__ };
+		if constexpr (requires{!op.left;}) if(!op.left) std::unreachable();
+		if constexpr (requires{!op.right;}) if(!op.right) std::unreachable();
+		if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_division> ) {
+			return ops.template int_div<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_fp_div> ) {
+			return ops.template fp_div<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_multipli> ) {
+			return ops.template mul<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_substruct> ) {
+			return ops.template sub<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_addition> ) {
+			return ops.template add<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_power> ) {
+			return ops.template pow<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_not> ) {
+			return ops.template negate<data_type>( visit(*this,*op.expr) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_and> ) {
+			return ops.template do_and<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_or> ) {
+			return ops.template do_or<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, list_expr> ) {
+			data_type ret;
+			ret.mk_empty_array();
+			for(auto&& item:op.list) ret.push_back(visit(*this, *item));
+			return ret;
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, var_expr> ) {
+			//cmpget_workwaroud for constexpr bug with strings
+			auto cur = (*env)[data_type{get<string_t>(*op.path.at(0))}];
+			for(auto pos = ++op.path.begin();pos!=op.path.end();++pos) {
+				auto& item = **pos;
+				if(holds_alternative<string_t>(item)) cur = cur[data_type{get<string_t>(item)}];
+				else {
+					auto key = visit(*this, item);
+					if(key.is_int()) cur = cur[(integer_t)key];
+					else cur = cur[key];
+				}
+			}
+			return cur;
+		}
+		else if constexpr (bastard_details::is_specialization_of<std::decay_t<decltype(op)>, fnc_call_expr>) {
+			auto fnc = (*this)(op.name);
+			data_type params;
+			params.mk_empty_object();
+			return fnc.call(std::move(params));
+		}
+		else {
+			std::unreachable(); // your specialization doesn't work :(
+			return data_type{(integer_t) __LINE__};
+		}
 	}
 
 	template<typename gh, template<auto>class th=gh::template tmpl>
@@ -280,7 +282,6 @@ struct bastard {
 		constexpr auto ident = lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))([](auto& v){return &v.template emplace<string_t>();});
 		auto var_expr_mk_result = [this](auto& v){result_t r; return v.path.emplace_back(df.mk_result(r)).get();};
 		auto var_expr_parser = cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)));
-		auto fnc_call_expr_parser = cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_req(mk_fwd) % ',') >> th<')'>::_char);
 		auto expr_p = rv([this](auto& v){ return df.mk_result(v); }
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"and"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"or">  >> ++gh::rv_rreq(mk_fwd))
@@ -291,9 +292,9 @@ struct bastard {
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"/"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"**"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<unary_op<expr_t>>(th<'!'>::_char++ >> --gh::rv_rreq(mk_fwd))
-			, th<'['>::_char++ >> --((gh::rv_req(mk_fwd)) % ',') >> th<']'>::_char // TODO: initialize list member with data factory?
+			, th<'['>::_char++ >> --(-((gh::rv_req(mk_fwd)) % ',')) >> th<']'>::_char
 			, var_expr_parser
-			, fnc_call_expr_parser
+			, cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_req(mk_fwd) % ',') >> th<')'>::_char)
 			, gh::quoted_string
 			, gh::int_
 			, gh::fp
@@ -374,6 +375,8 @@ struct bastard {
 		static_assert( (bool)test_terms<gh>("true and !true") == false );
 		static_assert( (bool)test_terms<gh>("true or !true") == true );
 
+		static_assert( test_terms<gh>("[]").is_array() );
+		static_assert( test_terms<gh>("[1,2,3]").is_array() );
 		static_assert( (integer_t)(test_terms<gh>("[1,2,3]")[0]) == 1 );
 		static_assert( (bool)(test_terms<gh>("[1,true,3]")[1]) == true );
 		static_assert( (integer_t)(test_terms<gh>("[1,2,3+3]")[2]) == 6 );
