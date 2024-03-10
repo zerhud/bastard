@@ -107,9 +107,10 @@ constexpr data<factory>::self_type& data<factory>::operator[](data::integer_t in
 }
 
 template<typename factory>
-constexpr data<factory>::self_type& data<factory>::operator[](const data::self_type &key) {
+constexpr data<factory>::self_type& data<factory>::operator[](const data::self_type& key) {
 	return visit([this,&key](auto&v)->self_type& {
-		if(is_multiptr_obj(v)) return multi_object->at(key);
+		if(is_multiptr_arr(v)) return multi_array->at((integer_t)key);
+		else if(is_multiptr_obj(v)) return multi_object->at(key);
 		else return throw_wrong_interface_error<details::interfaces::at_key, self_type&>(*this);
 	}, holder);
 }

@@ -64,6 +64,12 @@ constexpr bool data<factory>::test_array_cases() {
 		auto d = self_type::mk(std::move(vec));
 		return (integer_t)d[1]; }() == 3)
 
+	ctrt( []{
+		self_type d;
+		d.push_back(self_type{3});
+		return (integer_t)d[self_type{0}];
+	}() == 3 )
+
 	ctrt_end
 }
 
