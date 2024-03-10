@@ -36,7 +36,7 @@ template<typename factory> constexpr auto mk_float_point_type() {
 
 template<typename factory>
 struct data {
-	static_assert( noexcept( std::declval<factory>().deallocate((int*)nullptr) ), "for safity delete allocated objects the dealocate method must to be noexcept" );
+	static_assert( noexcept( std::declval<factory>().deallocate((int*)nullptr) ), "for safety delete allocated objects the deallocate method must to be noexcept" );
 
 	using factory_t = factory;
 	using self_type = data<factory>;
@@ -158,7 +158,7 @@ public:
 	constexpr explicit data(const typename string_t::value_type* v) : holder(string_t(v)) {}
 
 	constexpr data(const data& v) : holder(v.holder) { allocate(); copy_multi_pointers(v); }
-	//NOTE: bug in gcc workaround: use holder = declytpe(holder){v.holder} ?
+	//NOTE: bug in gcc workaround: use holder = decltype(holder){v.holder} ?
 	constexpr data(data&& v) noexcept : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; copy_multi_pointers(v); }
 	constexpr ~data() { deallocate(); }
 
