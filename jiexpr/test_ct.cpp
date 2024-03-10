@@ -21,8 +21,13 @@ struct absd_factory {
 //	constexpr static auto mk_map(){ return map_t<key,value>{}; }
 	constexpr static auto mk_ptr(auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
 	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
-	constexpr static void throw_wrong_interface_error(auto&& op) {
-		throw std::runtime_error("cannot perform operation "s + op);
+	template<typename interface>
+	constexpr static void throw_wrong_interface_error() {
+		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
+	}
+	template<auto cnt>
+	constexpr static void throw_wrong_parameters_count() {
+		throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
 	}
 };
 
@@ -48,7 +53,7 @@ struct bastard_factory {
 };
 
 using parser = ascip<std::tuple>;
-struct absd_data1 : absd::data<absd_factory<double>, absd_data1> {using base_data_type::operator=;};
+using absd_data1 = absd::data<absd_factory<double>>;
 
 using bs1 = bastard<absd_data1, bastard_details::expr_operators_simple, bastard_factory>;
 
