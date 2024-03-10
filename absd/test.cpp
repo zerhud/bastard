@@ -20,14 +20,12 @@ struct absd_factory {
 //	constexpr static auto mk_map(){ return map_t<key,value>{}; }
 	constexpr static auto mk_ptr(auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
 	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
-	constexpr static void throw_wrong_interface_error(auto&& op) {
-		throw std::runtime_error("cannot perform operation "s + op);
-	}
 	template<typename interface>
-	constexpr static void throw_wrong_interface_error2() {
+	constexpr static void throw_wrong_interface_error() {
 		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
 	}
-	constexpr static void throw_wrong_parameters_count(auto cnt) {
+	template<auto cnt>
+	constexpr static void throw_wrong_parameters_count() {
 		throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
 	}
 };

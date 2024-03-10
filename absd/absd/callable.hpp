@@ -74,7 +74,7 @@ constexpr auto callable2<data_type, functor>::call_with_params(auto&&... params)
 		auto& desk = params_info[(integer_t) sizeof...(params)];
 		if(desk.size() == 2) return call_with_params<initial_count>(std::forward<decltype(params)>(params)..., desk[data_type{param_sign_value}]);
 		else {
-			data_type::factory_t::throw_wrong_parameters_count(initial_count);
+			data_type::factory_t::template throw_wrong_parameters_count<initial_count>();
 			return call_with_params<initial_count>(std::forward<decltype(params)>(params)..., data_type{});
 		}
 	}
