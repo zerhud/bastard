@@ -11,7 +11,7 @@ rule clang
   depfile = $builddir/$out.d
 
 build absd_test: gcc absd/test.cpp
-#build absd_test_clang: clang absd/test.cpp
+build absd_test_clang: clang absd/test.cpp
 
 build jiexpr_ct_test: gcc jiexpr/test_ct.cpp
   iflags = -Iabsd
