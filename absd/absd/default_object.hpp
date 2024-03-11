@@ -108,8 +108,8 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 
 			constexpr decltype(sizeof(data_type)) size() const override { return this->orig_val().size(); }
 			constexpr bool is_obj() const override { return true; }
-			constexpr bool contains(const data_type &key) const override { return this->orig_val().contains(key); }
-			constexpr data_type& at(const data_type &ind) override { return this->orig_val().at(ind); }
+			constexpr bool contains(const data_type& key) const override { return this->orig_val().contains(key); }
+			constexpr data_type& at(const data_type& ind) override { return this->orig_val().at(ind); }
 			constexpr data_type& put(data_type key, data_type value) override {
 				struct kv {
 					data_type k, v;

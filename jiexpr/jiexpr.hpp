@@ -11,6 +11,8 @@
 #include <utility>
 #include <concepts>
 
+#include "jiexpr/details.hpp"
+
 namespace bastard_details {
 
 template<typename... types> struct overloaded : types... { using types::operator()... ;} ;
@@ -148,7 +150,6 @@ struct bastard {
 	template<typename expr_t> struct op_addition : binary_op<expr_t> {};
 	template<typename expr_t> struct op_power    : binary_op<expr_t> {};
 
-	template<typename expr_t> struct op_eq       : binary_op<expr_t> {};
 	template<typename expr_t> struct op_neq      : binary_op<expr_t> {};
 	template<typename expr_t> struct op_gt       : binary_op<expr_t> {};
 	template<typename expr_t> struct op_lt       : binary_op<expr_t> {};
@@ -172,6 +173,14 @@ struct bastard {
 	template<typename expr_t>
 	struct var_expr {
 		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) path;
+	};
+
+	struct op_eq_tag{};
+	template<typename expr_t> struct op_eq : op_eq_tag {
+		constexpr op_eq() {}
+		constexpr op_eq(var_expr<expr_t> name, expr_t value) : name(std::move(name)), value(std::move(value)) {}
+		var_expr<expr_t> name;
+		expr_t value;
 	};
 
 	template<typename expr_t>
@@ -198,6 +207,7 @@ struct bastard {
 	     , list_expr   < fa<expr_type<fa>> >
 	     , var_expr    < fa<expr_type<fa>> >
 	     , fnc_call_expr < fa<expr_type<fa>> >
+	     , op_eq       < fa<expr_type<fa>> >
 	> {};
 
 	data_type* env;
@@ -241,6 +251,14 @@ struct bastard {
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_or> ) {
 			return ops.template do_or<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_eq> ) {
+			auto cur = *env;
+			auto& left = op.name.path;
+			for(auto i=0;i<left.size()-1;++i) cur = cur[data_type{get<string_t>(*left[i])}];
+			data_type key{get<string_t>(*left[left.size()-1])};
+			cur.put(key, visit(*this, *op.value));
+			return cur[key];
+		}
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, list_expr> ) {
 			data_type ret;
 			ret.mk_empty_array();
@@ -265,6 +283,14 @@ struct bastard {
 			auto fnc = (*this)(op.name);
 			data_type params;
 			params.mk_empty_object();
+			typename data_type::integer_t ind=0;
+			for(auto& param:op.params) {
+				if(!jiexpr_details::variant_holds<op_eq_tag>(*param)) params.put(data_type{ind++}, visit(*this, *param));
+				else {
+					auto& [name,val] = jiexpr_details::get_by_tag<op_eq_tag>(*param);
+					params.put(data_type{get<string_t>(*name.path.at(0))}, visit(*this, *val));
+				}
+			}
 			return fnc.call(std::move(params));
 		}
 		else {
@@ -294,7 +320,8 @@ struct bastard {
 			, cast<unary_op<expr_t>>(th<'!'>::_char++ >> --gh::rv_rreq(mk_fwd))
 			, th<'['>::_char++ >> --(-((gh::rv_req(mk_fwd)) % ',')) >> th<']'>::_char
 			, var_expr_parser
-			, cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_req(mk_fwd) % ',') >> th<')'>::_char)
+			, cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_rreq(mk_fwd) % ',') >> th<')'>::_char)
+			, cast<op_eq<expr_t>>(var_expr_parser++ >> th<'='>::_char >> gh::rv_rreq(mk_fwd))
 			, gh::quoted_string
 			, gh::int_
 			, gh::fp
@@ -328,7 +355,12 @@ struct bastard {
 		env.put(data_type{string_t{"fnc1"}}, data_type::mk([]{return data_type{1};}));
 		//TODO: uncomment fnc2 and remove fnc2 with callable
 		//env.put(data_type{string_t{"fnc2"}}, data_type::mk([](){return data_type{2};}));
-		env.put(data_type{string_t{"fnc2"}}, data_type::mk([]{return data_type{2};}));
+		env.put(data_type{string_t{"fnc2"}}, data_type::mk([](int i){return data_type{i+1};}, data_type::mk_param("i")));
+		env.put(data_type{string_t{"fnc3"}}, data_type::mk(
+				[](int a, int b){return data_type{a-b};},
+				data_type::mk_param("a", data_type{7}),
+				data_type::mk_param("b", data_type{5})
+				));
 		data_type obj, arr, obj_with_a;
 		obj_with_a.put(data_type{string_t{"a"}}, data_type{5});
 		obj.put(data_type{string_t{"b"}}, data_type{3});
@@ -381,6 +413,14 @@ struct bastard {
 		static_assert( (bool)(test_terms<gh>("[1,true,3]")[1]) == true );
 		static_assert( (integer_t)(test_terms<gh>("[1,2,3+3]")[2]) == 6 );
 
+		static_assert( []{
+			data_type env;
+			env.mk_empty_object(); // empty env will just copy empty value
+			test_terms<gh>("test = 1", env);
+			test_terms<gh>("a = 2", env);
+			return (integer_t)env[data_type{"test"}] + (integer_t)env[data_type{"a"}];
+		}() == 3 );
+
 		return true;
 	}
 
@@ -394,7 +434,10 @@ struct bastard {
 		static_assert( (integer_t)test_terms_abc<gh>("obj.arr[3-2].a") == 5 );
 
 		static_assert( (integer_t)test_terms_abc<gh>("fnc1()") == 1 );
-		static_assert( (integer_t)test_terms_abc<gh>("fnc2()") == 2 );
+		static_assert( (integer_t)test_terms_abc<gh>("fnc2(1)") == 2 );
+		static_assert( (integer_t)test_terms_abc<gh>("fnc3()") == 2 );
+		static_assert( (integer_t)test_terms_abc<gh>("fnc3(a=10)") == 5 );
+		static_assert( (integer_t)test_terms_abc<gh>("fnc3(b=3, a=10)") == 7 );
 		static_assert( (integer_t)test_terms_abc<gh>("obj.arr[4-(8*1-6)]()") == 4 );
 
 		return true;
