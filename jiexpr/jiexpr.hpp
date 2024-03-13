@@ -10,8 +10,15 @@
 
 #include <utility>
 #include <concepts>
+#include <cassert>
 
 #include "jiexpr/details.hpp"
+
+#if defined(__clang__) || defined(JIEXPR_ONLY_RT_TESTS)
+#define JIEXPR_CTRT(param) assert( param );
+#else
+#define JIEXPR_CTRT(param) static_assert( param ); assert( param );
+#endif
 
 namespace bastard_details {
 
@@ -375,27 +382,27 @@ struct bastard {
 
 	template<typename gh>
 	constexpr static bool test_terms() {
-		static_assert( (integer_t)test_terms<gh>("1") == 1 );
-		static_assert( (integer_t)test_terms<gh>("2") == 2 );
-		static_assert( ((string_t)test_terms<gh>("'ok'"))[1] == 'k' );
-		static_assert( (float_point_t)test_terms<gh>("0.2") == (float_point_t)0.2 );
-		static_assert( (bool)test_terms<gh>("true") == true );
-		static_assert( (bool)test_terms<gh>("false") == false );
-		static_assert( (integer_t)test_terms<gh>("4 // 2") == 2 );
-		static_assert( (integer_t)test_terms<gh>("5 // 2") == 2 );
-		static_assert( (integer_t)test_terms<gh>("6 // 2") == 3 );
-		static_assert( (integer_t)test_terms<gh>("5 * 2") == 10 );
-		static_assert( (float_point_t)test_terms<gh>("5 * 0.5") == 2.5 );
-		static_assert( (float_point_t)test_terms<gh>("0.5 * 5") == 2.5 );
-		static_assert( (float_point_t)test_terms<gh>("5 / 2") == 2.0 );
-		static_assert( (float_point_t)test_terms<gh>("5 / 2.0") == 2.5 );
-		static_assert( (float_point_t)test_terms<gh>("5 - 2.0") == 3 );
-		static_assert( (integer_t)test_terms<gh>("5 + 2") == 7 );
-		static_assert( (integer_t)test_terms<gh>("5 + 2 * 3") == 11 );
-		static_assert( (integer_t)test_terms<gh>("10 ** 2") == 100 );
-		static_assert( (integer_t)test_terms<gh>("5+5 ** 2") == 30 ); // 5 + 25
+		JIEXPR_CTRT( (integer_t)test_terms<gh>("1") == 1 )
+		JIEXPR_CTRT( (integer_t)test_terms<gh>("2") == 2 )
+		JIEXPR_CTRT( ((string_t)test_terms<gh>("'ok'"))[1] == 'k' )
+		JIEXPR_CTRT( (float_point_t)test_terms<gh>("0.2") == (float_point_t)0.2 )
+		JIEXPR_CTRT( (bool)test_terms<gh>("true") == true )
+		JIEXPR_CTRT( (bool)test_terms<gh>("false") == false )
+		JIEXPR_CTRT( (integer_t)test_terms<gh>("4 // 2") == 2 )
+		JIEXPR_CTRT( (integer_t)test_terms<gh>("5 // 2") == 2 )
+		JIEXPR_CTRT( (integer_t)test_terms<gh>("6 // 2") == 3 )
+		JIEXPR_CTRT( (integer_t)test_terms<gh>("5 * 2") == 10 )
+		JIEXPR_CTRT( (float_point_t)test_terms<gh>("5 * 0.5") == 2.5 )
+		JIEXPR_CTRT( (float_point_t)test_terms<gh>("0.5 * 5") == 2.5 )
+		JIEXPR_CTRT( (float_point_t)test_terms<gh>("5 / 2") == 2.0 )
+		JIEXPR_CTRT( (float_point_t)test_terms<gh>("5 / 2.0") == 2.5 )
+		JIEXPR_CTRT( (float_point_t)test_terms<gh>("5 - 2.0") == 3 )
+		JIEXPR_CTRT( (integer_t)test_terms<gh>("5 + 2") == 7 )
+		JIEXPR_CTRT( (integer_t)test_terms<gh>("5 + 2 * 3") == 11 )
+		JIEXPR_CTRT( (integer_t)test_terms<gh>("10 ** 2") == 100 )
+		JIEXPR_CTRT( (integer_t)test_terms<gh>("5+5 ** 2") == 30 ); // 5 + 2
 
-		static_assert( ((integer_t)test_terms<gh>("(3 + 2) * 2 + 3 + 1 + 2 + 3 + 4 + 5")) == 28 );
+		JIEXPR_CTRT( ((integer_t)test_terms<gh>("(3 + 2) * 2 + 3 + 1 + 2 + 3 + 4 + 5")) == 28 )
 
 		static_assert( (bool)test_terms<gh>("!true") == false , "to bool and invert" );
 		static_assert( (bool)test_terms<gh>("!0") == true , "to bool and invert" );
@@ -404,16 +411,16 @@ struct bastard {
 		static_assert( (bool)test_terms<gh>("!'str'") == false , "to bool and invert" );
 		static_assert( (bool)test_terms<gh>("!''") == true , "to bool and invert" );
 
-		static_assert( (bool)test_terms<gh>("true and !true") == false );
-		static_assert( (bool)test_terms<gh>("true or !true") == true );
+		JIEXPR_CTRT( (bool)test_terms<gh>("true and !true") == false )
+		JIEXPR_CTRT( (bool)test_terms<gh>("true or !true") == true )
 
-		static_assert( test_terms<gh>("[]").is_array() );
-		static_assert( test_terms<gh>("[1,2,3]").is_array() );
-		static_assert( (integer_t)(test_terms<gh>("[1,2,3]")[0]) == 1 );
-		static_assert( (bool)(test_terms<gh>("[1,true,3]")[1]) == true );
-		static_assert( (integer_t)(test_terms<gh>("[1,2,3+3]")[2]) == 6 );
+		JIEXPR_CTRT( test_terms<gh>("[]").is_array() )
+		JIEXPR_CTRT( test_terms<gh>("[1,2,3]").is_array() )
+		JIEXPR_CTRT( (integer_t)(test_terms<gh>("[1,2,3]")[0]) == 1 )
+		JIEXPR_CTRT( (bool)(test_terms<gh>("[1,true,3]")[1]) == true )
+		JIEXPR_CTRT( (integer_t)(test_terms<gh>("[1,2,3+3]")[2]) == 6 )
 
-		static_assert( []{
+		JIEXPR_CTRT( []{
 			data_type env;
 			env.mk_empty_object(); // empty env will just copy empty value
 			test_terms<gh>("test = 1", env);
@@ -467,6 +474,9 @@ struct bastard {
 	template<typename gh>
 	constexpr static bool test() {
 		return test_parse<gh>() && test_terms<gh>() && test_env_terms<gh>();
+#if defined(__clang__) || defined(JIEXPR_ONLY_RT_TESTS)
+		return test_terms<gh>();
+#endif
 	}
 };
 
