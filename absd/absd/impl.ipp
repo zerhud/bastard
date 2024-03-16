@@ -119,7 +119,7 @@ template<typename factory>
 constexpr data<factory>::self_type data<factory>::call(auto &&params) {
 	return visit([this,&params](auto& v) -> self_type {
 		if(is_multiptr_cll(v)) return multi_callable->call(params);
-		else throw_wrong_interface_error<details::interfaces::call>();
+		else return throw_wrong_interface_error<details::interfaces::call>();
 	}, holder);
 }
 
