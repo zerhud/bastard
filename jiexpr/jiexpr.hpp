@@ -260,10 +260,11 @@ struct bastard {
 		}
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_eq> ) {
 			auto cur = *env;
-			auto& left = op.name.path;
+			auto& [name,value] = op;
+			auto& left = name.path;
 			for(auto i=0;i<left.size()-1;++i) cur = cur[data_type{get<string_t>(*left[i])}];
 			data_type key{get<string_t>(*left[left.size()-1])};
-			cur.put(key, visit(*this, *op.value));
+			cur.put(key, visit(*this, *value));
 			return cur[key];
 		}
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, list_expr> ) {
@@ -327,7 +328,7 @@ struct bastard {
 			, th<'['>::_char++ >> --(-((gh::rv_req(mk_fwd)) % ',')) >> th<']'>::_char
 			, var_expr_parser
 			, cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_rreq(mk_fwd) % ',') >> th<')'>::_char)
-			, cast<op_eq<expr_t>>(var_expr_parser++ >> th<'='>::_char >> gh::rv_rreq(mk_fwd))
+			, cast<op_eq<expr_t>>(var_expr_parser >> th<'='>::_char >> ++gh::rv_req(mk_fwd))
 			, gh::quoted_string
 			, gh::int_
 			, gh::fp
@@ -418,17 +419,16 @@ struct bastard {
 		JIEXPR_CTRT( (bool)(test_terms<gh>("[1,true,3]")[1]) == true )
 		JIEXPR_CTRT( (integer_t)(test_terms<gh>("[1,2,3+3]")[2]) == 6 )
 
-		/*
 		JIEXPR_CTRT( []{
 			data_type env;
-			env.mk_empty_object(); // empty env will just copy empty value
+			// empty env will just copy an empty value,
+			// an object as env will copy reference to object
+			env.mk_empty_object();
 			test_terms<gh>("test = 1", env);
 			test_terms<gh>("a = 2", env);
-			test_terms<gh>("b = 2+4", env);
-			//return (integer_t)env[data_type{"test"}] + (integer_t)env[data_type{"a"}] + (integer_t)env[data_type{"b"}];
-			return (integer_t)env[data_type{"b"}];
+			test_terms<gh>("b = 1+3", env);
+			return (integer_t)env[data_type{"test"}] + (integer_t)env[data_type{"a"}] + (integer_t)env[data_type{"b"}];
 		}() == 7 );
-		*/
 
 		return true;
 	}
