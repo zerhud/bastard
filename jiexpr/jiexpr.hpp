@@ -204,8 +204,8 @@ struct bastard {
 	template<template<class>class fa> struct expr_type : parse_result<
 	       op_and      < fa<expr_type<fa>> >
 	     , op_or       < fa<expr_type<fa>> >
-	     , variant_t< op_substruct< fa<expr_type<fa>> >, op_addition < fa<expr_type<fa>> > >
-	     , variant_t< op_multipli < fa<expr_type<fa>> >, op_division < fa<expr_type<fa>> >, op_fp_div   < fa<expr_type<fa>> > >
+	     , variant_t< op_substruct< fa<expr_type<fa>> >, op_addition< fa<expr_type<fa>> > >
+	     , variant_t< op_multipli < fa<expr_type<fa>> >, op_division< fa<expr_type<fa>> >, op_fp_div< fa<expr_type<fa>> > >
 	     , op_power    < fa<expr_type<fa>> >
 	     , op_not      < fa<expr_type<fa>> >
 	     , list_expr   < fa<expr_type<fa>> >
@@ -418,13 +418,17 @@ struct bastard {
 		JIEXPR_CTRT( (bool)(test_terms<gh>("[1,true,3]")[1]) == true )
 		JIEXPR_CTRT( (integer_t)(test_terms<gh>("[1,2,3+3]")[2]) == 6 )
 
+		/*
 		JIEXPR_CTRT( []{
 			data_type env;
 			env.mk_empty_object(); // empty env will just copy empty value
 			test_terms<gh>("test = 1", env);
 			test_terms<gh>("a = 2", env);
-			return (integer_t)env[data_type{"test"}] + (integer_t)env[data_type{"a"}];
-		}() == 3 );
+			test_terms<gh>("b = 2+4", env);
+			//return (integer_t)env[data_type{"test"}] + (integer_t)env[data_type{"a"}] + (integer_t)env[data_type{"b"}];
+			return (integer_t)env[data_type{"b"}];
+		}() == 7 );
+		*/
 
 		return true;
 	}

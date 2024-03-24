@@ -1,7 +1,8 @@
 #include "absd.hpp"
 #include "jiexpr.hpp"
 
-#include <ascip.hpp>
+//#include <ascip.hpp>
+#include "../ascip_all.hpp"
 #include <vector>
 #include <memory>
 #include <variant>
