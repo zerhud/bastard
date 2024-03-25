@@ -111,6 +111,30 @@ struct expr_operators_simple {
 	constexpr static auto do_or(auto&& left, auto&& right) {
 		return data_type{ to_bool<data_type>(left) || to_bool<data_type>(right) };
 	}
+	template<typename data_type>
+	constexpr static auto do_ceq(data_type&& left, data_type&& right) {
+		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l==r;}{return l==r;});
+	}
+	template<typename data_type>
+	constexpr static auto do_neq(data_type&& left, data_type&& right) {
+		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l!=r;}{return l!=r;});
+	}
+	template<typename data_type>
+	constexpr static auto do_lt(data_type&& left, data_type&& right) {
+		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l<r;}{return l<r;});
+	}
+	template<typename data_type>
+	constexpr static auto do_gt(data_type&& left, data_type&& right) {
+		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l>r;}{return l>r;});
+	}
+	template<typename data_type>
+	constexpr static auto do_let(data_type&& left, data_type&& right) {
+		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l<=r;}{return l<=r;});
+	}
+	template<typename data_type>
+	constexpr static auto do_get(data_type&& left, data_type&& right) {
+		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l>=r;}{return l>=r;});
+	}
 
 	template<typename data_type>
 	constexpr static auto pow(auto&& l, auto&& r) {
@@ -157,6 +181,7 @@ struct bastard {
 	template<typename expr_t> struct op_addition : binary_op<expr_t> {};
 	template<typename expr_t> struct op_power    : binary_op<expr_t> {};
 
+	template<typename expr_t> struct op_ceq      : binary_op<expr_t> {};
 	template<typename expr_t> struct op_neq      : binary_op<expr_t> {};
 	template<typename expr_t> struct op_gt       : binary_op<expr_t> {};
 	template<typename expr_t> struct op_lt       : binary_op<expr_t> {};
@@ -204,6 +229,10 @@ struct bastard {
 	template<template<class>class fa> struct expr_type : parse_result<
 	       op_and      < fa<expr_type<fa>> >
 	     , op_or       < fa<expr_type<fa>> >
+	     , variant_t
+	        < op_ceq<fa<expr_type<fa>>>, op_neq<fa<expr_type<fa>>>, op_lt<fa<expr_type<fa>>>
+	        , op_gt<fa<expr_type<fa>>>, op_get<fa<expr_type<fa>>>, op_let<fa<expr_type<fa>>>
+	        >
 	     , variant_t< op_substruct< fa<expr_type<fa>> >, op_addition< fa<expr_type<fa>> > >
 	     , variant_t< op_multipli < fa<expr_type<fa>> >, op_division< fa<expr_type<fa>> >, op_fp_div< fa<expr_type<fa>> > >
 	     , op_power    < fa<expr_type<fa>> >
@@ -257,6 +286,24 @@ struct bastard {
 		}
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_or> ) {
 			return ops.template do_or<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_ceq> ) {
+			return ops.template do_ceq<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_neq> ) {
+			return ops.template do_neq<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_lt> ) {
+			return ops.template do_lt<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_gt> ) {
+			return ops.template do_gt<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_let> ) {
+			return ops.template do_let<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
+		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_get> ) {
+			return ops.template do_get<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_eq> ) {
 			auto cur = *env;
@@ -319,6 +366,12 @@ struct bastard {
 		auto expr_p = rv([this](auto& v){ return df.mk_result(v); }
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"and"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"or">  >> ++gh::rv_rreq(mk_fwd))
+			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"=="> >> ++gh::rv_rreq(mk_fwd))
+			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"!="> >> ++gh::rv_rreq(mk_fwd))
+			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"<"> >> ++gh::rv_rreq(mk_fwd))
+			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<">"> >> ++gh::rv_rreq(mk_fwd))
+			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<">="> >> ++gh::rv_rreq(mk_fwd))
+			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"<="> >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> th<'-'>::_char >> ++gh::rv_rreq(mk_fwd)) | cast<binary_op<expr_t>>(gh::rv_lreq >> th<'+'>::_char >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> th<'*'>::_char >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"//"> >> ++gh::rv_rreq(mk_fwd))
@@ -412,6 +465,13 @@ struct bastard {
 
 		JIEXPR_CTRT( (bool)test_terms<gh>("true and !true") == false )
 		JIEXPR_CTRT( (bool)test_terms<gh>("true or !true") == true )
+		JIEXPR_CTRT( (bool)test_terms<gh>("1 != 2") == true )
+		JIEXPR_CTRT( (bool)test_terms<gh>("1 < 2") == true )
+		JIEXPR_CTRT( (bool)test_terms<gh>("1 > 2") == false )
+		JIEXPR_CTRT( (bool)test_terms<gh>("3 > 2") == true )
+		JIEXPR_CTRT( (bool)test_terms<gh>("2 >= 2") == true )
+		JIEXPR_CTRT( (bool)test_terms<gh>("3 >= 2") == true )
+		JIEXPR_CTRT( (bool)test_terms<gh>("1 <= 2") == true )
 
 		JIEXPR_CTRT( test_terms<gh>("[]").is_array() )
 		JIEXPR_CTRT( test_terms<gh>("[1,2,3]").is_array() )
@@ -424,10 +484,10 @@ struct bastard {
 			// empty env will just copy an empty value,
 			// an object as env will copy reference to object
 			env.mk_empty_object();
-			test_terms<gh>("test = 1", env);
+			test_terms<gh>("test = 1==1", env);
 			test_terms<gh>("a = 2", env);
 			test_terms<gh>("b = 1+3", env);
-			return (integer_t)env[data_type{"test"}] + (integer_t)env[data_type{"a"}] + (integer_t)env[data_type{"b"}];
+			return (bool)env[data_type{"test"}] + (integer_t)env[data_type{"a"}] + (integer_t)env[data_type{"b"}];
 		}() == 7 );
 
 		return true;
