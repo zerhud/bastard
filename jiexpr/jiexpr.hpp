@@ -135,6 +135,10 @@ struct expr_operators_simple {
 	constexpr static auto do_get(data_type&& left, data_type&& right) {
 		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l>=r;}{return l>=r;});
 	}
+	template<typename data_type>
+	constexpr static auto do_in(data_type&& left, data_type&& right) {
+		return right.contains(std::forward<decltype(left)>(left));
+	}
 
 	template<typename data_type>
 	constexpr static auto pow(auto&& l, auto&& r) {
@@ -187,6 +191,7 @@ struct bastard {
 	template<typename expr_t> struct op_lt       : binary_op<expr_t> {};
 	template<typename expr_t> struct op_get      : binary_op<expr_t> {};
 	template<typename expr_t> struct op_let      : binary_op<expr_t> {};
+	template<typename expr_t> struct op_in      : binary_op<expr_t> {};
 
 	template<typename expr_t> struct op_and      : binary_op<expr_t> {};
 	template<typename expr_t> struct op_or       : binary_op<expr_t> {};
@@ -231,7 +236,7 @@ struct bastard {
 	     , op_or       < fa<expr_type<fa>> >
 	     , variant_t
 	        < op_ceq<fa<expr_type<fa>>>, op_neq<fa<expr_type<fa>>>, op_lt<fa<expr_type<fa>>>
-	        , op_gt<fa<expr_type<fa>>>, op_get<fa<expr_type<fa>>>, op_let<fa<expr_type<fa>>>
+	        , op_gt<fa<expr_type<fa>>>, op_get<fa<expr_type<fa>>>, op_let<fa<expr_type<fa>>>, op_in<fa<expr_type<fa>>>
 	        >
 	     , variant_t< op_substruct< fa<expr_type<fa>> >, op_addition< fa<expr_type<fa>> > >
 	     , variant_t< op_multipli < fa<expr_type<fa>> >, op_division< fa<expr_type<fa>> >, op_fp_div< fa<expr_type<fa>> > >
@@ -305,6 +310,9 @@ struct bastard {
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_get> ) {
 			return ops.template do_get<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_in> ) {
+			return data_type{ ops.template do_in<data_type>( visit(*this,*op.left), visit(*this,*op.right) ) };
+		}
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_eq> ) {
 			auto cur = *env;
 			auto& [name,value] = op;
@@ -354,6 +362,13 @@ struct bastard {
 		}
 	}
 
+	/*
+	 * - is: performs a test
+	 * - | : applies a filter
+	 * - ~ : converts to string and concatinates parameters
+	 * - . and [] operators after literal
+	 * - if operator
+	 */
 	template<typename gh, template<auto>class th=gh::template tmpl>
 	constexpr auto parse_str(auto&& src) const {
 		using result_t = expr_type<ast_forwarder>;
@@ -372,6 +387,7 @@ struct bastard {
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<">"> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<">="> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"<="> >> ++gh::rv_rreq(mk_fwd))
+			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"in"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> th<'-'>::_char >> ++gh::rv_rreq(mk_fwd)) | cast<binary_op<expr_t>>(gh::rv_lreq >> th<'+'>::_char >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> th<'*'>::_char >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"//"> >> ++gh::rv_rreq(mk_fwd))
@@ -472,6 +488,9 @@ struct bastard {
 		JIEXPR_CTRT( (bool)test_terms<gh>("2 >= 2") == true )
 		JIEXPR_CTRT( (bool)test_terms<gh>("3 >= 2") == true )
 		JIEXPR_CTRT( (bool)test_terms<gh>("1 <= 2") == true )
+		JIEXPR_CTRT( (bool)test_terms<gh>("'a' in 'bca'") == true )
+		JIEXPR_CTRT( (bool)test_terms<gh>("'a' in 'bcd'") == false )
+		JIEXPR_CTRT( (bool)test_terms<gh>("1 in [3,1,2]") == true )
 
 		JIEXPR_CTRT( test_terms<gh>("[]").is_array() )
 		JIEXPR_CTRT( test_terms<gh>("[1,2,3]").is_array() )

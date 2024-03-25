@@ -34,6 +34,7 @@ struct type_erasure_array {
 	constexpr virtual data& emplace_back(data d) =0 ;
 	constexpr virtual data& at(typename data::integer_t ind) =0 ;
 	constexpr virtual decltype(sizeof(data)) size() const =0 ;
+	constexpr virtual bool contains(const data& val) const =0 ;
 };
 template<typename data_type>
 constexpr auto mk_te_array(const auto& f, auto&& src) {
@@ -51,6 +52,14 @@ constexpr auto mk_te_array(const auto& f, auto&& src) {
 			constexpr data_type& emplace_back(data_type d) override { return this->orig_val().emplace_back(std::move(d)); }
 			constexpr data_type& at(typename data_type::integer_t ind) override { return this->orig_val().at(ind); }
 			constexpr decltype(sizeof(data_type)) size() const override { return this->orig_val().size(); }
+			constexpr bool contains(const data_type& val) const override {
+				if constexpr (requires{this->orig_val().contains(val);})
+					return this->orig_val().contains(val);
+				else {
+					for(auto& i:this->orig_val()) if(i==val) return true;
+					return false;
+				}
+			}
 		};
 		return te_ar2{std::move(src)};
 	}

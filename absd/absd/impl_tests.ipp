@@ -45,6 +45,8 @@ constexpr bool data<factory>::test_simple_cases() {
 	ctrt( self_type{3} == self_type{3} )
 	ctrt( (bool)exec_operation(self_type{2}, self_type{3}, [](auto& l, auto& r)requires requires{l<r;}{ return l<r;}) == true )
 	ctrt( (bool)exec_operation(self_type{3}, self_type{3}, [](auto& l, auto& r)requires requires{l<r;}{ return l<r;}) == false )
+	ctrt( self_type{string_t{"abcd"}}.contains(self_type{string_t{"d"}}) )
+	ctrt( !self_type{string_t{"abcd"}}.contains(self_type{string_t{"e"}}) )
 	ctrt_end
 }
 
@@ -71,6 +73,13 @@ constexpr bool data<factory>::test_array_cases() {
 		d.push_back(self_type{3});
 		return (integer_t)d[self_type{0}];
 	}() == 3 )
+
+	ctrt( []{
+		self_type d;
+		d.push_back(self_type{2});
+		d.push_back(self_type{3});
+		return d.contains(self_type{3});
+	}() == true );
 
 	ctrt_end
 }

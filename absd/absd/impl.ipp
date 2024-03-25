@@ -55,8 +55,16 @@ template<typename factory>
 constexpr bool data<factory>::contains(const auto& val) const {
 	return !is_none() && visit([this,&val](const auto& v){
 		if(is_multiptr_obj(v)) return multi_object->contains(val);
+		if(is_multiptr_arr(v)) return multi_array->contains(val);
 		if constexpr(requires{v.contains(typename std::decay_t<decltype(v)>::key_type{});}) return v.contains(val);
+		if constexpr(requires{v.contains(val);}) return v.contains(val);
 		else if constexpr(requires{v==val;}) return v==val;
+		else if constexpr(requires{visit([](auto&&){}, val.holder);}) {
+			return visit([this,&v](const auto& right){
+				if constexpr (requires{v.contains(right);}) return v.contains(right);
+				else return throw_wrong_interface_error<details::interfaces::contains>(false);
+			}, val.holder);
+		}
 		else return throw_wrong_interface_error<details::interfaces::contains>(false);
 	}, holder);
 }
