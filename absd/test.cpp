@@ -21,11 +21,11 @@ struct absd_factory {
 	constexpr static auto mk_ptr(auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
 	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
 	template<typename interface>
-	constexpr static void throw_wrong_interface_error() {
+	[[noreturn]] constexpr static void throw_wrong_interface_error() {
 		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
 	}
 	template<auto cnt>
-	constexpr static void throw_wrong_parameters_count() {
+	[[noreturn]] constexpr static void throw_wrong_parameters_count() {
 		throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
 	}
 };

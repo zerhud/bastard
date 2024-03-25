@@ -228,6 +228,16 @@ public:
 
 	[[nodiscard]] constexpr self_type call(auto&& params);
 
+	[[nodiscard]] friend constexpr auto exec_operation(const self_type& left, const self_type& right, auto&& op) {
+		return visit([&op](const auto& l, const auto& r) -> self_type {
+			if constexpr (requires{op(l,r);}) return self_type{op(l,r)};
+			else {
+				throw_wrong_interface_error<details::interfaces::exec_op>();
+				return self_type{};
+			}
+		}, left.holder, right.holder);
+	}
+
 	[[nodiscard]] friend constexpr bool operator==(const self_type& left, const self_type& right) {
 		return left.holder.index() == right.holder.index() && visit([](const auto& l, const auto& r){
 			if constexpr(requires{ l==r; }) return l==r;

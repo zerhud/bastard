@@ -42,7 +42,9 @@ constexpr bool data<factory>::test_simple_cases() {
 	ctrt_gcc_workaround( []{ self_type d; d="hel"; auto ret = ((string_t)d)[2]; return ret; }() == 'l' )
 	ctrt( self_type{ integer_t{} }.size() == sizeof(integer_t) )
 	ctrt( self_type{ string_t{"hello"} }.size() == 5 )
-	ctrt( self_type{3} == self_type{3})
+	ctrt( self_type{3} == self_type{3} )
+	ctrt( (bool)exec_operation(self_type{2}, self_type{3}, [](auto& l, auto& r)requires requires{l<r;}{ return l<r;}) == true )
+	ctrt( (bool)exec_operation(self_type{3}, self_type{3}, [](auto& l, auto& r)requires requires{l<r;}{ return l<r;}) == false )
 	ctrt_end
 }
 
