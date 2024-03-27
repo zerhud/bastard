@@ -201,6 +201,11 @@ struct bastard {
 	struct list_expr {
 		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) list;
 	};
+	template<typename expr_t>
+	struct dict_expr {
+		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) names;
+		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) values;
+	};
 
 
 	using string_t = typename data_type::string_t;
@@ -232,8 +237,7 @@ struct bastard {
 	using parse_result = variant_t<std::decay_t<operators>...,string_t,integer_t,float_point_t,bool>;
 
 	template<template<class>class fa> struct expr_type : parse_result<
-	       op_and      < fa<expr_type<fa>> >
-	     , op_or       < fa<expr_type<fa>> >
+	       variant_t< op_and< fa<expr_type<fa>> >, op_or< fa<expr_type<fa>> > >
 	     , variant_t
 	        < op_ceq<fa<expr_type<fa>>>, op_neq<fa<expr_type<fa>>>, op_lt<fa<expr_type<fa>>>
 	        , op_gt<fa<expr_type<fa>>>, op_get<fa<expr_type<fa>>>, op_let<fa<expr_type<fa>>>, op_in<fa<expr_type<fa>>>
@@ -243,6 +247,7 @@ struct bastard {
 	     , op_power    < fa<expr_type<fa>> >
 	     , op_not      < fa<expr_type<fa>> >
 	     , list_expr   < fa<expr_type<fa>> >
+	     , dict_expr   < fa<expr_type<fa>> >
 	     , var_expr    < fa<expr_type<fa>> >
 	     , fnc_call_expr < fa<expr_type<fa>> >
 	     , op_eq       < fa<expr_type<fa>> >
@@ -328,6 +333,13 @@ struct bastard {
 			for(auto&& item:op.list) ret.push_back(visit(*this, *item));
 			return ret;
 		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, dict_expr> ) {
+			data_type ret;
+			ret.mk_empty_object();
+			for(auto i=0;i<op.names.size();++i)
+				ret.put(visit(*this, *op.names[i]), visit(*this, *op.values.at(i)));
+			return ret;
+		}
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, var_expr> ) {
 			//cmpget_workwaroud for constexpr bug with strings
 			auto cur = (*env)[data_type{get<string_t>(*op.path.at(0))}];
@@ -374,13 +386,14 @@ struct bastard {
 		using result_t = expr_type<ast_forwarder>;
 		using expr_t = ast_forwarder<expr_type<ast_forwarder>>;
 		auto mk_fwd = [this](auto& v){ return df.mk_fwd(v); };
+		auto mk_fwd_emp = [this](auto& v){ return df.mk_fwd(v.emplace_back()); };
 		//TODO: initialize string (ident, quoted_string, array) and vectors (array only) with data factory
 		constexpr auto ident = lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))([](auto& v){return &v.template emplace<string_t>();});
 		auto var_expr_mk_result = [this](auto& v){result_t r; return v.path.emplace_back(df.mk_result(r)).get();};
 		auto var_expr_parser = cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)));
 		auto expr_p = rv([this](auto& v){ return df.mk_result(v); }
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"and"> >> ++gh::rv_rreq(mk_fwd))
-			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"or">  >> ++gh::rv_rreq(mk_fwd))
+			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"or">  >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"=="> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"!="> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"<"> >> ++gh::rv_rreq(mk_fwd))
@@ -395,6 +408,7 @@ struct bastard {
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"**"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<unary_op<expr_t>>(th<'!'>::_char++ >> --gh::rv_rreq(mk_fwd))
 			, th<'['>::_char++ >> --(-((gh::rv_req(mk_fwd)) % ',')) >> th<']'>::_char
+			, th<'{'>::_char >> th<'}'>::_char | th<'{'>::_char >> (gh::rv_req(mk_fwd_emp)++ >> th<':'>::_char >> gh::rv_req(mk_fwd_emp)) % ',' >> th<'}'>::_char
 			, var_expr_parser
 			, cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_rreq(mk_fwd) % ',') >> th<')'>::_char)
 			, cast<op_eq<expr_t>>(var_expr_parser >> th<'='>::_char >> ++gh::rv_req(mk_fwd))
@@ -497,6 +511,13 @@ struct bastard {
 		JIEXPR_CTRT( (integer_t)(test_terms<gh>("[1,2,3]")[0]) == 1 )
 		JIEXPR_CTRT( (bool)(test_terms<gh>("[1,true,3]")[1]) == true )
 		JIEXPR_CTRT( (integer_t)(test_terms<gh>("[1,2,3+3]")[2]) == 6 )
+		JIEXPR_CTRT( test_terms<gh>("{}").is_object() == true )
+		JIEXPR_CTRT( (test_terms<gh>("{}")).size() == 0 )
+		JIEXPR_CTRT( (test_terms<gh>("{2:3}")).size() == 1 )
+		JIEXPR_CTRT( (test_terms<gh>("{2:3, 4:5}")).size() == 2 )
+		JIEXPR_CTRT( (integer_t)(test_terms<gh>("{2:3}")[data_type{2}]) == 3 )
+		JIEXPR_CTRT( (integer_t)(test_terms<gh>("{2:3, 4:5}")[data_type{4}]) == 5 )
+		JIEXPR_CTRT( (integer_t)(test_terms<gh>("{2:3, 4:5}")[data_type{2}]) == 3 )
 
 		JIEXPR_CTRT( []{
 			data_type env;

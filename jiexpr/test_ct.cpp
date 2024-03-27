@@ -38,7 +38,10 @@ struct bastard_factory {
 	template<typename type> using vec_type = std::vector<type> ;
 
 	constexpr auto mk_fwd(auto& v) const {
-		v = std::make_unique<typename std::decay_t<decltype(v)>::element_type>();
+		using v_type = std::decay_t<decltype(v)>;
+		static_assert( !std::is_pointer_v<v_type>, "the result have to be a unique_ptr like type" );
+		static_assert( !std::is_reference_v<v_type>, "the result have to be a unique_ptr like type" );
+		v = std::make_unique<typename v_type::element_type>();
 		return v.get();
 	}
 	constexpr auto mk_result(auto& v) const {
