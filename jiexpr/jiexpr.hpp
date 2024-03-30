@@ -99,10 +99,14 @@ struct expr_operators_simple {
 	}
 
 	template<typename data_type>
+	constexpr static auto do_concat(auto&& left, auto&& right) {
+		return data_type{ to_bool<data_type>(left) && to_bool<data_type>(right) };
+	}
+
+	template<typename data_type>
 	constexpr static auto negate(auto&& val) {
 		return data_type{ !to_bool<data_type>( std::forward<decltype(val)>(val) ) };
 	}
-
 	template<typename data_type>
 	constexpr static auto do_and(auto&& left, auto&& right) {
 		return data_type{ to_bool<data_type>(left) && to_bool<data_type>(right) };
@@ -183,6 +187,7 @@ struct bastard {
 	template<typename expr_t> struct op_fp_div   : binary_op<expr_t> {};
 	template<typename expr_t> struct op_substruct: binary_op<expr_t> {};
 	template<typename expr_t> struct op_addition : binary_op<expr_t> {};
+	template<typename expr_t> struct op_concat : binary_op<expr_t> {};
 	template<typename expr_t> struct op_power    : binary_op<expr_t> {};
 
 	template<typename expr_t> struct op_ceq      : binary_op<expr_t> {};
@@ -242,7 +247,7 @@ struct bastard {
 	        < op_ceq<fa<expr_type<fa>>>, op_neq<fa<expr_type<fa>>>, op_lt<fa<expr_type<fa>>>
 	        , op_gt<fa<expr_type<fa>>>, op_get<fa<expr_type<fa>>>, op_let<fa<expr_type<fa>>>, op_in<fa<expr_type<fa>>>
 	        >
-	     , variant_t< op_substruct< fa<expr_type<fa>> >, op_addition< fa<expr_type<fa>> > >
+	     , variant_t< op_substruct< fa<expr_type<fa>> >, op_addition< fa<expr_type<fa>> >, op_concat< fa<expr_type<fa>> > >
 	     , variant_t< op_multipli < fa<expr_type<fa>> >, op_division< fa<expr_type<fa>> >, op_fp_div< fa<expr_type<fa>> > >
 	     , op_power    < fa<expr_type<fa>> >
 	     , op_not      < fa<expr_type<fa>> >
@@ -401,7 +406,9 @@ struct bastard {
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<">="> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"<="> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"in"> >> ++gh::rv_rreq(mk_fwd))
-			, cast<binary_op<expr_t>>(gh::rv_lreq >> th<'-'>::_char >> ++gh::rv_rreq(mk_fwd)) | cast<binary_op<expr_t>>(gh::rv_lreq >> th<'+'>::_char >> ++gh::rv_rreq(mk_fwd))
+			, cast<binary_op<expr_t>>(gh::rv_lreq >> th<'-'>::_char >> ++gh::rv_rreq(mk_fwd))
+			| cast<binary_op<expr_t>>(gh::rv_lreq >> th<'+'>::_char >> ++gh::rv_rreq(mk_fwd))
+			| cast<binary_op<expr_t>>(gh::rv_lreq >> th<'~'>::_char >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> th<'*'>::_char >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"//"> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"/"> >> ++gh::rv_rreq(mk_fwd))
@@ -479,6 +486,7 @@ struct bastard {
 		JIEXPR_CTRT( (float_point_t)test_terms<gh>("5 / 2.0") == 2.5 )
 		JIEXPR_CTRT( (float_point_t)test_terms<gh>("5 - 2.0") == 3 )
 		JIEXPR_CTRT( (integer_t)test_terms<gh>("5 + 2") == 7 )
+		JIEXPR_CTRT( (integer_t)test_terms<gh>("1 + 2 + 4") == 7 )
 		JIEXPR_CTRT( (integer_t)test_terms<gh>("5 - 2 * 3") == -1 )
 		JIEXPR_CTRT( (integer_t)test_terms<gh>("5 + 2 * 3") == 11 )
 		JIEXPR_CTRT( (integer_t)test_terms<gh>("10 ** 2") == 100 )

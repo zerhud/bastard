@@ -1,4 +1,5 @@
 #include "absd.hpp"
+#include "absd/formatter_tests.hpp"
 
 #include <vector>
 #include <memory>
@@ -36,6 +37,7 @@ int main(int,char**){
 #ifndef __clang__
 	static_assert( absd_data1::test() );
 	static_assert( absd::details::tests::callable2_test<absd_data1>() );
+	static_assert( absd::tests::test_format<absd_data1>() );
 #endif
 	return absd_data1::test() ;
 }
