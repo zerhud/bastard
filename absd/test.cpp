@@ -34,6 +34,9 @@ struct absd_factory {
 using absd_data1 = absd::data<absd_factory<double>>;
 
 int main(int,char**){
+	absd::tests::test_format_rt_due_gcc_bug<absd_data1>([](auto result, auto test_obj){
+		if(result != test_obj) std::cout << "ERROR: " << result << "!=" << test_obj << std::endl;
+	}) ;
 #ifndef __clang__
 	static_assert( absd_data1::test() );
 	static_assert( absd::details::tests::callable2_test<absd_data1>() );

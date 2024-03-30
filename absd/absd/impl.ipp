@@ -90,7 +90,7 @@ constexpr auto data<factory>::keys() const {
 template<typename factory>
 constexpr data<factory>::self_type& data<factory>::push_back(data::self_type d) {
 	if(is_none()) mk_empty_array();
-	return visit([this,d=std::move(d)](auto& v) -> self_type& {
+	return visit([this,&d](auto& v) -> self_type& {
 		if(is_multiptr_arr(v)) return multi_array->emplace_back(std::move(d));
 		if constexpr(requires{ v.push_back(std::move(d)); }) { return v.push_back(std::move(d)); }
 		else return throw_wrong_interface_error<details::interfaces::push_back,self_type&>(*this);
