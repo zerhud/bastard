@@ -25,7 +25,6 @@ template<typename data_type>
 constexpr bool test_format() {
 	using namespace std::literals;
 	static_assert( "1"sv == test_format(data_type{1}) );
-	//static_assert( "1.1"sv == test_format(data_type{1.1}) );
 	static_assert( "test"sv == test_format(data_type{"test"}) );
 	static_assert( "[]"sv == test_format(data_type{}.mk_empty_array()) );
 	static_assert( "[1]"sv == []{
@@ -56,6 +55,16 @@ constexpr void test_format_rt_due_gcc_bug(auto&& test_fnc) {
 		test_fnc("1.2", test_format(data_type{1.2}));
 		test_fnc("-1.2", test_format(data_type{-1.2}));
 		test_fnc("-1", test_format(data_type{-1.0}));
+	}
+
+	{
+		data_type src;
+		src.mk_empty_object();
+		test_fnc("{}", test_format(src));
+		src.put(data_type{1}, data_type{2});
+		test_fnc("{1:2}", test_format(src));
+		src.put(data_type{3}, data_type{"string"});
+		test_fnc("{1:2,3:'string'}", test_format(src));
 	}
 }
 
