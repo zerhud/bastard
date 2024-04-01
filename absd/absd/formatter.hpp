@@ -53,7 +53,7 @@ constexpr void back_insert_format(auto&& pos, const data_type& src) {
 
 template<auto qsym, typename data_type>
 constexpr void back_insert_format_req(auto&& pos, const data_type& src) {
-	if(!src.is_string()) back_insert_format(pos, src);
+	if(!src.is_string()) details::back_insert_format(pos, src);
 	else {
 		pos = qsym;
 		for(auto i:(typename data_type::string_t)src) {
@@ -65,3 +65,9 @@ constexpr void back_insert_format_req(auto&& pos, const data_type& src) {
 }
 
 } // namespace absd::details
+
+namespace absd {
+constexpr void back_insert_format(auto&& pos, const auto& src) {
+	return details::back_insert_format(pos, src);
+}
+} // namespace absd

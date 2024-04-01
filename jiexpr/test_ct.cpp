@@ -51,6 +51,12 @@ struct bastard_factory {
 	template<typename type> constexpr auto mk_vec() const {
 		return std::vector<type>{};
 	}
+	constexpr auto mk_str() const {
+		return std::string{};
+	}
+	constexpr auto back_inserter(auto& v) const {
+		return std::back_inserter(v);
+	}
 
 	template<typename type>
 	constexpr auto mk_ptr(auto&&... args) { return std::make_unique<type>(std::forward<decltype(args)>(args)...); }

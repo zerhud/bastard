@@ -18,6 +18,7 @@
 #include "absd/default_object.hpp"
 #include "absd/default_callable.hpp"
 #include "absd/exceptions.hpp"
+#include "absd/formatter.hpp"
 
 namespace absd {
 

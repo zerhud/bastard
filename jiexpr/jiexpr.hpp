@@ -98,9 +98,8 @@ struct expr_operators_simple {
 		return math_op<data_type>(l,r, [](const auto& l, const auto& r){ return l + r; });
 	}
 
-	template<typename data_type>
 	constexpr static auto do_concat(auto&& left, auto&& right) {
-		return data_type{ to_bool<data_type>(left) && to_bool<data_type>(right) };
+		return std::forward<decltype(left)>(left) + std::forward<decltype(right)>(right);
 	}
 
 	template<typename data_type>
@@ -323,6 +322,13 @@ struct bastard {
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_in> ) {
 			return data_type{ ops.template do_in<data_type>( visit(*this,*op.left), visit(*this,*op.right) ) };
 		}
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_concat> ) {
+			auto left_str = df.mk_str();
+			auto right_str = df.mk_str();
+			back_insert_format(df.back_inserter(left_str), visit(*this, *op.left));
+			back_insert_format(df.back_inserter(right_str), visit(*this, *op.right));
+			return data_type{ ops.template do_concat( std::move(left_str), std::move(right_str) ) };
+		}
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_eq> ) {
 			auto cur = *env;
 			auto& [name,value] = op;
@@ -380,9 +386,8 @@ struct bastard {
 	}
 
 	/*
-	 * - is: performs a test
-	 * - | : applies a filter
-	 * - ~ : converts to string and concatinates parameters
+	 * - | : applies a filter (first priority)
+	 * - is: performs a test (second priority)
 	 * - . and [] operators after literal
 	 * - if operator
 	 */
@@ -493,6 +498,10 @@ struct bastard {
 		JIEXPR_CTRT( (integer_t)test_terms<gh>("5+5 ** 2") == 30 ); // 5 + 2
 
 		JIEXPR_CTRT( ((integer_t)test_terms<gh>("(3 + 2) * 2 + 3 + 1 + 2 + 3 + 4 + 5")) == 28 )
+
+		JIEXPR_CTRT( ((string_t)test_terms<gh>("1 ~ 1")).size() == 2 );
+		JIEXPR_CTRT( ((string_t)test_terms<gh>("1 ~ 1"))[0] == '1' );
+		JIEXPR_CTRT( ((string_t)test_terms<gh>("1 ~ 1"))[1] == '1' );
 
 		static_assert( (bool)test_terms<gh>("!true") == false , "to bool and invert" );
 		static_assert( (bool)test_terms<gh>("!0") == true , "to bool and invert" );
