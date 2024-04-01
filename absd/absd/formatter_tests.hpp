@@ -65,6 +65,8 @@ constexpr void test_format_rt_due_gcc_bug(auto&& test_fnc) {
 		test_fnc("{1:2}", test_format(src));
 		src.put(data_type{3}, data_type{"string"});
 		test_fnc("{1:2,3:'string'}", test_format(src));
+		src.put(data_type{"str'key"}, data_type{5});
+		test_fnc("{1:2,3:'string','str\\'key':5}", test_format(src));
 	}
 }
 

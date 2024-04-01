@@ -16,14 +16,7 @@
 namespace absd::details {
 
 template<auto qsym='\'', typename data_type>
-constexpr void back_insert_format_estr(auto&& pos, const data_type& src) {
-	pos = qsym;
-	for(auto i:(typename data_type::string_t)src) {
-		if((i==qsym) + (i=='\\')) pos = '\\';
-		pos = i;
-	}
-	pos = qsym;
-}
+constexpr void back_insert_format_req(auto&& pos, const data_type& src);
 
 template<typename data_type>
 constexpr void back_insert_format(auto&& pos, const data_type& src) {
@@ -40,10 +33,7 @@ constexpr void back_insert_format(auto&& pos, const data_type& src) {
 	else if(src.is_array()) {
 		pos = '[';
 		for(typename data_type::integer_t i=0;i<src.size();++i) {
-			auto cur = src[i];
-			if(cur.is_string()) back_insert_format_estr(pos, cur);
-			else back_insert_format(pos, cur);
-
+			back_insert_format_req(pos, src[i]);
 			if(i+1 < src.size()) pos = ',';
 		}
 		pos = ']';
@@ -52,14 +42,25 @@ constexpr void back_insert_format(auto&& pos, const data_type& src) {
 		pos = '{';
 		auto keys = src.keys();
 		for(typename data_type::integer_t i=0;i<keys.size();++i) {
-			back_insert_format(pos, keys[i]);
+			back_insert_format_req(pos, keys[i]);
 			pos=':';
-			auto cur = src[keys[i]];
-			if(cur.is_string()) back_insert_format_estr(pos, cur);
-			else back_insert_format(pos, cur);
+			back_insert_format_req(pos, src[keys[i]]);
 			if(i+1 < keys.size()) pos = ',';
 		}
 		pos = '}';
+	}
+}
+
+template<auto qsym, typename data_type>
+constexpr void back_insert_format_req(auto&& pos, const data_type& src) {
+	if(!src.is_string()) back_insert_format(pos, src);
+	else {
+		pos = qsym;
+		for(auto i:(typename data_type::string_t)src) {
+			if((i==qsym) + (i=='\\')) pos = '\\';
+			pos = i;
+		}
+		pos = qsym;
 	}
 }
 
