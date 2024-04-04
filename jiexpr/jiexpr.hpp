@@ -186,7 +186,7 @@ struct bastard {
 	template<typename expr_t> struct op_fp_div   : binary_op<expr_t> {};
 	template<typename expr_t> struct op_substruct: binary_op<expr_t> {};
 	template<typename expr_t> struct op_addition : binary_op<expr_t> {};
-	template<typename expr_t> struct op_concat : binary_op<expr_t> {};
+	template<typename expr_t> struct op_concat   : binary_op<expr_t> {};
 	template<typename expr_t> struct op_power    : binary_op<expr_t> {};
 
 	template<typename expr_t> struct op_ceq      : binary_op<expr_t> {};
@@ -195,7 +195,7 @@ struct bastard {
 	template<typename expr_t> struct op_lt       : binary_op<expr_t> {};
 	template<typename expr_t> struct op_get      : binary_op<expr_t> {};
 	template<typename expr_t> struct op_let      : binary_op<expr_t> {};
-	template<typename expr_t> struct op_in      : binary_op<expr_t> {};
+	template<typename expr_t> struct op_in       : binary_op<expr_t> {};
 
 	template<typename expr_t> struct op_and      : binary_op<expr_t> {};
 	template<typename expr_t> struct op_or       : binary_op<expr_t> {};
@@ -235,13 +235,20 @@ struct bastard {
 		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) params;
 	};
 
+	template<typename expr_t>
+	struct apply_filter_expr {
+		std::decay_t<expr_t> object;
+		variant_t<var_expr<expr_t>, fnc_call_expr<expr_t>> filter;
+	};
+
 	template<typename type> using ast_forwarder = typename data_factory::template ast_forwarder<type>;
 
 	template<typename... operators>
 	using parse_result = variant_t<std::decay_t<operators>...,string_t,integer_t,float_point_t,bool>;
 
 	template<template<class>class fa> struct expr_type : parse_result<
-	       variant_t< op_and< fa<expr_type<fa>> >, op_or< fa<expr_type<fa>> > >
+	       apply_filter_expr< fa<expr_type<fa>> >
+	     , variant_t< op_and< fa<expr_type<fa>> >, op_or< fa<expr_type<fa>> > >
 	     , variant_t
 	        < op_ceq<fa<expr_type<fa>>>, op_neq<fa<expr_type<fa>>>, op_lt<fa<expr_type<fa>>>
 	        , op_gt<fa<expr_type<fa>>>, op_get<fa<expr_type<fa>>>, op_let<fa<expr_type<fa>>>, op_in<fa<expr_type<fa>>>
@@ -379,6 +386,9 @@ struct bastard {
 			}
 			return fnc.call(std::move(params));
 		}
+		else if constexpr (bastard_details::is_specialization_of<std::decay_t<decltype(op)>, apply_filter_expr>) {
+			return data_type{__LINE__};
+		}
 		else {
 			std::unreachable(); // your specialization doesn't work :(
 			return data_type{(integer_t) __LINE__};
@@ -386,8 +396,7 @@ struct bastard {
 	}
 
 	/*
-	 * - | : applies a filter (first priority)
-	 * - is: performs a test (second priority)
+	 * - is: performs a test
 	 * - . and [] operators after literal
 	 * - if operator
 	 */
@@ -401,7 +410,9 @@ struct bastard {
 		constexpr auto ident = lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))([](auto& v){return &v.template emplace<string_t>();});
 		auto var_expr_mk_result = [this](auto& v){result_t r; return v.path.emplace_back(df.mk_result(r)).get();};
 		auto var_expr_parser = cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)));
+		auto fnc_call = cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_rreq(mk_fwd) % ',') >> th<')'>::_char);
 		auto expr_p = rv([this](auto& v){ return df.mk_result(v); }
+			, gh::rv_lreq >> th<'|'>::_char++ >> (var_expr_parser | fnc_call)
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"and"> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"or">  >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"=="> >> ++gh::rv_rreq(mk_fwd))
@@ -461,6 +472,10 @@ struct bastard {
 				data_type::mk_param("a", data_type{7}),
 				data_type::mk_param("b", data_type{5})
 				));
+		env.put(data_type{string_t{"to_4"}}, data_type::mk(
+				[](data_type cnt){return data_type{4};},
+				data_type::mk_param("$", data_type{})
+		));
 		data_type obj, arr, obj_with_a;
 		obj_with_a.put(data_type{string_t{"a"}}, data_type{5});
 		obj.put(data_type{string_t{"b"}}, data_type{3});
@@ -566,6 +581,8 @@ struct bastard {
 		static_assert( (integer_t)test_terms_abc<gh>("fnc3(b=3, a=10)") == 7 );
 		static_assert( (integer_t)test_terms_abc<gh>("obj.arr[4-(8*1-6)]()") == 4 );
 
+		//static_assert( (integer_t)test_terms_abc<gh>("1 + 7 | to_4") == 4 );
+
 		return true;
 	}
 
@@ -592,7 +609,7 @@ struct bastard {
 
 	template<typename gh>
 	constexpr static bool test() {
-		return test_parse<gh>() && test_terms<gh>() ;//&& test_env_terms<gh>();
+		return test_parse<gh>() && test_terms<gh>() && test_env_terms<gh>();
 #if defined(__clang__) || defined(JIEXPR_ONLY_RT_TESTS)
 		return test_terms<gh>();
 #endif
