@@ -3,7 +3,7 @@ odir = ninja_build
 iflags = -I..
 
 rule gcc
-  command = g++ -MMD -pipe -std=gnu++23 -fwhole-program -march=native -fdiagnostics-color=always $iflags $in -o $builddir/$out
+  command = g++ -MMD -pipe -std=gnu++23 -fwhole-program -march=native -fdiagnostics-color=always $iflags $in -o $builddir/$out && $builddir/$out
   depfile = $builddir/$out.d
 
 rule clang
@@ -13,5 +13,14 @@ rule clang
 build absd_test: gcc absd/test.cpp
 build absd_test_clang: clang absd/test.cpp
 
-build jiexpr_ct_test: gcc jiexpr/test_ct.cpp
-  iflags = -Iabsd
+#build jiexpr_ct_test: gcc jiexpr/test_ct.cpp
+#  iflags = -Iabsd
+
+build jiexpr_math: gcc jiexpr/tests/math.cpp
+  iflags = -Iabsd -Ijiexpr
+build jiexpr_logic: gcc jiexpr/tests/logic.cpp
+  iflags = -Iabsd -Ijiexpr
+build jiexpr_objects: gcc jiexpr/tests/objects.cpp
+  iflags = -Iabsd -Ijiexpr
+build jiexpr_methods: gcc jiexpr/tests/methods.cpp
+  iflags = -Iabsd -Ijiexpr

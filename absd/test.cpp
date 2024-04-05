@@ -42,5 +42,5 @@ int main(int,char**){
 	static_assert( absd::details::tests::callable2_test<absd_data1>() );
 	static_assert( absd::tests::test_format<absd_data1>() );
 #endif
-	return absd_data1::test() ;
+	return !absd_data1::test() ;
 }
