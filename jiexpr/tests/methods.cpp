@@ -24,7 +24,7 @@ constexpr auto test_with_env(auto src) {
 	arr.push_back(absd_data::mk([]{return absd_data{4};}));
 	obj.put(absd_data{absd_data::string_t{"arr"}}, std::move(arr));
 	env.put(absd_data{absd_data::string_t{"obj"}}, std::move(obj));
-	return jiexpr_test::test_terms<parser>(src, env);
+	return eval(src, env);
 }
 
 int main(int,char**) {

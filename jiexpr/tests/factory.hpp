@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <variant>
+#include <string_view>
 #include <source_location>
 
 #include <iostream>
@@ -81,3 +82,16 @@ bool test_fnc_rt(auto&& result, auto&& testing, const std::source_location loc =
 	if(!correct) std::cout << "ERROR [" << loc.file_name() << ':' << loc.line() << ", " << loc.function_name() << "]: " << result << " != " << testing << std::endl;
 	return correct;
 }
+
+constexpr absd_data eval(std::string_view src, absd_data& env) {
+	jiexpr_test::operators_executer ops;
+	jiexpr_test ev{&env, ops};
+	auto parsed = ev.parse_str<parser>(src);
+	return ev(parsed);
+}
+
+constexpr absd_data eval(std::string_view src) {
+	absd_data env;
+	return eval(src, env);
+}
+

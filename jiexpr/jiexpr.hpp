@@ -14,12 +14,6 @@
 
 #include "jiexpr/details.hpp"
 
-#if defined(__clang__) || defined(JIEXPR_ONLY_RT_TESTS)
-#define JIEXPR_CTRT(param) assert( param );
-#else
-#define JIEXPR_CTRT(param) static_assert( param ); assert( param );
-#endif
-
 namespace bastard_details {
 
 template<typename... types> struct overloaded : types... { using types::operator()... ;} ;
@@ -167,6 +161,7 @@ template< typename data_type, typename operators_factory, typename data_factory 
 struct bastard {
 	template<typename... types> using variant_t = typename data_factory::template variant_t<types...>;
 	using self_type = bastard<data_type, operators_factory, data_factory>;
+	using operators_executer = operators_factory;
 
 	template<typename expr_t>
 	struct unary_op { std::decay_t<expr_t> expr; };
@@ -445,20 +440,5 @@ struct bastard {
 		parse(expr_p, +gh::space, gh::make_source(src), r);
 		return r;
 	}
-
-	template<typename gh>
-	constexpr static auto test_terms(auto src, auto& env) {
-		operators_factory ops;
-		bastard ev{&env, ops};
-		auto parsed = ev.parse_str<gh>(src);
-		return ev(parsed);
-	}
-
-	template<typename gh>
-	constexpr static auto test_terms(auto src) {
-		data_type env;
-		return test_terms<gh>(src, env);
-	}
-
 };
 
