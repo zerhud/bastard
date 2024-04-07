@@ -233,7 +233,7 @@ struct bastard {
 	template<typename expr_t>
 	struct apply_filter_expr {
 		std::decay_t<expr_t> object;
-		variant_t<var_expr<expr_t>, fnc_call_expr<expr_t>> filter;
+		variant_t<fnc_call_expr<expr_t>, var_expr<expr_t>> filter;
 	};
 
 	template<typename type> using ast_forwarder = typename data_factory::template ast_forwarder<type>;
@@ -262,6 +262,17 @@ struct bastard {
 	data_type* env;
 	operators_factory ops;
 	data_factory df;
+
+	constexpr void mk_params(auto& params, const auto& op) const {
+		typename data_type::integer_t ind=params.size();
+		for(auto& param:op.params) {
+			if(!jiexpr_details::variant_holds<op_eq_tag>(*param)) params.put(data_type{ind++}, visit(*this, *param));
+			else {
+				auto& [name,val] = jiexpr_details::get_by_tag<op_eq_tag>(*param);
+				params.put(data_type{get<string_t>(*name.path.at(0))}, visit(*this, *val));
+			}
+		}
+	}
 
 	template<template<class>class fa> constexpr data_type operator()(const expr_type<fa>& e) {
 		return visit(*this, e);
@@ -371,18 +382,22 @@ struct bastard {
 			auto fnc = (*this)(op.name);
 			data_type params;
 			params.mk_empty_object();
-			typename data_type::integer_t ind=0;
-			for(auto& param:op.params) {
-				if(!jiexpr_details::variant_holds<op_eq_tag>(*param)) params.put(data_type{ind++}, visit(*this, *param));
-				else {
-					auto& [name,val] = jiexpr_details::get_by_tag<op_eq_tag>(*param);
-					params.put(data_type{get<string_t>(*name.path.at(0))}, visit(*this, *val));
-				}
-			}
+			mk_params(params, op);
 			return fnc.call(std::move(params));
 		}
 		else if constexpr (bastard_details::is_specialization_of<std::decay_t<decltype(op)>, apply_filter_expr>) {
-			return data_type{__LINE__};
+			auto left = visit(*this, *op.object);
+			data_type params;
+			params.put(data_type{0}, left);
+			return visit([this,&params](const auto& op){
+				if constexpr (requires{op.path;}) {
+					return (*this)(op).call(params);
+				} else {
+					auto fnc = (*this)(op.name);
+					mk_params(params, op);
+					return fnc.call(std::move(params));
+				}
+			}, op.filter);
 		}
 		else {
 			std::unreachable(); // your specialization doesn't work :(
@@ -407,7 +422,7 @@ struct bastard {
 		auto var_expr_parser = cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)));
 		auto fnc_call = cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_rreq(mk_fwd) % ',') >> th<')'>::_char);
 		auto expr_p = rv([this](auto& v){ return df.mk_result(v); }
-			, gh::rv_lreq >> th<'|'>::_char++ >> (var_expr_parser | fnc_call)
+			, gh::rv_lreq >> th<'|'>::_char++ >> (fnc_call | var_expr_parser)
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"and"> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"or">  >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"=="> >> ++gh::rv_rreq(mk_fwd))

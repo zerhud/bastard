@@ -15,6 +15,13 @@ constexpr auto test_with_env(auto src) {
 			[](absd_data cnt){return absd_data{4};},
 			absd_data::mk_param("$", absd_data{})
 	));
+	env.put(absd_data{absd_data::string_t{"add_filter"}}, absd_data::mk(
+			[](absd_data cnt, absd_data b){
+				return absd_data{(absd_data::integer_t)cnt - (absd_data::integer_t)b};
+			},
+			absd_data::mk_param("cnt", absd_data{}),
+			absd_data::mk_param("b", absd_data{4})
+	));
 	absd_data obj, arr, obj_with_a;
 	obj_with_a.put(absd_data{absd_data::string_t{"a"}}, absd_data{5});
 	obj.put(absd_data{absd_data::string_t{"b"}}, absd_data{3});
@@ -29,22 +36,24 @@ constexpr auto test_with_env(auto src) {
 
 int main(int,char**) {
 
-	test_rt( 1, (absd_data::integer_t)test_with_env("a") );
-	test_rt( 2, (absd_data::integer_t)test_with_env("b") );
-	test_rt( 3, (absd_data::integer_t)test_with_env("obj.b") );
-	test_rt( 3, (absd_data::integer_t)test_with_env("obj['b']") );
-	test_rt( 4, (absd_data::integer_t)test_with_env("obj.arr[3-3]") );
-	test_rt( 5, (absd_data::integer_t)test_with_env("obj.arr[3-2].a") );
+	test_rt( 1, (absd_data::integer_t)test_with_env("a") )
+	test_rt( 2, (absd_data::integer_t)test_with_env("b") )
+	test_rt( 3, (absd_data::integer_t)test_with_env("obj.b") )
+	test_rt( 3, (absd_data::integer_t)test_with_env("obj['b']") )
+	test_rt( 4, (absd_data::integer_t)test_with_env("obj.arr[3-3]") )
+	test_rt( 5, (absd_data::integer_t)test_with_env("obj.arr[3-2].a") )
 
-	test_rt( 1, (absd_data::integer_t)test_with_env("fnc1()") );
-	test_rt( 2, (absd_data::integer_t)test_with_env("fnc2(1)") );
-	test_rt( 2, (absd_data::integer_t)test_with_env("fnc3()") );
-	test_rt( 5, (absd_data::integer_t)test_with_env("fnc3(a=10)") );
-	test_rt( 7, (absd_data::integer_t)test_with_env("fnc3(b=3, a=10)") );
-	test( 4, (absd_data::integer_t)test_with_env("obj.arr[4-(8*1-6)]()") );
+	test_rt( 1, (absd_data::integer_t)test_with_env("fnc1()") )
+	test_rt( 2, (absd_data::integer_t)test_with_env("fnc2(1)") )
+	test_rt( 2, (absd_data::integer_t)test_with_env("fnc3()") )
+	test_rt( 5, (absd_data::integer_t)test_with_env("fnc3(a=10)") )
+	test_rt( 7, (absd_data::integer_t)test_with_env("fnc3(b=3, a=10)") )
+	test( 4, (absd_data::integer_t)test_with_env("obj.arr[4-(8*1-6)]()") )
 
-	//static_assert( (integer_t)test_terms_abc<gh>("1 + 7 | to_4") == 4 );
-
+	test_rt( 8, (absd_data::integer_t)test_with_env("1+7") )
+	test_rt( 4, (absd_data::integer_t)test_with_env("1+7|to_4") )
+	test( 4, (absd_data::integer_t)test_with_env("1+7|add_filter ") )
+	test( -4, (absd_data::integer_t)test_with_env("1+7|add_filter(12) ") )
 	return 0;
 }
 

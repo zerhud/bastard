@@ -26,11 +26,11 @@ int main(int,char**) {
 
 
 	test( 28,  (absd_data::integer_t)eval("(3 + 2) * 2 + 3 + 1 + 2 + 3 + 4 + 5") )
-	test( false, (bool)eval("!true") );
+	test( false, (bool)eval("!true") )
 
-	test( 2, ((absd_data::string_t)eval("1 ~ 1")).size() );
-	test_rt( '1', ((absd_data::string_t)eval("1 ~ 1"))[0] );
-	test_rt( '1', ((absd_data::string_t)eval("1 ~ 1"))[1] );
+	test( 2, ((absd_data::string_t)eval("1 ~ 1")).size() )
+	test_rt( '1', ((absd_data::string_t)eval("1 ~ 1"))[0] )
+	test_rt( '1', ((absd_data::string_t)eval("1 ~ 1"))[1] )
 
 	return 0;
 }
