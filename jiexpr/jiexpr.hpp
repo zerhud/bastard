@@ -236,6 +236,12 @@ struct bastard {
 		variant_t<fnc_call_expr<expr_t>, var_expr<expr_t>> filter;
 	};
 
+	template<typename expr_t>
+	struct is_test_expr {
+		std::decay_t<expr_t> object;
+		variant_t<fnc_call_expr<expr_t>, var_expr<expr_t>> test;
+	};
+
 	template<typename type> using ast_forwarder = typename data_factory::template ast_forwarder<type>;
 
 	template<typename... operators>
@@ -246,7 +252,8 @@ struct bastard {
 	     , variant_t< op_and< fa<expr_type<fa>> >, op_or< fa<expr_type<fa>> > >
 	     , variant_t
 	        < op_ceq<fa<expr_type<fa>>>, op_neq<fa<expr_type<fa>>>, op_lt<fa<expr_type<fa>>>
-	        , op_gt<fa<expr_type<fa>>>, op_get<fa<expr_type<fa>>>, op_let<fa<expr_type<fa>>>, op_in<fa<expr_type<fa>>>
+	        , op_gt<fa<expr_type<fa>>>, op_get<fa<expr_type<fa>>>, op_let<fa<expr_type<fa>>>
+	        , op_in<fa<expr_type<fa>>>, is_test_expr<fa<expr_type<fa>>>
 	        >
 	     , variant_t< op_substruct< fa<expr_type<fa>> >, op_addition< fa<expr_type<fa>> >, op_concat< fa<expr_type<fa>> > >
 	     , variant_t< op_multipli < fa<expr_type<fa>> >, op_division< fa<expr_type<fa>> >, op_fp_div< fa<expr_type<fa>> > >
@@ -385,11 +392,13 @@ struct bastard {
 			mk_params(params, op);
 			return fnc.call(std::move(params));
 		}
-		else if constexpr (bastard_details::is_specialization_of<std::decay_t<decltype(op)>, apply_filter_expr>) {
-			auto left = visit(*this, *op.object);
+		else if constexpr (
+				bastard_details::is_specialization_of<std::decay_t<decltype(op)>, apply_filter_expr>
+			|| 	bastard_details::is_specialization_of<std::decay_t<decltype(op)>, is_test_expr>
+				        ) {
 			data_type params;
-			params.put(data_type{0}, left);
-			return visit([this,&params](const auto& op){
+			params.put(data_type{0}, visit(*this, *op.object));
+			auto ret = visit([this,&params](const auto& op){
 				if constexpr (requires{op.path;}) {
 					return (*this)(op).call(params);
 				} else {
@@ -397,16 +406,21 @@ struct bastard {
 					mk_params(params, op);
 					return fnc.call(std::move(params));
 				}
-			}, op.filter);
+			}, [&op]->auto& {
+				if constexpr(requires{op.filter;}) return op.filter;
+				else return op.test;
+			}());
+			if constexpr (requires{op.test;}) return ops.template to_bool<data_type>(ret);
+			else return ret;
 		}
 		else {
-			std::unreachable(); // your specialization doesn't work :(
+			op.wasnt_specialized();
+			//std::unreachable(); // your specialization doesn't work :(
 			return data_type{(integer_t) __LINE__};
 		}
 	}
 
 	/*
-	 * - is: performs a test
 	 * - . and [] operators after literal
 	 * - if operator
 	 */
@@ -417,21 +431,24 @@ struct bastard {
 		auto mk_fwd = [this](auto& v){ return df.mk_fwd(v); };
 		auto mk_fwd_emp = [this](auto& v){ return df.mk_fwd(v.emplace_back()); };
 		//TODO: initialize string (ident, quoted_string, array) and vectors (array only) with data factory
-		constexpr auto ident = lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))([](auto& v){return &v.template emplace<string_t>();});
+		constexpr auto ident =
+				lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))([](auto& v){return &v.template emplace<string_t>();})
+				- (gh::template lit<"and"> | gh::template lit<"is"> | gh::template lit<"in"> | gh::template lit<"or">);
 		auto var_expr_mk_result = [this](auto& v){result_t r; return v.path.emplace_back(df.mk_result(r)).get();};
 		auto var_expr_parser = cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)));
 		auto fnc_call = cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_rreq(mk_fwd) % ',') >> th<')'>::_char);
 		auto expr_p = rv([this](auto& v){ return df.mk_result(v); }
 			, gh::rv_lreq >> th<'|'>::_char++ >> (fnc_call | var_expr_parser)
-			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"and"> >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"or">  >> ++gh::rv_rreq(mk_fwd))
+			, cast<binary_op<expr_t>>(gh::rv_lreq >> lexeme(omit(gh::template lit<"and"> >> +gh::space)) >> ++gh::rv_rreq(mk_fwd))
+			| cast<binary_op<expr_t>>(gh::rv_lreq >> lexeme(omit(gh::template lit<"or"> >> +gh::space))  >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"=="> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"!="> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"<"> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<">"> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<">="> >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"<="> >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"in"> >> ++gh::rv_rreq(mk_fwd))
+			| cast<binary_op<expr_t>>(gh::rv_lreq >> lexeme(omit(gh::template lit<"in"> >> +gh::space)) >> ++gh::rv_rreq(mk_fwd))
+			| cast<is_test_expr<expr_t>>(gh::rv_lreq >> lexeme(omit(gh::template lit<"is"> >> +gh::space))++ >> (fnc_call | var_expr_parser))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> th<'-'>::_char >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> th<'+'>::_char >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> th<'~'>::_char >> ++gh::rv_rreq(mk_fwd))

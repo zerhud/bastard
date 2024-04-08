@@ -19,7 +19,7 @@ constexpr auto test_with_env(auto src) {
 			[](absd_data cnt, absd_data b){
 				return absd_data{(absd_data::integer_t)cnt - (absd_data::integer_t)b};
 			},
-			absd_data::mk_param("cnt", absd_data{}),
+			absd_data::mk_param("cnt"),
 			absd_data::mk_param("b", absd_data{4})
 	));
 	absd_data obj, arr, obj_with_a;
@@ -54,6 +54,9 @@ int main(int,char**) {
 	test_rt( 4, (absd_data::integer_t)test_with_env("1+7|to_4") )
 	test( 4, (absd_data::integer_t)test_with_env("1+7|add_filter ") )
 	test( -4, (absd_data::integer_t)test_with_env("1+7|add_filter(12) ") )
+
+	test_rt( true, (bool)test_with_env("1+7 is add_filter") )
+	test( false, (bool)test_with_env("1+7 is add_filter(8) ") )
 	return 0;
 }
 

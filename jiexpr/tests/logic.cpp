@@ -10,6 +10,7 @@ int main(int,char**) {
 
 	test( false, (bool)eval("true and !true") )
 	test_rt( true, (bool)eval("true or !true") )
+	test( false, (bool)eval("1+2-3 or 3- 3 ") )
 	test_rt( true, (bool)eval("1 != 2") )
 	test_rt( true, (bool)eval("1 < 2") )
 	test_rt( false, (bool)eval("1 > 2") )
