@@ -248,7 +248,8 @@ struct bastard {
 	using parse_result = variant_t<std::decay_t<operators>...,string_t,integer_t,float_point_t,bool>;
 
 	template<template<class>class fa> struct expr_type : parse_result<
-	       apply_filter_expr< fa<expr_type<fa>> >
+	       ternary_op< fa<expr_type<fa>> >
+	     , apply_filter_expr< fa<expr_type<fa>> >
 	     , variant_t< op_and< fa<expr_type<fa>> >, op_or< fa<expr_type<fa>> > >
 	     , variant_t
 	        < op_ceq<fa<expr_type<fa>>>, op_neq<fa<expr_type<fa>>>, op_lt<fa<expr_type<fa>>>
@@ -413,6 +414,11 @@ struct bastard {
 			if constexpr (requires{op.test;}) return ops.template to_bool<data_type>(ret);
 			else return ret;
 		}
+		else if constexpr (bastard_details::is_specialization_of<std::decay_t<decltype(op)>, ternary_op>) {
+			if(ops.template to_bool<data_type>((*this)(*op.cond))) return (*this)(*op.left);
+			if(op.right) return visit(*this, *op.right);
+			return data_type{};
+		}
 		else {
 			op.wasnt_specialized();
 			//std::unreachable(); // your specialization doesn't work :(
@@ -422,7 +428,6 @@ struct bastard {
 
 	/*
 	 * - . and [] operators after literal
-	 * - if operator
 	 */
 	template<typename gh, template<auto>class th=gh::template tmpl>
 	constexpr auto parse_str(auto&& src) const {
@@ -438,6 +443,9 @@ struct bastard {
 		auto var_expr_parser = cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)));
 		auto fnc_call = cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_rreq(mk_fwd) % ',') >> th<')'>::_char);
 		auto expr_p = rv([this](auto& v){ return df.mk_result(v); }
+			,    ++gh::rv_lreq
+			  >> lexeme(omit(gh::template lit<"if"> >> +gh::space)) >> fnum<0>(gh::rv_rreq(mk_fwd))
+			  >> fnum<2>(-(lexeme(omit(gh::template lit<"else"> >> +gh::space)) >> gh::rv_rreq(mk_fwd)))
 			, gh::rv_lreq >> th<'|'>::_char++ >> (fnc_call | var_expr_parser)
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> lexeme(omit(gh::template lit<"and"> >> +gh::space)) >> ++gh::rv_rreq(mk_fwd))
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> lexeme(omit(gh::template lit<"or"> >> +gh::space))  >> ++gh::rv_rreq(mk_fwd))
