@@ -1,5 +1,6 @@
 #include "absd.hpp"
 #include "jiexpr.hpp"
+#include "jiexpr/default_operators.hpp"
 
 //#include <ascip.hpp>
 #include "../ascip_all.hpp"
@@ -75,7 +76,7 @@ struct bastard_factory {
 
 using parser = ascip<std::tuple>;
 using absd_data = absd::data<absd_factory<double>>;
-using jiexpr_test = bastard<absd_data, bastard_details::expr_operators_simple, bastard_factory>;
+using jiexpr_test = bastard<absd_data, jiexpr_details::expr_operators_simple, bastard_factory>;
 
 bool test_fnc_rt(auto&& result, auto&& testing, const std::source_location loc = std::source_location::current()) {
 	const bool correct = result == testing;

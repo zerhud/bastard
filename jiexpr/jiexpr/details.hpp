@@ -6,6 +6,9 @@
 
 namespace jiexpr_details {
 
+template<typename, template<typename...>class> constexpr const bool is_specialization_of = false;
+template<template<typename...>class type, typename... args> constexpr const bool is_specialization_of<type<args...>, type> = true;
+
 template<typename... types> struct test_variant {
 	int ind=0;
 	constexpr auto index() const { return ind; }

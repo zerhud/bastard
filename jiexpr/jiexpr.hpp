@@ -14,146 +14,6 @@
 
 #include "jiexpr/details.hpp"
 
-namespace bastard_details {
-
-template<typename... types> struct overloaded : types... { using types::operator()... ;} ;
-template<typename... types> overloaded(types...) -> overloaded<types...>;
-
-template<typename, template<typename...>class> constexpr const bool is_specialization_of = false;
-template<template<typename...>class type, typename... args> constexpr const bool is_specialization_of<type<args...>, type> = true;
-
-struct expr_operators_simple {
-	template<typename data_type>
-	constexpr static auto math_op(auto&& l, auto&& r, auto&& op) {
-		using integer_t = typename data_type::integer_t;
-		using float_point_t = typename data_type::float_point_t;
-		if(l.is_int()) {
-			if(r.is_float_point()) return data_type{ float_point_t( op((integer_t)l,(float_point_t)r) ) };
-			return data_type{ integer_t( op((integer_t)l,(integer_t)r) ) };
-		}
-		else {
-			if(r.is_float_point()) return data_type{ float_point_t( op((float_point_t)l,(float_point_t)r) ) };
-			return data_type{ float_point_t( op((float_point_t)l,(integer_t)r) ) };
-		}
-	}
-
-	template<typename to_type>
-	constexpr static auto div(const auto& l, const auto& r) {
-		using data_type = std::decay_t<decltype(l)>;
-		using integer_t = typename data_type::integer_t;
-		using float_point_t = typename data_type::float_point_t;
-		if(l.is_int()) {
-			if(r.is_float_point()) return data_type{ to_type((integer_t)l / (float_point_t)r) };
-			return data_type{ to_type((integer_t)l / (integer_t)r) };
-		}
-		else {
-			if(r.is_float_point()) return data_type{ to_type((float_point_t)l / (float_point_t)r) };
-			return data_type{ to_type((float_point_t)l / (integer_t)r) };
-		}
-	}
-
-	template<typename data_type>
-	constexpr static auto to_bool(auto&& val) {
-		using integer_t = typename data_type::integer_t;
-		using float_point_t = typename data_type::float_point_t;
-		using string_t = typename data_type::string_t;
-		if( val.is_bool() ) return val;
-		else if( val.is_int() ) return data_type{ !!((integer_t)val) };
-		else if( val.is_float_point() ) return data_type{ !!((float_point_t)val) };
-		else if( val.is_string() ) return data_type{ !((string_t)val).empty() };
-		else return data_type{ false };
-	}
-
-	template<typename data_type>
-	constexpr static auto int_div(auto&& left, auto&& right) {
-		return div<typename data_type::integer_t>( left, right );
-	}
-
-	template<typename data_type>
-	constexpr static auto fp_div(auto&& left, auto&& right) {
-		return div<typename data_type::float_point_t>( left, right );
-	}
-
-	template<typename data_type>
-	constexpr static auto mul(auto&& l, auto&& r) {
-		return math_op<data_type>(l,r, [](const auto& l, const auto& r){ return l * r; });
-	}
-
-	template<typename data_type>
-	constexpr static auto sub(auto&& l, auto&& r) {
-		return math_op<data_type>(l,r, [](const auto& l, const auto& r){ return l - r; });
-	}
-
-	template<typename data_type>
-	constexpr static auto add(auto&& l, auto&& r) {
-		return math_op<data_type>(l,r, [](const auto& l, const auto& r){ return l + r; });
-	}
-
-	constexpr static auto do_concat(auto&& left, auto&& right) {
-		return std::forward<decltype(left)>(left) + std::forward<decltype(right)>(right);
-	}
-
-	template<typename data_type>
-	constexpr static auto negate(auto&& val) {
-		return data_type{ !to_bool<data_type>( std::forward<decltype(val)>(val) ) };
-	}
-	template<typename data_type>
-	constexpr static auto do_and(auto&& left, auto&& right) {
-		return data_type{ to_bool<data_type>(left) && to_bool<data_type>(right) };
-	}
-	template<typename data_type>
-	constexpr static auto do_or(auto&& left, auto&& right) {
-		return data_type{ to_bool<data_type>(left) || to_bool<data_type>(right) };
-	}
-	template<typename data_type>
-	constexpr static auto do_ceq(data_type&& left, data_type&& right) {
-		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l==r;}{return l==r;});
-	}
-	template<typename data_type>
-	constexpr static auto do_neq(data_type&& left, data_type&& right) {
-		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l!=r;}{return l!=r;});
-	}
-	template<typename data_type>
-	constexpr static auto do_lt(data_type&& left, data_type&& right) {
-		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l<r;}{return l<r;});
-	}
-	template<typename data_type>
-	constexpr static auto do_gt(data_type&& left, data_type&& right) {
-		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l>r;}{return l>r;});
-	}
-	template<typename data_type>
-	constexpr static auto do_let(data_type&& left, data_type&& right) {
-		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l<=r;}{return l<=r;});
-	}
-	template<typename data_type>
-	constexpr static auto do_get(data_type&& left, data_type&& right) {
-		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l>=r;}{return l>=r;});
-	}
-	template<typename data_type>
-	constexpr static auto do_in(data_type&& left, data_type&& right) {
-		return right.contains(std::forward<decltype(left)>(left));
-	}
-
-	template<typename data_type>
-	constexpr static auto pow(auto&& l, auto&& r) {
-		using integer_t = typename data_type::integer_t;
-		using float_point_t = typename data_type::float_point_t;
-		auto right = (integer_t)r;
-		if(l.is_int()) {
-			auto left = (integer_t)l;
-			while(--right > 0) left *= left;
-			return data_type{ left };
-		}
-		else {
-			auto left = (float_point_t)l;
-			while(--right > 0) left *= left;
-			return data_type{ left };
-		}
-	}
-};
-
-} // namespace bastard_details
-
 template< typename data_type, typename operators_factory, typename data_factory >
 struct bastard {
 	template<typename... types> using variant_t = typename data_factory::template variant_t<types...>;
@@ -292,62 +152,62 @@ struct bastard {
 		if constexpr (requires{visit([](const auto&){}, op);}) {
 			return visit(*this, op);
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_division> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_division> ) {
 			return ops.template int_div<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_fp_div> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_fp_div> ) {
 			return ops.template fp_div<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_multiply> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_multiply> ) {
 			return ops.template mul<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_subtract > ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_subtract > ) {
 			return ops.template sub<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_addition> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_addition> ) {
 			return ops.template add<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_power> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_power> ) {
 			return ops.template pow<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_not> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_not> ) {
 			return ops.template negate<data_type>( visit(*this,*op.expr) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_and> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_and> ) {
 			return ops.template do_and<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_or> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_or> ) {
 			return ops.template do_or<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_ceq> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_ceq> ) {
 			return ops.template do_ceq<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_neq> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_neq> ) {
 			return ops.template do_neq<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_lt> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_lt> ) {
 			return ops.template do_lt<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_gt> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_gt> ) {
 			return ops.template do_gt<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_let> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_let> ) {
 			return ops.template do_let<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_get> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_get> ) {
 			return ops.template do_get<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_in> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_in> ) {
 			return data_type{ ops.template do_in<data_type>( visit(*this,*op.left), visit(*this,*op.right) ) };
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_concat> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_concat> ) {
 			auto left_str = df.mk_str();
 			auto right_str = df.mk_str();
 			back_insert_format(df.back_inserter(left_str), visit(*this, *op.left));
 			back_insert_format(df.back_inserter(right_str), visit(*this, *op.right));
 			return data_type{ ops.template do_concat( std::move(left_str), std::move(right_str) ) };
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_eq> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, op_eq> ) {
 			auto cur = *env;
 			auto& left = op.name.path;
 			for(auto i=0;i<left.size()-1;++i) cur = cur[data_type{get<string_t>(*left[i])}];
@@ -355,20 +215,20 @@ struct bastard {
 			cur.put(key, visit(*this, *op.value));
 			return cur[key];
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, list_expr> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, list_expr> ) {
 			data_type ret;
 			ret.mk_empty_array();
 			for(auto&& item:op.list) ret.push_back(visit(*this, *item));
 			return ret;
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, dict_expr> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, dict_expr> ) {
 			data_type ret;
 			ret.mk_empty_object();
 			for(auto i=0;i<op.names.size();++i)
 				ret.put(visit(*this, *op.names[i]), visit(*this, *op.values.at(i)));
 			return ret;
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, var_expr> ) {
+		else if constexpr ( jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, var_expr> ) {
 			auto cur = (*env)[data_type{get<string_t>(*op.path.at(0))}];
 			for(auto pos = ++op.path.begin();pos!=op.path.end();++pos) {
 				auto& item = **pos;
@@ -381,16 +241,16 @@ struct bastard {
 			}
 			return cur;
 		}
-		else if constexpr (bastard_details::is_specialization_of<std::decay_t<decltype(op)>, fnc_call_expr>) {
-			auto fnc = (*this)(op.name);
+		else if constexpr (jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, fnc_call_expr>) {
+			auto fnc =(*this)(op.name);
 			data_type params;
 			params.mk_empty_object();
 			mk_params(params, op);
 			return fnc.call(std::move(params));
 		}
 		else if constexpr (
-				bastard_details::is_specialization_of<std::decay_t<decltype(op)>, apply_filter_expr>
-			|| 	bastard_details::is_specialization_of<std::decay_t<decltype(op)>, is_test_expr>
+				jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, apply_filter_expr>
+			|| 	jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, is_test_expr>
 				        ) {
 			data_type params;
 			params.put(data_type{0}, visit(*this, *op.object));
@@ -409,8 +269,8 @@ struct bastard {
 			if constexpr (requires{op.test;}) return ops.template to_bool<data_type>(ret);
 			else return ret;
 		}
-		else if constexpr (bastard_details::is_specialization_of<std::decay_t<decltype(op)>, ternary_op>) {
-			if(ops.template to_bool<data_type>((*this)(*op.cond))) return (*this)(*op.left);
+		else if constexpr (jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, ternary_op>) {
+			if(ops.template to_bool<data_type>(visit(*this,*op.cond))) return visit(*this,*op.left);
 			if(op.right) return visit(*this, *op.right);
 			return data_type{};
 		}
@@ -421,59 +281,18 @@ struct bastard {
 		}
 	}
 
+	template<typename gh, template<auto>class th=gh::template tmpl>
+	constexpr auto create_parser() const ;
+	
 	/*
 	 * - . and [] operators after literal
 	 */
 	template<typename gh, template<auto>class th=gh::template tmpl>
 	constexpr auto parse_str(auto&& src) const {
-		using result_t = expr_type<ast_forwarder>;
-		using expr_t = ast_forwarder<expr_type<ast_forwarder>>;
-		auto mk_fwd = [this](auto& v){ return df.mk_fwd(v); };
-		auto mk_fwd_emp = [this](auto& v){ return df.mk_fwd(v.emplace_back()); };
-		//TODO: initialize string (ident, quoted_string, array) and vectors (array only) with data factory
-		constexpr auto ident =
-				lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))([](auto& v){return &v.template emplace<string_t>();})
-				- (gh::template lit<"and"> | gh::template lit<"is"> | gh::template lit<"in"> | gh::template lit<"or">);
-		auto var_expr_mk_result = [this](auto& v){result_t r; return v.path.emplace_back(df.mk_result(r)).get();};
-		auto var_expr_parser = cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)));
-		auto fnc_call = cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_rreq(mk_fwd) % ',') >> th<')'>::_char);
-		auto expr_p = rv([this](auto& v){ return df.mk_result(v); }
-			,    ++gh::rv_lreq
-			  >> lexeme(omit(gh::template lit<"if"> >> +gh::space)) >> fnum<0>(gh::rv_rreq(mk_fwd))
-			  >> fnum<2>(-(lexeme(omit(gh::template lit<"else"> >> +gh::space)) >> gh::rv_rreq(mk_fwd)))
-			, gh::rv_lreq >> th<'|'>::_char++ >> (fnc_call | var_expr_parser)
-			, cast<binary_op<expr_t>>(gh::rv_lreq >> lexeme(omit(gh::template lit<"and"> >> +gh::space)) >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> lexeme(omit(gh::template lit<"or"> >> +gh::space))  >> ++gh::rv_rreq(mk_fwd))
-			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"=="> >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"!="> >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"<"> >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<">"> >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<">="> >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"<="> >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> lexeme(omit(gh::template lit<"in"> >> +gh::space)) >> ++gh::rv_rreq(mk_fwd))
-			| cast<is_test_expr<expr_t>>(gh::rv_lreq >> lexeme(omit(gh::template lit<"is"> >> +gh::space))++ >> (fnc_call | var_expr_parser))
-			, cast<binary_op<expr_t>>(gh::rv_lreq >> th<'-'>::_char >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> th<'+'>::_char >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> th<'~'>::_char >> ++gh::rv_rreq(mk_fwd))
-			, cast<binary_op<expr_t>>(gh::rv_lreq >> th<'*'>::_char >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"//"> >> ++gh::rv_rreq(mk_fwd))
-			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"/"> >> ++gh::rv_rreq(mk_fwd))
-			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"**"> >> ++gh::rv_rreq(mk_fwd))
-			, cast<unary_op<expr_t>>(th<'!'>::_char++ >> --gh::rv_rreq(mk_fwd))
-			, th<'['>::_char++ >> --(-((gh::rv_req(mk_fwd)) % ',')) >> th<']'>::_char
-			, th<'{'>::_char >> th<'}'>::_char | th<'{'>::_char >> (gh::rv_req(mk_fwd_emp)++ >> th<':'>::_char >> gh::rv_req(mk_fwd_emp)) % ',' >> th<'}'>::_char
-			, var_expr_parser
-			, cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_rreq(mk_fwd) % ',') >> th<')'>::_char)
-			, cast<op_eq<expr_t>>(var_expr_parser >> th<'='>::_char >> ++gh::rv_req(mk_fwd))
-			, gh::quoted_string
-			, gh::int_
-			, gh::fp
-			, (as<true>(gh::template lit<"true">)|as<false>(gh::template lit<"false">))
-			, rv_result(th<'('>::_char >> gh::rv_req >> th<')'>::_char)
-			);
 		expr_type<ast_forwarder> r;
-		parse(expr_p, +gh::space, gh::make_source(src), r);
+		parse(create_parser<gh,th>(), +gh::space, gh::make_source(src), r);
 		return r;
 	}
 };
 
+#include "jiexpr/parser.ipp"
