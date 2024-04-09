@@ -33,7 +33,7 @@ struct constexpr_kinda_map {
 
 	constexpr auto& at(const key& fk) {
 		for(auto&[k,v]:store) if(k==fk) return v;
-		throw __LINE__; //TODO: what to do if key not found
+		throw 0.5; //TODO: what to do if key not found
 	}
 
 	constexpr auto size() const { return store.size(); }
