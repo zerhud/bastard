@@ -19,11 +19,8 @@ namespace bastard_details {
 template<typename... types> struct overloaded : types... { using types::operator()... ;} ;
 template<typename... types> overloaded(types...) -> overloaded<types...>;
 
-template<typename type, template<typename...>class tmpl> constexpr const bool is_specialization_of = false;
+template<typename, template<typename...>class> constexpr const bool is_specialization_of = false;
 template<template<typename...>class type, typename... args> constexpr const bool is_specialization_of<type<args...>, type> = true;
-
-template<typename data_type, typename type>
-concept data_vector = requires(type& v, const data_type& d){ v.clear(); v.push_back(d); } && requires(const type& v){ { v.at(0) } -> std::same_as<data_type>; } ;
 
 struct expr_operators_simple {
 	template<typename data_type>
@@ -177,9 +174,9 @@ struct bastard {
 		std::decay_t<expr_t> right;
 	};
 	template<typename expr_t> struct op_division : binary_op<expr_t> {};
-	template<typename expr_t> struct op_multipli : binary_op<expr_t> {};
+	template<typename expr_t> struct op_multiply : binary_op<expr_t> {};
 	template<typename expr_t> struct op_fp_div   : binary_op<expr_t> {};
-	template<typename expr_t> struct op_substruct: binary_op<expr_t> {};
+	template<typename expr_t> struct op_subtract : binary_op<expr_t> {};
 	template<typename expr_t> struct op_addition : binary_op<expr_t> {};
 	template<typename expr_t> struct op_concat   : binary_op<expr_t> {};
 	template<typename expr_t> struct op_power    : binary_op<expr_t> {};
@@ -218,7 +215,7 @@ struct bastard {
 
 	struct op_eq_tag{};
 	template<typename expr_t> struct op_eq : op_eq_tag {
-		constexpr op_eq() {}
+		constexpr op_eq() =default ;
 		constexpr op_eq(var_expr<expr_t> name, expr_t value) : name(std::move(name)), value(std::move(value)) {}
 		var_expr<expr_t> name;
 		expr_t value;
@@ -256,8 +253,8 @@ struct bastard {
 	        , op_gt<fa<expr_type<fa>>>, op_get<fa<expr_type<fa>>>, op_let<fa<expr_type<fa>>>
 	        , op_in<fa<expr_type<fa>>>, is_test_expr<fa<expr_type<fa>>>
 	        >
-	     , variant_t< op_substruct< fa<expr_type<fa>> >, op_addition< fa<expr_type<fa>> >, op_concat< fa<expr_type<fa>> > >
-	     , variant_t< op_multipli < fa<expr_type<fa>> >, op_division< fa<expr_type<fa>> >, op_fp_div< fa<expr_type<fa>> > >
+	     , variant_t< op_subtract < fa<expr_type<fa>> >, op_addition< fa<expr_type<fa>> >, op_concat< fa<expr_type<fa>> > >
+	     , variant_t< op_multiply < fa<expr_type<fa>> >, op_division< fa<expr_type<fa>> >, op_fp_div< fa<expr_type<fa>> > >
 	     , op_power    < fa<expr_type<fa>> >
 	     , op_not      < fa<expr_type<fa>> >
 	     , list_expr   < fa<expr_type<fa>> >
@@ -301,10 +298,10 @@ struct bastard {
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_fp_div> ) {
 			return ops.template fp_div<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_multipli> ) {
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_multiply> ) {
 			return ops.template mul<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
-		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_substruct> ) {
+		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_subtract > ) {
 			return ops.template sub<data_type>( visit(*this,*op.left), visit(*this,*op.right) );
 		}
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_addition> ) {
@@ -352,11 +349,10 @@ struct bastard {
 		}
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, op_eq> ) {
 			auto cur = *env;
-			auto& [name,value] = op;
-			auto& left = name.path;
+			auto& left = op.name.path;
 			for(auto i=0;i<left.size()-1;++i) cur = cur[data_type{get<string_t>(*left[i])}];
 			data_type key{get<string_t>(*left[left.size()-1])};
-			cur.put(key, visit(*this, *value));
+			cur.put(key, visit(*this, *op.value));
 			return cur[key];
 		}
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, list_expr> ) {
@@ -373,7 +369,6 @@ struct bastard {
 			return ret;
 		}
 		else if constexpr ( bastard_details::is_specialization_of<std::decay_t<decltype(op)>, var_expr> ) {
-			//cmpget_workwaroud for constexpr bug with strings
 			auto cur = (*env)[data_type{get<string_t>(*op.path.at(0))}];
 			for(auto pos = ++op.path.begin();pos!=op.path.end();++pos) {
 				auto& item = **pos;

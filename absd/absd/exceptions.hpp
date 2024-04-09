@@ -21,7 +21,6 @@ struct keys : interface_describer<keys> {};
 struct push_back : interface_describer<push_back> {};
 struct at_ind : interface_describer<at_ind> {};
 struct at_key : interface_describer<at_key> {};
-struct cmpget_workaround : interface_describer<cmpget_workaround> {};
 struct call : interface_describer<call> {};
 struct exec_op : interface_describer<call> {};
 } // namespace interfaces

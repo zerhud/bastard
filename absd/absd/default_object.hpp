@@ -81,11 +81,6 @@ struct object : inner_counter {
 		for(const auto& [k,v]:map) ret.push_back(k);
 		return ret;
 	}
-	constexpr data cmpget_workaround(const auto& f) const {
-		for(auto& [k,v]:map) if((decltype(f))k==f) return v;
-		return data{};
-	}
-
 	constexpr auto size() const { return map.size(); }
 };
 template<typename data, typename factory> constexpr auto mk_object_type(const factory& f) {

@@ -64,7 +64,6 @@ constexpr bool test_callable() {
 		constexpr data_type operator()() const {return data_type{88};}
 		constexpr data_type operator()(int_t a, int_t b) const {return data_type{a-b};}
 		constexpr data_type& at(int_t ind) const { if(ind==0) return data_3; if(ind==1) return data_5; return fake_data; }
-		//constexpr data_type& at(data_type key) const { if(key.cmpget_workaround("a")) return data_7; return fake_data;}
 		constexpr data_type& emplace_back(data_type d) { return fake_data; }
 		//constexpr int_t size() const { return 2; }
 		//constexpr bool contains(const data_type&) const { return false; }

@@ -220,13 +220,6 @@ public:
 	[[nodiscard]] constexpr const self_type& operator[](const self_type& key) const { return const_cast<self_type&>(*this)[std::move(key)]; }
 	[[nodiscard]] constexpr self_type& operator[](const self_type& key);
 
-	[[nodiscard]] constexpr bool cmpget_workaround(const string_t& key) const {
-		return visit([this,&key](auto&v)->bool {
-			if(is_multiptr_obj(v)) return multi_object->contains(self_type{key});
-			else throw_wrong_interface_error<details::interfaces::cmpget_workaround>();
-		}, holder);
-	}
-
 	[[nodiscard]] constexpr self_type call(auto&& params);
 
 	[[nodiscard]] friend constexpr auto exec_operation(const self_type& left, const self_type& right, auto&& op) {
