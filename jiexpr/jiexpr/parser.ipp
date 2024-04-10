@@ -10,7 +10,7 @@
 
 template< typename data_type, typename operators_factory, typename data_factory >
 template<typename gh, template<auto>class th>
-constexpr auto bastard<data_type,operators_factory,data_factory>::create_parser() const {
+constexpr auto jiexpr<data_type,operators_factory,data_factory>::create_parser() const {
 	using result_t = expr_type<ast_forwarder>;
 	using expr_t = ast_forwarder<expr_type<ast_forwarder>>;
 	auto mk_fwd = [this](auto& v){ return df.mk_fwd(v); };

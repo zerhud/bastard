@@ -9,7 +9,7 @@
  *************************************************************************/
 
 template< typename data_type, typename operators_factory, typename data_factory >
-constexpr void bastard<data_type,operators_factory,data_factory>::mk_params(auto& params, const auto& op) const {
+constexpr void jiexpr<data_type,operators_factory,data_factory>::mk_params(auto& params, const auto& op) const {
 	typename data_type::integer_t ind=params.size();
 	for(auto& param:op.params) {
 		if(!jiexpr_details::variant_holds<op_eq_tag>(*param)) params.put(data_type{ind++}, visit(*this, *param));
@@ -21,7 +21,7 @@ constexpr void bastard<data_type,operators_factory,data_factory>::mk_params(auto
 }
 
 template< typename data_type, typename operators_factory, typename data_factory > template<typename... types>
-constexpr data_type bastard<data_type,operators_factory,data_factory>::operator()(const op_concat<types...>& op) const {
+constexpr data_type jiexpr<data_type,operators_factory,data_factory>::operator()(const op_concat<types...>& op) const {
 	auto left_str = df.mk_str();
 	auto right_str = df.mk_str();
 	back_insert_format(df.back_inserter(left_str), visit(*this, *op.left));
@@ -29,7 +29,7 @@ constexpr data_type bastard<data_type,operators_factory,data_factory>::operator(
 	return data_type{ ops.template do_concat( std::move(left_str), std::move(right_str) ) };
 }
 template< typename data_type, typename operators_factory, typename data_factory > template<typename... types>
-constexpr data_type bastard<data_type,operators_factory,data_factory>::operator()(const op_eq<types...>& op) const {
+constexpr data_type jiexpr<data_type,operators_factory,data_factory>::operator()(const op_eq<types...>& op) const {
 	auto cur = *env;
 	auto& left = op.name.path;
 	for(auto i=0;i<left.size()-1;++i) cur = cur[data_type{get<string_t>(*left[i])}];
@@ -38,14 +38,14 @@ constexpr data_type bastard<data_type,operators_factory,data_factory>::operator(
 	return cur[key];
 }
 template< typename data_type, typename operators_factory, typename data_factory > template<typename... types>
-constexpr data_type bastard<data_type,operators_factory,data_factory>::operator()(const list_expr<types...>& op) const {
+constexpr data_type jiexpr<data_type,operators_factory,data_factory>::operator()(const list_expr<types...>& op) const {
 	data_type ret;
 	ret.mk_empty_array();
 	for(auto&& item:op.list) ret.push_back(visit(*this, *item));
 	return ret;
 }
 template< typename data_type, typename operators_factory, typename data_factory > template<typename... types>
-constexpr data_type bastard<data_type,operators_factory,data_factory>::operator()(const dict_expr<types...>& op) const {
+constexpr data_type jiexpr<data_type,operators_factory,data_factory>::operator()(const dict_expr<types...>& op) const {
 	data_type ret;
 	ret.mk_empty_object();
 	for(auto i=0;i<op.names.size();++i)
@@ -53,7 +53,7 @@ constexpr data_type bastard<data_type,operators_factory,data_factory>::operator(
 	return ret;
 }
 template< typename data_type, typename operators_factory, typename data_factory > template<typename... types>
-constexpr data_type bastard<data_type,operators_factory,data_factory>::operator()(const var_expr<types...>& op) const {
+constexpr data_type jiexpr<data_type,operators_factory,data_factory>::operator()(const var_expr<types...>& op) const {
 	auto cur = (*env)[data_type{get<string_t>(*op.path.at(0))}];
 	for(auto pos = ++op.path.begin();pos!=op.path.end();++pos) {
 		auto& item = **pos;
@@ -67,7 +67,7 @@ constexpr data_type bastard<data_type,operators_factory,data_factory>::operator(
 	return cur;
 }
 template< typename data_type, typename operators_factory, typename data_factory > template<typename... types>
-constexpr data_type bastard<data_type,operators_factory,data_factory>::operator()(const fnc_call_expr<types...>& op) const {
+constexpr data_type jiexpr<data_type,operators_factory,data_factory>::operator()(const fnc_call_expr<types...>& op) const {
 	auto fnc =(*this)(op.name);
 	data_type params;
 	params.mk_empty_object();
@@ -75,13 +75,13 @@ constexpr data_type bastard<data_type,operators_factory,data_factory>::operator(
 	return fnc.call(std::move(params));
 }
 template< typename data_type, typename operators_factory, typename data_factory > template<typename... types>
-constexpr data_type bastard<data_type,operators_factory,data_factory>::operator()(const ternary_op<types...>& op) const {
+constexpr data_type jiexpr<data_type,operators_factory,data_factory>::operator()(const ternary_op<types...>& op) const {
 	if(ops.template to_bool<data_type>(visit(*this,*op.cond))) return visit(*this,*op.left);
 	if(op.right) return visit(*this, *op.right);
 	return data_type{};
 }
 template< typename data_type, typename operators_factory, typename data_factory >
-constexpr data_type bastard<data_type,operators_factory,data_factory>::operator()(const auto& op) const {
+constexpr data_type jiexpr<data_type,operators_factory,data_factory>::operator()(const auto& op) const {
 	if constexpr (requires{!op.left;}) if(!op.left) std::unreachable();
 	if constexpr (requires{!op.right;}) if(!op.right) std::unreachable();
 	if constexpr (requires{visit([](const auto&){}, op);}) {

@@ -15,9 +15,9 @@
 #include "jiexpr/details.hpp"
 
 template< typename data_type, typename operators_factory, typename data_factory >
-struct bastard {
+struct jiexpr {
 	template<typename... types> using variant_t = typename data_factory::template variant_t<types...>;
-	using self_type = bastard<data_type, operators_factory, data_factory>;
+	using self_type = jiexpr<data_type, operators_factory, data_factory>;
 	using operators_executer = operators_factory;
 
 	template<typename expr_t>
