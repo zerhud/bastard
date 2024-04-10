@@ -21,8 +21,6 @@ struct jiexpr {
 	using operators_executer = operators_factory;
 
 	template<typename expr_t>
-	struct unary_op { std::decay_t<expr_t> expr; };
-	template<typename expr_t>
 	struct binary_op {
 		std::decay_t<expr_t> left;
 		std::decay_t<expr_t> right;
@@ -51,7 +49,8 @@ struct jiexpr {
 
 	template<typename expr_t> struct op_and      : binary_op<expr_t> {};
 	template<typename expr_t> struct op_or       : binary_op<expr_t> {};
-	template<typename expr_t> struct op_not      : unary_op<expr_t> {};
+
+	template<typename expr_t> struct op_not { std::decay_t<expr_t> expr; };
 
 	template<typename expr_t>
 	struct list_expr {
