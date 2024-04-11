@@ -45,7 +45,7 @@ constexpr auto jiexpr<data_type,operators_factory,data_factory>::create_parser()
 			| cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"/"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"**"> >> ++gh::rv_rreq(mk_fwd))
 			, cast<op_not<expr_t>>(th<'!'>::_char++ >> --gh::rv_rreq(mk_fwd))
-			, th<'['>::_char++ >> --(-((gh::rv_req(mk_fwd)) % ',')) >> th<']'>::_char
+			, th<'['>::_char >> fnum<0>(-((gh::rv_req(mk_fwd)) % ',')) >> th<']'>::_char
 			, th<'{'>::_char >> th<'}'>::_char | th<'{'>::_char >> (gh::rv_req(mk_fwd_emp)++ >> th<':'>::_char >> gh::rv_req(mk_fwd_emp)) % ',' >> th<'}'>::_char
 			, var_expr_parser
 			, cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_rreq(mk_fwd) % ',') >> th<')'>::_char)
