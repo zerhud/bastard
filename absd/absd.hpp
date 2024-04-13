@@ -87,6 +87,7 @@ private:
 	details::type_erasure_array<self_type>* multi_array=nullptr;
 	details::type_erasure_object<factory_t, self_type>* multi_object=nullptr;
 
+	constexpr auto suppress_clang_warning() const {}
 	constexpr static auto inner_mk(const factory& f, auto&& _v, auto&&... args);
 	constexpr static void mk_ptr_and_assign(self_type& ret, const auto& f, auto&& v);
 	constexpr static void mk_map_impl(const auto& f, self_type& result, auto&& key, auto&& val, auto&&... tail);
@@ -103,6 +104,7 @@ private:
 	constexpr void deallocate() {
 		visit([this](auto& v){
 			if constexpr(is_inner_counter_exists<decltype(v)>) deallocate(v);
+			else suppress_clang_warning();
 		}, holder);
 	}
 
