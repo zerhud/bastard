@@ -79,6 +79,8 @@ struct data {
 		return ret;
 	}
 
+	constexpr auto index() const { return holder.index(); }
+
 private:
 	template<typename type> constexpr static const bool is_inner_counter_exists = requires(std::remove_pointer_t<std::decay_t<type>>& v){ v.increase_counter(); };
 

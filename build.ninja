@@ -21,3 +21,7 @@ build jiexpr_objects: gcc jiexpr/tests/objects.cpp
   iflags = -Iabsd -Ijiexpr
 build jiexpr_methods: gcc jiexpr/tests/methods.cpp
   iflags = -Iabsd -Ijiexpr
+build ast_graph_struct_to_ast: gcc ast_graph/tests/struct_to_ast.cpp
+  iflags = -Iast_graph
+build ast_graph_struct_to_ast_clang: clang ast_graph/tests/struct_to_ast.cpp
+  iflags = -Iast_graph
