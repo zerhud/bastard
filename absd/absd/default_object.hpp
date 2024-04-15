@@ -9,6 +9,7 @@
  *************************************************************************/
 
 #include <utility>
+#include "exceptions.hpp"
 #include "type_erasure.hpp"
 
 namespace absd::details {
@@ -113,14 +114,19 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 				struct kv {
 					data_type k, v;
 				};
-				this->orig_val().insert(kv{key, value});
-				return this->orig_val().at(key);
+				if constexpr (requires{this->orig_val().insert(kv{key,value});}) {
+					this->orig_val().insert(kv{key, value});
+					return this->orig_val().at(key);
+				}
+				else data_type::factory_t::template throw_wrong_interface_error<interfaces::put>();
 			}
 
 			constexpr data_type keys(const typename data_type::factory_t &f) const override {
 				data_type ret;
 				ret.mk_empty_array();
-				for (const auto &[k, v]: this->orig_val()) ret.push_back(k);
+				if constexpr (requires{begin(this->orig_val());} || requires{this->orig_val().begin();})
+					for (const auto&[k,v]:this->orig_val()) ret.push_back(k);
+				else for(auto& v:this->orig_val().keys()) ret.push_back(data_type{std::move(v)});
 				return ret;
 			}
 		};

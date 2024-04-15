@@ -12,6 +12,10 @@ rule clang
 
 build absd_test: gcc absd/test.cpp
 build absd_test_clang: clang absd/test.cpp
+build absd_tests_mk: gcc absd/tests/mk.cpp
+  iflags = -Iabsd
+build absd_tests_mk_clang: clang absd/tests/mk.cpp
+  iflags = -Iabsd
 
 build jiexpr_math: gcc jiexpr/tests/math.cpp
   iflags = -Iabsd -Ijiexpr

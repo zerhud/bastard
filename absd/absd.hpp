@@ -75,7 +75,12 @@ struct data {
 	}
 	constexpr static self_type mk(const factory& f, auto&& _v, auto&&... args) {
 		self_type ret;
-		mk_ptr_and_assign(ret, f, inner_mk(f, std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...));
+		auto inner = inner_mk(f, std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...);
+
+		constexpr bool is_counter_maker = details::is_specialization_of<decltype(inner), counter_maker>;
+		if constexpr (is_counter_maker) return self_type{std::move(inner.orig_val())};
+		else mk_ptr_and_assign(ret, f, std::move(inner));
+
 		return ret;
 	}
 
@@ -95,6 +100,9 @@ private:
 	constexpr static void mk_map_impl(const auto& f, self_type& result, auto&& key, auto&& val, auto&&... tail);
 
 	constexpr static auto mk_ca_val(auto&& v, auto&&... args);
+
+	template<auto args_sz>
+	constexpr static bool mk_check_callable(const auto& v){ return requires{ v(); } || args_sz > 0; }
 
 	constexpr void allocate() noexcept {
 		visit([](auto& v){
@@ -164,7 +172,10 @@ public:
 
 	constexpr data(const data& v) : holder(v.holder) { allocate(); copy_multi_pointers(v); }
 	//NOTE: bug in gcc workaround: use holder = decltype(holder){v.holder} ?
-	constexpr data(data&& v) noexcept : holder(std::move(v.holder)) { v.holder=typename factory::empty_t{}; copy_multi_pointers(v); }
+	constexpr data(data&& v) noexcept : holder(std::move(v.holder)) {
+		v.holder.template emplace<typename factory::empty_t>();
+		copy_multi_pointers(v);
+	}
 	constexpr ~data() { deallocate(); }
 
 	constexpr self_type& assign() {
