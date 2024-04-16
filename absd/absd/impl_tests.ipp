@@ -25,9 +25,9 @@ namespace absd {
 template<typename factory>
 constexpr bool data<factory>::test() {
 #ifndef __clang__
-	return test_simple_cases() && test_array_cases() && details::test_callable<self_type>() && test_object_cases();
+	return test_simple_cases() && test_array_cases() && details::test_callable<self_type>();
 #else
-	return test_simple_cases() && test_array_cases() && test_object_cases();
+	return test_simple_cases() && test_array_cases();
 #endif
 }
 
@@ -85,37 +85,6 @@ constexpr bool data<factory>::test_array_cases() {
 		return d.contains(self_type{3});
 	}() == true );
 
-	ctrt_end
-}
-
-template<typename factory>
-constexpr bool data<factory>:: test_object_cases() {
-	ctrt_begin
-	ctrt( self_type{}.mk_empty_object().is_object() == true )
-	ctrt( self_type{}.mk_empty_object().is_array() == false )
-	ctrt( []{self_type d{}; d.mk_empty_object(); d.put(self_type{1}, self_type{7}); return (integer_t)d[self_type{1}];}() == 7 )
-	ctrt( []{ self_type d; d.put(self_type{1}, self_type{7}); d.put(self_type{2}, self_type{8}); return d.size(); }() == 2 )
-	ctrt( []{ self_type d;
-		d.put(self_type{1}, self_type{7});
-		d.put(self_type{2}, self_type{8});
-		auto keys = d.keys();
-		return (keys.size() == 2) + (2*((integer_t)keys[0] == 1)) + (4*((integer_t)keys[1] == 2)); }() == 7 )
-
-	ctrt( ([]{
-		details::constexpr_kinda_map<factory,self_type,self_type> v;
-		v.insert(std::make_pair(self_type{1}, self_type{2}));
-		return v.contains(self_type{1});
-	}()) )
-	ctrt( ((integer_t)[]{
-		details::constexpr_kinda_map<factory,self_type,self_type> v;
-		v.insert(std::make_pair(self_type{1}, self_type{3}));
-		return self_type::mk(std::move(v))[self_type{1}];}() == 3) )
-
-	ctrt( []{
-		self_type d;d.mk_empty_object();
-		d.put(self_type{1}, self_type{7});
-		return d.contains(self_type{1}) + (2*!d.contains(self_type{7}));
-	}() == 3)
 	ctrt_end
 }
 

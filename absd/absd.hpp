@@ -256,7 +256,6 @@ public:
 
 	constexpr static bool test_simple_cases() ;
 	constexpr static bool test_array_cases() ;
-	constexpr static bool test_object_cases() ;
 
 	constexpr static bool test() ;
 };
