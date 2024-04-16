@@ -8,11 +8,10 @@
 
 #include "factory.hpp"
 
-#include <cassert>
-
 #ifndef __clang__
 #define CTRT(code) static_assert( code );
 #else
+#include <cassert>
 #define CTRT(code) assert( code );
 #endif
 
@@ -47,6 +46,7 @@ constexpr void main_test() {
 }
 
 int main(int,char**) {
+	main_test<absd_factory<float>>();
 	main_test<absd_factory<double>>();
 	return 0;
 }

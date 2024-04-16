@@ -10,8 +10,6 @@ rule clang
   command = clang++ -MMD -pipe -std=c++23 -fdiagnostics-color=always $iflags $in -o $builddir/$out
   depfile = $builddir/$out.d
 
-build absd_test: gcc absd/test.cpp
-build absd_test_clang: clang absd/test.cpp
 build absd_tests_mk: gcc absd/tests/mk.cpp
   iflags = -Iabsd
 build absd_tests_mk_clang: clang absd/tests/mk.cpp
@@ -19,6 +17,14 @@ build absd_tests_mk_clang: clang absd/tests/mk.cpp
 build absd_tests_objects: gcc absd/tests/objects.cpp
   iflags = -Iabsd
 build absd_tests_objects_clang: clang absd/tests/objects.cpp
+  iflags = -Iabsd
+build absd_tests_arrays: gcc absd/tests/arrays.cpp
+  iflags = -Iabsd
+build absd_tests_arrays_clang: clang absd/tests/arrays.cpp
+  iflags = -Iabsd
+build absd_tests_simple: gcc absd/tests/simple.cpp
+  iflags = -Iabsd
+build absd_tests_simple_clang: clang absd/tests/simple.cpp
   iflags = -Iabsd
 
 build jiexpr_math: gcc jiexpr/tests/math.cpp

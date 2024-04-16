@@ -253,14 +253,8 @@ public:
 			else return false;
 			}, left.holder, right.holder);
 	}
-
-	constexpr static bool test_simple_cases() ;
-	constexpr static bool test_array_cases() ;
-
-	constexpr static bool test() ;
 };
 
 } // namespace absd
 
-#include "absd/impl_tests.ipp"
 #include "absd/impl.ipp"
