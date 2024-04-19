@@ -1,7 +1,6 @@
 #include "factory.hpp"
 
 int main(int,char**) {
-	test_rt( 1, (absd_data::integer_t)eval("1") )
 	test_rt( 2, (absd_data::integer_t)eval("2") )
 	test_rt( 2, ((absd_data::string_t)eval("'ok'")).size() )
 	test_rt( 'k', ((absd_data::string_t)eval("'ok'"))[1] )
@@ -25,8 +24,9 @@ int main(int,char**) {
 	test_rt( 30, (absd_data::integer_t)eval("5+5 ** 2") );
 
 
+	test_rt( 1, (absd_data::integer_t)eval("1") )
 	test( 28,  (absd_data::integer_t)eval("(3 + 2) * 2 + 3 + 1 + 2 + 3 + 4 + 5") )
-	test( false, (bool)eval("!true") )
+	test_rt( false, (bool)eval("!true") )
 
 	test( 2, ((absd_data::string_t)eval("1 ~ 1")).size() )
 	test_rt( '1', ((absd_data::string_t)eval("1 ~ 1"))[0] )

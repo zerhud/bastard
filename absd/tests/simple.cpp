@@ -104,7 +104,8 @@ int main(int,char**) {
 		if(result != test_obj) std::cout << "ERROR: " << result << "!=" << test_obj << std::endl;
 	}) ;
 
-	test_format<absd_data>();
+	test_format<absd::data<absd_factory<float>>>();
+	test_format<absd::data<absd_factory<double>>>();
 
 	return 0;
 }
