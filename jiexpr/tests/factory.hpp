@@ -2,8 +2,8 @@
 #include "jiexpr.hpp"
 #include "jiexpr/default_operators.hpp"
 
-//#include <ascip.hpp>
-#include "../ascip_all.hpp"
+#include <ascip.hpp>
+//#include "../ascip_all.hpp"
 #include <vector>
 #include <memory>
 #include <variant>
