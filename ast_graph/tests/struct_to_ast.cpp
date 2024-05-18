@@ -8,38 +8,17 @@
 
 #include <iostream>
 
-#include "ast_graph/field_names.hpp"
-#include "ast_graph/node.hpp"
+#include "factory.hpp"
 
-#include <variant>
-#include <vector>
-#include <string_view>
-#include <source_location>
+#include <memory>
 
-using namespace std::literals;
+using ast_graph_tests::factory;
 
-struct factory {
-	using string_view = std::string_view;
-	using source_location = std::source_location;
+struct test_leaf{ int ff=3; };
 
-	constexpr static auto mk_vec(auto&& first, auto&&... items) {
-		std::vector<std::decay_t<decltype(first)>> ret;
-		ret.emplace_back(std::forward<decltype(first)>(first));
-		(void)(ret.emplace_back(std::forward<decltype(items)>(items)), ...);
-		return ret;
-	}
-
-	template<template<typename...>typename list, typename... types>
-	constexpr auto mk_val(const list<types...>&, auto&& val) const {
-		return std::variant<std::monostate, types...>{val};
-	}
-	template<template<typename...>typename list, typename... types>
-	constexpr auto mk_val(const list<types...>&) const {
-		return std::variant<std::monostate, types...>{};
-	}
-};
-
-struct test_leaf{};
+namespace test_namespace {
+struct in_namespace {};
+}
 
 constexpr auto node_name(const factory&, const test_leaf*) {
 	return factory::string_view{"leaf"};
@@ -53,8 +32,8 @@ requires (num==0) {
 	return "leafs_value";
 }
 template<template<auto>class num_holder, auto num>
-constexpr auto node_value(const factory&, const test_leaf*, num_holder<num>) {
-	return 3;
+constexpr const auto& node_value(const factory&, const test_leaf* ptr, num_holder<num>) {
+	return ptr->ff;
 }
 
 struct test_fields {
@@ -95,20 +74,24 @@ static_assert( "test_leaf"sv == ast_graph::details::ref::type_name<factory, test
 
 static_assert( "leaf"sv == ast_graph::node<factory,test_leaf>{}.name() );
 static_assert( "test_fields"sv == ast_graph::node<factory,test_fields>{}.name() );
+static_assert( "test_namespace::in_namespace"sv == ast_graph::node<factory,test_namespace::in_namespace>{}.name() );
 
-static_assert( 1 == ast_graph::node<factory,test_leaf>{}.children_count() );
-static_assert( 3 == ast_graph::node<factory,test_fields>{}.children_count() );
+static_assert( 1 == ast_graph::node<factory,test_leaf>{}.fields_count() );
+static_assert( 2 == ast_graph::node<factory,test_fields>{}.fields_count() );
+
+static_assert( 0 == ast_graph::node<factory,test_leaf>{}.children_count() );
+static_assert( 1 == ast_graph::node<factory,test_fields>{}.children_count() );
 
 static_assert( "field_1"sv == ast_graph::node<factory,test_fields>{}.key<0>() );
 static_assert( "leafs_override"sv == ast_graph::node<factory,test_fields>{}.key<2>() );
 
-static_assert( 3 == ast_graph::node<factory,test_fields>{}.keys().size() );
-static_assert( "field_1"sv == ast_graph::node<factory,test_fields>{}.keys()[0] );
-static_assert( "field_2"sv == ast_graph::node<factory,test_fields>{}.keys()[1] );
-static_assert( "leafs_override"sv == ast_graph::node<factory,test_fields>{}.keys()[2] );
+static_assert( 2 == ast_graph::node<factory,test_fields>{}.list_fields().size() );
+static_assert( "field_2" == ast_graph::node<factory,test_fields>{}.list_fields()[1] );
+static_assert( 1 == ast_graph::node<factory,test_fields>{}.list_children().size() );
+static_assert( "leafs_override"sv == ast_graph::node<factory,test_fields>{}.list_children()[0] );
 
-static_assert( 1 == ast_graph::node<factory,test_leaf>{}.keys().size() );
-static_assert( "leafs_value"sv == ast_graph::node<factory,test_leaf>{}.keys()[0] );
+static_assert( 1 == ast_graph::node<factory,test_leaf>{}.list_fields().size() );
+static_assert( 0 == ast_graph::node<factory,test_leaf>{}.list_children().size() );
 
 static_assert( std::is_same_v<
         std::variant<std::monostate,int,std::vector<test_leaf>>,
@@ -128,6 +111,17 @@ static_assert( holds_alternative<std::monostate>(extract_field<test_fields>("not
 
 static_assert( 3 == get<int>(extract_field<test_leaf>("leafs_value"sv)) );
 static_assert( holds_alternative<std::monostate>(extract_field<test_leaf>("not_exists"sv)) );
+
+struct test_with_ptr {
+	int f1=1;
+	std::unique_ptr<test_with_ptr> f2;
+};
+
+static_assert( 2 == ast_graph::details::ref::size<test_with_ptr> );
+static_assert( 1 == ast_graph::node<factory,test_with_ptr>{}.fields_count() );
+static_assert( 1 == ast_graph::node<factory,test_with_ptr>{}.children_count() );
+static_assert( 1 == ast_graph::node<factory,test_with_ptr>{}.list_children().size() );
+static_assert( "f2"sv == ast_graph::node<factory,test_with_ptr>{}.list_children()[0] );
 
 int main(int,char**) {
 	return 0;

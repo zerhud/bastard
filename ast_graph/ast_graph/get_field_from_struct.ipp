@@ -5,11 +5,14 @@
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          https://www.boost.org/LICENSE_1_0.txt)
 
-template<typename type> const type& lref() ;
 template<typename t>
 struct decay {
-	template <typename u> static u impl(u);
-	using type = decltype(impl(lref<t>()));
+	template<typename type> static const type& lref() ;
+	template<typename u> struct _t{ using type = u; };
+	template<typename u> static _t<u> impl(const u&) ;
+	template<typename u, unsigned int sz> static _t<u*> impl(const u(&)[sz]) ;
+	template<typename r, typename... p> static _t<r(*)(p...)> impl(r(&)(p...)) ;
+	using type = typename decltype(impl(lref<t>()))::type;
 };
 
 template<typename t> using decay_t = typename decay<t>::type;

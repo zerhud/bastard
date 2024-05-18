@@ -20,21 +20,21 @@ struct undefined_value {
 	static const undefined_value<type> undefined_object;
 };
 
-constexpr bool is_sym_allowed_in_cpp_ident(auto sym) {
-	//ascii: 48(30)-57(39) - digits, 65(41)-90(5A) A-Z, 97(61)-122(7A) a-z, 95(5F) == _
+constexpr bool is_sym_allowed_in_cpp_ident(auto sym, bool add_sem) {
+	//ascii: 48(30)-57(39) - digits, 65(41)-90(5A) A-Z, 97(61)-122(7A) a-z, 95(5F) == _, 58(3A) == :
 	return
 			  (((0x30<=sym) + (sym<=0x39))==2)
 			+ (((0x41<=sym) + (sym<=0x5A))==2)
 			+ (((0x61<=sym) + (sym<=0x7A))==2)
-			+ (sym == 0x5F)
+			+ (sym == 0x5F) + ((sym == 0x3A)*add_sem)
 	;
 }
 
-constexpr auto extract_last_name(auto&& src) {
+constexpr auto extract_last_name(bool sem, auto&& src) {
 	auto last_pos = -1;
 	auto first_pos = -1;
 	for(auto cur_pos=src.size()-1;0<cur_pos;--cur_pos) {
-		const bool is_normal = is_sym_allowed_in_cpp_ident(src[cur_pos]);
+		const bool is_normal = is_sym_allowed_in_cpp_ident(src[cur_pos], sem);
 		first_pos += (cur_pos * !is_normal) * (last_pos>0) * (first_pos<0);
 		last_pos += (cur_pos * is_normal) * (last_pos<0);
 	}
@@ -45,12 +45,12 @@ constexpr auto extract_last_name(auto&& src) {
 
 template<typename factory, auto type>
 constexpr auto object_name() {
-	return extract_last_name( typename factory::string_view{factory::source_location::current().function_name()} );
+	return extract_last_name( false, typename factory::string_view{factory::source_location::current().function_name()} );
 }
 
 template<typename factory, typename type>
 constexpr auto type_name() {
-	return extract_last_name( typename factory::string_view{factory::source_location::current().function_name()} );
+	return extract_last_name( true, typename factory::string_view{factory::source_location::current().function_name()} );
 }
 
 template<typename factory, auto ind, typename type>

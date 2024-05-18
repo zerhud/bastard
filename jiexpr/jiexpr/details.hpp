@@ -52,4 +52,18 @@ constexpr void details_tests() {
 	static_assert( !variant_holds<tag>(t1_var{2}) );
 }
 
+template<typename cur, typename... tail, template<typename...>class variant, typename... alternatives>
+constexpr auto _inner_visit(auto&& fnc, const variant<alternatives...>& var) {
+	if constexpr (sizeof...(tail)==0) return fnc(get<cur>(var));
+	else {
+		if(variant_holds<cur>(var)) return fnc(get<cur>(var));
+		else return _inner_visit<tail...>(std::forward<decltype(fnc)>(fnc), var);
+	}
+}
+
+template<template<typename...>class variant, typename... alternatives>
+constexpr auto inner_visit(auto&& fnc, const variant<alternatives...>& var) {
+	return _inner_visit<alternatives...>(std::forward<decltype(fnc)>(fnc), var);
+}
+
 } // namespace jiexpr_details

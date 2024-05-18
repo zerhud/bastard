@@ -129,6 +129,7 @@ struct jiexpr {
 
 	template<template<class>class fa> constexpr data_type operator()(const expr_type<fa>& e) {
 		return visit(*this, e);
+		//return jiexpr_details::inner_visit(*this,e);
 	}
 	constexpr data_type operator()(string_t v) const { return data_type{ v }; }
 	constexpr data_type operator()(integer_t v) const { return data_type{ v }; }

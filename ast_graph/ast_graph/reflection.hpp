@@ -11,6 +11,8 @@
 
 namespace ast_graph::details::ref {
 
+template<typename type> static const type& lref() ;
+
 #include "get_field_from_struct.ipp"
 #include "get_struct_field_name.ipp"
 
