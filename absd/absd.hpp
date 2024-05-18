@@ -78,6 +78,7 @@ struct data {
 		auto inner = inner_mk(f, std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...);
 
 		constexpr bool is_counter_maker = details::is_specialization_of<decltype(inner), counter_maker>;
+		static_assert( !is_counter_maker || requires{ self_type{std::move(inner.orig_val())}; }, "cannot create absd data from the object" );
 		if constexpr (is_counter_maker) return self_type{std::move(inner.orig_val())};
 		else mk_ptr_and_assign(ret, f, std::move(inner));
 

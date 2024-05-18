@@ -34,7 +34,7 @@ constexpr void main_test() {
 	CTRT( (int_t)amb().call(data_type::mk_map(0, 7, "b", 3)) == 4);
 	CTRT( (int_t)amb().call(data_type::mk_map("b", 3, 0, 7)) == 4);
 
-	struct callable_obj_arr : constexpr_kinda_map<typename data_type::factory_t, data_type, data_type> {
+	struct callable_obj_arr : absd::details::constexpr_kinda_map<typename data_type::factory_t, data_type, data_type> {
 		mutable data_type fake_data;
 		mutable data_type data_7{7}, data_3{3}, data_5{5};
 		constexpr data_type operator()() const {return data_type{88};}

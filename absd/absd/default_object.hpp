@@ -100,7 +100,12 @@ template<typename data_type>
 constexpr auto mk_te_object(const auto& f, auto&& src) {
 	using src_type = std::decay_t<decltype(src)>;
 	using te_object = type_erasure_object<typename data_type::factory_t, data_type>;
-	constexpr const bool is_object = requires{ src.orig_val().at(data_type{}); };
+	constexpr const bool is_iterable =
+			requires{ begin(src.orig_val()); end(src.orig_val()); } ||
+			requires{ src.orig_val().begin(); src.orig_val().end(); };
+	constexpr const bool is_object =
+			   requires{ src.orig_val().at(data_type{}); }
+			&& (requires{ src.orig_val().keys(); } || is_iterable);
 	if constexpr (!is_object) return std::move(src);
 	else {
 		struct te : src_type, te_object {
@@ -124,7 +129,7 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 			constexpr data_type keys(const typename data_type::factory_t &f) const override {
 				data_type ret;
 				ret.mk_empty_array();
-				if constexpr (requires{begin(this->orig_val());} || requires{this->orig_val().begin();})
+				if constexpr (is_iterable)
 					for (const auto&[k,v]:this->orig_val()) ret.push_back(k);
 				else for(auto& v:this->orig_val().keys()) ret.push_back(data_type{std::move(v)});
 				return ret;

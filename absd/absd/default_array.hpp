@@ -10,6 +10,7 @@
 
 #include <utility>
 #include "type_erasure.hpp"
+#include "exceptions.hpp"
 
 namespace absd::details {
 
@@ -53,7 +54,11 @@ constexpr auto mk_te_array(const auto& f, auto&& src) {
 			constexpr ~te_ar2() noexcept override {}
 
 			constexpr bool is_arr() const override { return true; }
-			constexpr data_type& emplace_back(data_type d) override { return this->orig_val().emplace_back(std::move(d)); }
+			constexpr data_type& emplace_back(data_type d) override {
+				if constexpr (requires{this->orig_val().emplace_back(std::move(d));})
+					return this->orig_val().emplace_back(std::move(d));
+				else data_type::factory_t::template throw_wrong_interface_error<interfaces::push_back>();
+			}
 			constexpr data_type& at(typename data_type::integer_t ind) override { return this->orig_val().at(ind); }
 			constexpr decltype(sizeof(data_type)) size() const override { return this->orig_val().size(); }
 			constexpr bool contains(const data_type& val) const override {
