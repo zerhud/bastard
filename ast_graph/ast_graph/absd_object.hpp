@@ -19,10 +19,25 @@ namespace ast_graph {
 template<typename factory, typename origin>
 struct absd_object2 {
 	using data_type = typename factory::data_type;
-	struct node<factory, origin> node;
 
+	factory f;
 	graph<factory, origin> g;
-	constexpr explicit absd_object2(graph<factory, origin> g) : g(std::move(g)) {}
+	data_type empty;
+
+	//struct node<factory, origin> node;
+
+	constexpr explicit absd_object2(auto&& f, graph<factory, origin> g) : f(std::forward<decltype(f)>(f)), g(std::move(g)) {}
+
+	constexpr auto& at(const data_type& k) { return empty; }
+	constexpr auto size() const {
+		return g.children.size() + fields_count(g);
+	}
+	constexpr bool contains(const data_type& k) const { return false; }
+	constexpr auto keys() const {
+		auto ret = f.template mk_vec<data_type>();
+		for(auto& c:g.children) ret.emplace_back(data_type{ typename data_type::string_t{ c.name } });
+		return ret;
+	}
 };
 
 template<typename factory, typename origin>

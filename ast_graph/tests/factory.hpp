@@ -105,6 +105,10 @@ struct factory {
 	constexpr static bool is_field_type() {
 		return std::is_integral_v<type> || std::is_same_v<type, std::string>;
 	}
+
+	[[noreturn]] static void throw_no_value_access() {
+		throw std::runtime_error("access to no_value");
+	}
 };
 
 } // namespace ast_graph_tests

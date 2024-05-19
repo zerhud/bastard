@@ -72,11 +72,23 @@ struct with_subnode {
 static_assert( ast_graph::smart_ptr<std::unique_ptr<simple_node>> );
 
 template<typename type>
+constexpr auto test2(auto&& fnc, auto&& tune) {
+	type obj;
+	tune(obj);
+	graph_factory f;
+	ast_graph::absd_object2<graph_factory, type> obj2( f, ast_graph::mk_graph<type,graph_factory>(f,obj));
+	return fnc(absd_data::mk(std::move( obj2 )));
+}
+template<typename type>
+constexpr auto test2(auto&& fnc) {
+	return test2<type>(std::forward<decltype(fnc)>(fnc), [](auto&){});
+}
+
+template<typename type>
 constexpr auto test(auto&& fnc, auto&& tune) {
 	type obj;
 	tune(obj);
 	graph_factory f;
-	ast_graph::absd_object2<graph_factory, type> obj2( ast_graph::mk_graph<type,graph_factory>(f,obj));
 	ast_graph::node<graph_factory, type> node{{}, &obj};
 	return fnc(absd_data::mk(ast_graph::absd_object{ node }));
 }
@@ -88,7 +100,7 @@ constexpr auto test(auto&& fnc) {
 using data_type = graph_factory::data_type;
 
 constexpr void test_objects() {
-	CTRT( test<simple_node>([](auto obj){
+	CTRT( test2<simple_node>([](auto obj){
 		return obj.is_object() + obj.size();
 	}) == 3);
 	CTRT( test<simple_node>([](auto obj){
@@ -137,6 +149,12 @@ int main(int,char**) {
 	 */
 	test_objects();
 	test_arrays();
+
+	test2<simple_node>([](auto obj){
+			std::cout << "keys: " << std::endl;
+			for(auto i=0;i<obj.size();++i) std::cout << "\t" << (std::string)obj[i] << std::endl;
+			//for(auto& i:obj.keys()) std::cout << "\t" << i << std::endl;
+	});
 
 	/*
 	simple_node obj;

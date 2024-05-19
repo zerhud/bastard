@@ -100,6 +100,17 @@ struct graph {
 	children_type children;
 };
 
+template<typename factory, typename origin>
+constexpr auto fields_count(const graph<factory, origin>& g) {
+	return visit( []<typename t>(const t* v) {
+		if constexpr (!details::is_same<t,no_value>()) return node<factory, t>{ {}, v }.fields_count();
+		else {
+			factory::throw_no_value_access();
+			return 0; // for type deduction
+		}
+	}, g.root );
+}
+
 template<typename origin, typename factory, vector cur_node_type>
 constexpr auto mk_graph(const factory& f, const cur_node_type& top_level) ;
 template<typename origin, typename factory, variant cur_node_type>
