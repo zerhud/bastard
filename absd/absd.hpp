@@ -8,8 +8,6 @@
 
 #pragma once
 
-#include <iostream>
-
 #include <utility>
 #include <cassert> //TODO: remove after gcc bug will be fixed
 #include "absd/callable.hpp"
@@ -24,6 +22,10 @@ namespace absd {
 
 namespace details {
 
+template<typename...> struct type_list {};
+template<typename t> struct _type_c{ using type=t; };
+template<typename t> constexpr _type_c<t> type_c;
+
 template<typename factory> constexpr auto mk_integer_type() {
 	if constexpr(!requires{ typename factory::integer_t; }) return int{};
 	else return typename factory::integer_t{};
@@ -31,6 +33,23 @@ template<typename factory> constexpr auto mk_integer_type() {
 template<typename factory> constexpr auto mk_float_point_type() {
 	if constexpr(!requires{ typename factory::float_pint_t; }) return double{};
 	else return typename factory::float_pint_t{};
+}
+template<typename factory, typename... types> constexpr auto mk_variant_type() {
+	return type_c<typename factory::template variant<types...>>;
+}
+template<typename factory, typename data_type> constexpr auto mk_holder_type() {
+	constexpr auto maker = []<template<typename...>class container,typename... list>(container<list...>) {
+		return mk_variant_type<factory,
+				typename factory::empty_t, bool,
+				typename data_type::integer_t, typename data_type::float_point_t,
+				typename data_type::string_t, typename data_type::string_t*,
+				multiobject_tag*,
+				list*...
+		>();
+	};
+	if constexpr (requires{maker(typename factory::extra_types{});})
+		return maker(typename factory::extra_types{});
+	else return maker(type_list<>{});
 }
 
 } // namespace details
@@ -46,10 +65,7 @@ struct data {
 	using integer_t = decltype(details::mk_integer_type<factory>());
 	using float_point_t = decltype(details::mk_float_point_type<factory>());
 
-	using holder_t = typename factory::template variant<
-		typename factory::empty_t, bool, integer_t, float_point_t, string_t,
-		details::multiobject_tag*
-	>;
+	using holder_t = typename decltype(details::mk_holder_type<factory, self_type>())::type;
 
 	constexpr static auto mk_param(auto&& name) {
 		return name;
@@ -84,8 +100,6 @@ struct data {
 
 		return ret;
 	}
-
-	constexpr auto index() const { return holder.index(); }
 
 private:
 	template<typename type> constexpr static const bool is_inner_counter_exists = requires(std::remove_pointer_t<std::decay_t<type>>& v){ v.increase_counter(); };
@@ -159,8 +173,21 @@ private:
 
 	template<typename interface, typename ret_val_t=self_type>
 	constexpr static ret_val_t throw_wrong_interface_error(ret_val_t ret_val = self_type{});
+
+	template<typename type, template<typename...>class list, typename... types>
+	constexpr static bool is_listed_in_factory(list<types...>) {
+		if constexpr (sizeof...(types)==0) return false;
+		else return (std::is_same_v<type, types> || ... );
+	}
+	template<typename type>
+	constexpr static bool is_listed_in_factory() {
+		if constexpr( requires{ is_listed_in_factory<std::decay_t<type>>(typename factory_t::extra_types{}); })
+			return is_listed_in_factory<std::decay_t<type>>(typename factory_t::extra_types{});
+		else return false;
+	}
 public:
 
+	constexpr data(auto* v) requires (is_listed_in_factory<std::decay_t<decltype(*v)>>()) : holder(v) {}
 	constexpr data() =default ;
 	constexpr explicit data(auto v) requires (
 		   std::is_same_v<decltype(v), bool>
@@ -169,6 +196,7 @@ public:
 		|| std::is_same_v<decltype(v), float_point_t>
 	) : holder(v) {} //NOTE: cannot move here due bug in gcc https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111284
 
+	constexpr explicit data(string_t* str) : holder(str) {}
 	constexpr explicit data(const typename string_t::value_type* v) : holder(string_t(v)) {}
 
 	constexpr data(const data& v) : holder(v.holder) { allocate(); copy_multi_pointers(v); }
@@ -204,20 +232,20 @@ public:
 	constexpr auto& operator=(float_point_t v){ null_multi_pointers(); return assign(v); }
 
 	constexpr explicit operator bool() const { return get<bool>(holder); }
-	constexpr operator string_t() const { return get<string_t>(holder); }
+	constexpr operator string_t() const { return holder.index() == 5 ? *get<string_t*>(holder) : get<string_t>(holder); }
 	constexpr operator integer_t() const { return get<integer_t>(holder); }
 	constexpr operator float_point_t() const { return get<float_point_t>(holder); }
 
 	[[nodiscard]] constexpr bool is_int() const { return holder.index() == 2; }
 	[[nodiscard]] constexpr bool is_none() const { return holder.index() == 0; }
 	[[nodiscard]] constexpr bool is_bool() const { return holder.index() == 1; }
-	[[nodiscard]] constexpr bool is_string() const { return holder.index() == 4; }
+	[[nodiscard]] constexpr bool is_string() const { return (holder.index() == 4) + (holder.index() == 5); }
 	[[nodiscard]] constexpr bool is_float_point() const { return holder.index() == 3; }
 	[[nodiscard]] constexpr bool is_array() const {
-		return visit( [](const auto& v){ return is_multiptr_arr(v) || requires(std::decay_t<decltype(v)> vv){ vv->at( integer_t{} ); }; }, holder);
+		return visit( [](const auto& v){ return is_multiptr_arr(v) || details::as_array<std::remove_pointer_t<std::decay_t<decltype(v)>>, self_type>; }, holder);
 	}
 	[[nodiscard]] constexpr bool is_object() const {
-		return visit( [](const auto& v){ return is_multiptr_obj(v) || requires(std::decay_t<decltype(v)> vv){ vv->at( self_type {} ); }; }, holder);
+		return visit( [](const auto& v){ return is_multiptr_obj(v) || details::as_object<std::remove_pointer_t<std::decay_t<decltype(v)>>, self_type>; }, holder);
 	}
 	[[nodiscard]] constexpr bool is_callable() const {
 		return visit( [](const auto& v) { return is_multiptr_cll(v) || requires{ v->call({}); }; }, holder);
@@ -231,10 +259,10 @@ public:
 	constexpr self_type& mk_empty_object() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, details::mk_map_type<self_type, self_type>(factory{}))); return *this; }
 	constexpr self_type& push_back(self_type d);
 	constexpr self_type& put(self_type key, self_type value);
-	[[nodiscard]] constexpr const self_type& operator[](integer_t ind) const {return const_cast<self_type&>(*this)[ind];}
-	[[nodiscard]] constexpr self_type& operator[](integer_t ind);
-	[[nodiscard]] constexpr const self_type& operator[](const self_type& key) const { return const_cast<self_type&>(*this)[std::move(key)]; }
-	[[nodiscard]] constexpr self_type& operator[](const self_type& key);
+	[[nodiscard]] constexpr const self_type operator[](integer_t ind) const {return const_cast<self_type&>(*this)[ind];}
+	[[nodiscard]] constexpr self_type operator[](integer_t ind);
+	[[nodiscard]] constexpr const self_type operator[](const self_type& key) const { return const_cast<self_type&>(*this)[std::move(key)]; }
+	[[nodiscard]] constexpr self_type operator[](const self_type& key);
 
 	[[nodiscard]] constexpr self_type call(auto&& params);
 

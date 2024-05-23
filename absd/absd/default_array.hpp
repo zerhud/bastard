@@ -9,6 +9,7 @@
  *************************************************************************/
 
 #include <utility>
+#include "concepts.hpp"
 #include "type_erasure.hpp"
 #include "exceptions.hpp"
 
@@ -37,7 +38,7 @@ struct type_erasure_array {
 	constexpr virtual ~type_erasure_array() noexcept =default ;
 
 	constexpr virtual data& emplace_back(data d) =0 ;
-	constexpr virtual data& at(typename data::integer_t ind) =0 ;
+	constexpr virtual data at(typename data::integer_t ind) =0 ;
 	constexpr virtual decltype(sizeof(data)) size() const =0 ;
 	constexpr virtual bool contains(const data& val) const =0 ;
 };
@@ -46,8 +47,7 @@ constexpr auto mk_te_array(const auto& f, auto&& src) {
 	using int_t = data_type::integer_t;
 	using src_type = std::decay_t<decltype(src)>;
 	using te_array = type_erasure_array<data_type>;
-	constexpr const bool is_array = requires{ src.orig_val().at(int_t{}); };
-	if constexpr (!is_array) return std::move(src);
+	if constexpr (!as_array<decltype(src.orig_val()), data_type>) return std::move(src);
 	else {
 		struct te_ar2 : src_type, te_array {
 			constexpr te_ar2(src_type v) : src_type(std::move(v)) {}
@@ -59,7 +59,7 @@ constexpr auto mk_te_array(const auto& f, auto&& src) {
 					return this->orig_val().emplace_back(std::move(d));
 				else data_type::factory_t::template throw_wrong_interface_error<interfaces::push_back>();
 			}
-			constexpr data_type& at(typename data_type::integer_t ind) override { return this->orig_val().at(ind); }
+			constexpr data_type at(typename data_type::integer_t ind) override { return this->orig_val().at(ind); }
 			constexpr decltype(sizeof(data_type)) size() const override { return this->orig_val().size(); }
 			constexpr bool contains(const data_type& val) const override {
 				if constexpr (requires{this->orig_val().contains(val);})

@@ -9,6 +9,7 @@
  *************************************************************************/
 
 #include <utility>
+#include "concepts.hpp"
 #include "exceptions.hpp"
 #include "type_erasure.hpp"
 
@@ -62,7 +63,7 @@ struct type_erasure_object  {
 
 	virtual ~type_erasure_object() noexcept =default ;
 	constexpr virtual bool contains(const data& key) const =0 ;
-	constexpr virtual data& at(const data& ind) =0 ;
+	constexpr virtual data at(const data& ind) =0 ;
 	constexpr virtual data& put(data key, data value) =0 ;
 	constexpr virtual data keys(const factory_t& f) const =0 ;
 	constexpr virtual decltype(sizeof(data)) size() const =0 ;
@@ -74,7 +75,7 @@ struct object : inner_counter {
 
 	constexpr object(map_t map) : map(std::move(map)) {}
 	constexpr bool contains(const data& key) const { return map.contains(key); }
-	constexpr data& at(const data& ind) { return map.at(ind); }
+	constexpr data at(const data& ind) { return map.at(ind); }
 	constexpr data& put(data key, data value) {
 		struct kv{ data k, v; };
 		map.insert( kv{ key, value} );
@@ -100,13 +101,7 @@ template<typename data_type>
 constexpr auto mk_te_object(const auto& f, auto&& src) {
 	using src_type = std::decay_t<decltype(src)>;
 	using te_object = type_erasure_object<typename data_type::factory_t, data_type>;
-	constexpr const bool is_iterable =
-			requires{ begin(src.orig_val()); end(src.orig_val()); } ||
-			requires{ src.orig_val().begin(); src.orig_val().end(); };
-	constexpr const bool is_object =
-			   requires{ src.orig_val().at(data_type{}); }
-			&& (requires{ src.orig_val().keys(); } || is_iterable);
-	if constexpr (!is_object) return std::move(src);
+	if constexpr (!as_object<decltype(src.orig_val()), data_type>) return std::move(src);
 	else {
 		struct te : src_type, te_object {
 			constexpr te(src_type s) : src_type(std::move(s)) {}
@@ -114,7 +109,7 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 			constexpr decltype(sizeof(data_type)) size() const override { return this->orig_val().size(); }
 			constexpr bool is_obj() const override { return true; }
 			constexpr bool contains(const data_type& key) const override { return this->orig_val().contains(key); }
-			constexpr data_type& at(const data_type& ind) override { return this->orig_val().at(ind); }
+			constexpr data_type at(const data_type& ind) override { return this->orig_val().at(ind); }
 			constexpr data_type& put(data_type key, data_type value) override {
 				struct kv {
 					data_type k, v;
@@ -129,7 +124,7 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 			constexpr data_type keys(const typename data_type::factory_t &f) const override {
 				data_type ret;
 				ret.mk_empty_array();
-				if constexpr (is_iterable)
+				if constexpr (iteratable<decltype(src.orig_val())>)
 					for (const auto&[k,v]:this->orig_val()) ret.push_back(k);
 				else for(auto& v:this->orig_val().keys()) ret.push_back(data_type{std::move(v)});
 				return ret;

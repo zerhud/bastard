@@ -8,6 +8,8 @@
 
 #include "factory.hpp"
 
+#include <iostream>
+
 #ifndef __clang__
 #define CTRT(code) static_assert( code );
 #else

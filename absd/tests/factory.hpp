@@ -20,6 +20,7 @@ using namespace std::literals;
 
 template<typename float_point>
 struct absd_factory {
+	template<typename... types> struct type_list{};
 	template<typename... types> using variant = std::variant<types...>;
 	template<typename type> using vector = std::vector<type>;
 	using float_point_t = float_point;
