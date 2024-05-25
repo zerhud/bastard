@@ -140,21 +140,10 @@ constexpr void test_arrays() {
 int main(int,char**) {
 	/**
 	 * TODO: 1. fields - DONE
-	 *       2. sub objects (mostly done, need to inject array and others)
-	 *       3. arrays (vector of sub objects)
-	 *       4. pointers (raw and smart)
 	 *       5. optional
-	 *
-	 * Do we need in a function for create graph after implement all classes?
 	 */
 	test_objects();
 	test_arrays();
-
-	test2<simple_node>([](auto obj){
-			std::cout << "keys: " << std::endl;
-			for(auto i=0;i<obj.size();++i) std::cout << "\t" << (std::string)obj[i] << std::endl;
-			//for(auto& i:obj.keys()) std::cout << "\t" << i << std::endl;
-	});
 
 	/*
 	simple_node obj;

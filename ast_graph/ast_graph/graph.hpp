@@ -62,7 +62,6 @@ constexpr auto mk_children_types(const factory& f, vector auto&& o) {
 }
 template<typename factory>
 constexpr auto mk_children_types(const factory& f, variant auto&& o) {
-	//TODO: remove variant it self? it probably pushed in in the main mk_children_types method by push_front
 	constexpr auto list = []<template<typename...>class var, typename... types>(const var<types...>&){
 		return (decltype(mk_children_types(f, lref<ref::decay_t<types>>())){} + ... );
 	};
@@ -99,6 +98,13 @@ struct graph {
 	root_type root;
 	children_type children;
 };
+
+template<typename factory, typename origin>
+constexpr void exec_for_ptr(const graph<factory, origin>& g, auto&& fnc) {
+	visit([&fnc]<typename t>(const t* v){
+		if constexpr (!details::is_same<t,no_value>()) fnc(v);
+	}, g.root);
+}
 
 template<typename factory, typename origin>
 constexpr auto fields_count(const graph<factory, origin>& g) {
