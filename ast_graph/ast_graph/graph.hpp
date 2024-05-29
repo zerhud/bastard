@@ -11,6 +11,7 @@
 #include "concepts.hpp"
 #include "reflection.hpp"
 #include "node.hpp"
+#include "mk_children_types.hpp"
 
 namespace ast_graph {
 
@@ -21,52 +22,6 @@ constexpr auto mk_variant(const auto& f, const list<types...>&) {
 	return f.template mk_variant<const ref::decay_t<types>*...>();
 }
 
-template<typename factory>
-constexpr auto mk_children_types(const factory& f, vector auto&& o) ;
-template<typename factory>
-constexpr auto mk_children_types(const factory& f, variant auto&& o) ;
-template<typename factory>
-constexpr auto mk_children_types(const factory& f, smart_ptr auto&& o) ;
-template<typename factory>
-constexpr auto mk_children_types(const factory& f, auto&& o)
-requires( factory::template is_field_type<ref::decay_t<decltype(o)>>() ) {
-	return details::type_list<ref::decay_t<decltype(o)>>{};
-}
-
-template<typename factory>
-constexpr auto mk_children_types(const factory& f, auto&& o) {
-	using cur_obj_t = ref::decay_t<decltype(o)>;
-	struct node<factory, cur_obj_t> node{ f, &o };
-	auto ret = push_front<cur_obj_t>(node.children_types());
-	auto folded = fold(ret, details::type_list<cur_obj_t>{}, [](auto r, auto t){
-		using ttype = typename decltype(t)::type;
-		constexpr bool is_recursive_ptr = any_ptr_to<ttype, cur_obj_t>;
-		if constexpr (t==type_c<cur_obj_t>) return r;
-		else if constexpr(is_recursive_ptr) return r;
-		else {
-			using next = decltype(mk_children_types(f, lref<ttype>()));
-			return push_back(r, next{});
-		}
-	});
-	return transform_uniq(folded);
-}
-template<typename factory>
-constexpr auto mk_children_types(const factory& f, smart_ptr auto&& o) {
-	using cur = ref::decay_t<typename ref::decay_t<decltype(o)>::element_type>;
-	return decltype(mk_children_types(f,lref<cur>())){};
-}
-template<typename factory>
-constexpr auto mk_children_types(const factory& f, vector auto&& o) {
-	using cur = ref::decay_t<typename ref::decay_t<decltype(o)>::value_type>;
-	return push_front_if_not_contains(details::type_c<cur>, decltype(mk_children_types(f, lref<cur>())){});
-}
-template<typename factory>
-constexpr auto mk_children_types(const factory& f, variant auto&& o) {
-	constexpr auto list = []<template<typename...>class var, typename... types>(const var<types...>&){
-		return (decltype(mk_children_types(f, lref<ref::decay_t<types>>())){} + ... );
-	};
-	return list(o);
-}
 } // namespace details
 
 struct no_value{};
@@ -85,7 +40,7 @@ struct graph {
 			details::mk_variant(
 					factory{},
 					push_front<no_value>(
-							details::mk_children_types(
+							mk_children_types(
 									factory{},
 									details::lref<origin>()
 							)

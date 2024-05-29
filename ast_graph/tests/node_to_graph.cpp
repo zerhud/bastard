@@ -11,6 +11,9 @@
 #include "ast_graph/field_names.hpp"
 #include "ast_graph/node.hpp"
 #include "ast_graph/graph.hpp"
+#include "ast_graph/te_graph.hpp"
+
+#include "absd.hpp"
 
 #include "factory.hpp"
 
@@ -24,9 +27,41 @@ static_assert( !ast_graph::variant< std::tuple<int> > );
 namespace test_namespace {
 
 struct factory : ast_graph_tests::factory {
+	using string_t = std::string;
+	using empty_t = std::monostate;
 	constexpr static auto mk_node(const auto& obj) {
 		return ast_graph::mk_node(factory{}, obj);
 	}
+	constexpr static auto mk_ptr(auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
+	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
+};
+
+struct te_factory {
+	using data_type = absd::data<factory>;
+	using name_view = std::string_view;
+	using string_view = std::string_view;
+	using source_location = std::source_location;
+
+	template<typename type>
+	constexpr static bool is_field_type() {
+		return std::is_integral_v<type> || std::is_same_v<type, std::string>;
+	}
+
+	constexpr auto mk_data_vec(auto sz) const {
+		std::vector<std::byte> ret{};
+		ret.resize(sz);
+		return ret;
+	}
+
+	template<typename type>
+	constexpr std::unique_ptr<type> mk_ptr() const { return std::make_unique<type>(); }
+	constexpr auto mk_ptr(auto&& v) const {
+		using type = std::decay_t<decltype(v)>;
+		return std::make_unique<type>(std::forward<decltype(v)>(v));
+	}
+
+	template<typename type>
+	constexpr auto mk_vec() const { return std::vector<type>{}; }
 };
 
 struct single_entity2 {
@@ -73,8 +108,31 @@ static_assert( fold(ast_graph::details::type_list<int,char>{}, ast_graph::detail
 	return push_back(push_back(r, t), ast_graph::details::type_c<int>);
 }) == ast_graph::details::type_list<int,int,char,int>{} );
 
+static_assert( []{
+	file top;
+	auto g = ast_graph::make_te_graph(te_factory{}, &top);
+	return g.size() * !g.is_array();
+}() == 5 );
+static_assert( []{
+	file top;
+	return ast_graph::make_te_graph(te_factory{}, &top).child("child")->size();
+}() == 2 );
+static_assert( []{
+	file top;
+	top.singles.resize(3);
+	auto g = ast_graph::make_te_graph(te_factory{}, &top);
+	auto child = g.child("singles");
+	return child->is_array() * child->children_size();
+}() == 3 );
+static_assert( []{
+	std::vector<int> top;
+	top.emplace_back(1); top.emplace_back(2); top.emplace_back(3);
+	auto g = ast_graph::make_te_graph(te_factory{}, &top);
+	return g.is_array() + (te_factory::data_type::integer_t)g.field_at(2);
+}() == 4 );
+
 static_assert(
-	ast_graph::details::mk_children_types(factory{}, file{}) ==
+	ast_graph::mk_children_types(factory{}, file{}) ==
 	ast_graph::details::type_list<
 	        file,
 			sub_entity,
@@ -115,7 +173,20 @@ static_assert( []{
 
 } // namespace test_namespace
 
+void main_test() {
+	using namespace test_namespace;
+	CTRT( []{
+		file top;
+		top.name = "test";
+		auto g = ast_graph::make_te_graph(te_factory{}, &top);
+		auto d = g.field("name");
+		return (std::string)d;
+	}() == "test" );
+}
+
 int main(int,char**) {
+	main_test();
+
 	test_namespace::file top;
 	top.singles.emplace_back();
 	top.singles.back().vec_vec_evar.emplace_back().emplace_back().evar_f0.emplace<1>();

@@ -30,6 +30,8 @@
 *.exe
 *.out
 *.app
+
+/make_build/
 /ninja_build/
 /clion_build/
 /jb_build/

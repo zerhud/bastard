@@ -63,6 +63,9 @@ struct node {
 		else return details::ref::field_name<factory, ind, origin>();
 	}
 
+	constexpr auto* value_ptr(auto&& name) const {
+		return value_ptr_impl<0, struct_children_count()>(name);
+	}
 	constexpr auto value(auto&& name) const {
 		return value_impl<0, struct_children_count()>(name);
 	}
@@ -142,6 +145,14 @@ private:
 	template<auto ind>
 	constexpr auto& value() const {
 		return st_value<ind>(f, ptr);
+	}
+	template<auto cur, auto size>
+	constexpr auto* value_ptr_impl(auto&& request) const {
+		if constexpr (cur==size) return static_cast<void*>(nullptr);
+		else return request == key<cur>()
+		            ? &value<cur>()
+		            : value_ptr_impl<cur+1, size>(request)
+		;
 	}
 	template<auto cur, auto size>
 	constexpr auto value_impl(auto&& request) const {

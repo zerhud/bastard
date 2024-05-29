@@ -1,2 +1,2 @@
 #/usr/bin/env bash
-make || fish
+make -j7 || fish
