@@ -42,7 +42,7 @@ template<typename factory, typename data_type> constexpr auto mk_holder_type() {
 		return mk_variant_type<factory,
 				typename factory::empty_t, bool,
 				typename data_type::integer_t, typename data_type::float_point_t,
-				typename data_type::string_t, typename data_type::string_t*,
+				typename data_type::string_t, const typename data_type::string_t*,
 				multiobject_tag*,
 				list*...
 		>();
@@ -194,14 +194,14 @@ public:
 		|| std::is_same_v<decltype(v), string_t>
 		|| std::is_same_v<decltype(v), integer_t>
 		|| std::is_same_v<decltype(v), float_point_t>
-	) : holder(v) {} //NOTE: cannot move here due bug in gcc https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111284
+	) : holder(v) {} //NOTE: cannot move here due bug in gcc https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111284 (bug are closed, bug clang bug is still is)
 
-	constexpr explicit data(string_t* str) : holder(str) {}
+	constexpr explicit data(const string_t* str) : holder(str) {}
 	constexpr explicit data(const typename string_t::value_type* v) : holder(string_t(v)) {}
 
 	constexpr data(const data& v) : holder(v.holder) { allocate(); copy_multi_pointers(v); }
-	//NOTE: bug in gcc workaround: use holder = decltype(holder){v.holder} ?
 	constexpr data(data&& v) noexcept : holder(std::move(v.holder)) {
+		//NOTE: clang bug with emplace: https://github.com/llvm/llvm-project/issues/57669
 		v.holder.template emplace<typename factory::empty_t>();
 		copy_multi_pointers(v);
 	}
@@ -232,7 +232,7 @@ public:
 	constexpr auto& operator=(float_point_t v){ null_multi_pointers(); return assign(v); }
 
 	constexpr explicit operator bool() const { return get<bool>(holder); }
-	constexpr operator string_t() const { return holder.index() == 5 ? *get<string_t*>(holder) : get<string_t>(holder); }
+	constexpr operator string_t() const { return holder.index() == 5 ? *get<const string_t*>(holder) : get<string_t>(holder); }
 	constexpr operator integer_t() const { return get<integer_t>(holder); }
 	constexpr operator float_point_t() const { return get<float_point_t>(holder); }
 

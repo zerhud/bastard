@@ -42,7 +42,12 @@ auto make_te_graph_vec_value_type(const factory& f) requires (factory::template 
 		using vec_type = decltype(factory{}.template mk_vec<data_type>());
 		vec_type children;
 		constexpr holder(const factory& f, const origin* o) : children(f.template mk_vec<data_type>()) {
-			for(auto&& i:*o) children.emplace_back(data_type{i});
+			children.reserve(o->size());
+			for(auto&& i:*o) {
+				if constexpr (requires{data_type{&i};})
+					children.emplace_back(data_type{&i});
+				else children.emplace_back(data_type{i});
+			}
 		}
 	};
 	return details::type_c<holder>;

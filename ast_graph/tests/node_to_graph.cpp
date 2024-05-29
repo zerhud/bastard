@@ -124,12 +124,20 @@ static_assert( []{
 	auto child = g.child("singles");
 	return child->is_array() * child->children_size();
 }() == 3 );
+#ifndef __clang__
 static_assert( []{
 	std::vector<int> top;
 	top.emplace_back(1); top.emplace_back(2); top.emplace_back(3);
 	auto g = ast_graph::make_te_graph(te_factory{}, &top);
 	return g.is_array() + (te_factory::data_type::integer_t)g.field_at(2);
 }() == 4 );
+static_assert( []{
+	std::vector<std::string> top;
+	top.emplace_back("a"); top.emplace_back("b"); top.emplace_back("c");
+	auto g = ast_graph::make_te_graph(te_factory{}, &top);
+	return (te_factory::data_type::string_t)g.field_at(2);
+}() == "c" );
+#endif
 
 static_assert(
 	ast_graph::mk_children_types(factory{}, file{}) ==
