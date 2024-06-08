@@ -10,25 +10,10 @@
 
 #include "concepts.hpp"
 #include "mk_children_types.hpp"
+#include "te_base.hpp"
 #include <memory> // placement new works only in std namespace ))
 
 namespace ast_graph {
-
-template<typename factory>
-struct te_graph {
-	using data_type = typename factory::data_type;
-	using name_view = typename factory::name_view;
-
-	constexpr virtual ~te_graph() =default ;
-
-	constexpr virtual data_type field(const name_view& name) =0 ;
-	constexpr virtual data_type field_at(unsigned ind) =0 ;
-	constexpr virtual unsigned size() const = 0;
-	constexpr virtual unsigned children_size() const = 0;
-	constexpr virtual te_graph* child(const name_view& name) =0 ;
-	constexpr virtual te_graph* child_at(unsigned ind) =0 ;
-	constexpr virtual bool is_array() const =0 ;
-};
 
 template<typename factory, vector origin>
 constexpr auto make_te_graph(const factory& f, const origin* o) ;
