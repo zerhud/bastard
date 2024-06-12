@@ -16,7 +16,7 @@
       };
 
       #ascip = import params.ascip { inherit system; };
-      der = pkgs.gcc13Stdenv.mkDerivation {
+      der = pkgs.gcc14Stdenv.mkDerivation {
         name = "jiexpr";
         nativeBuildInputs = with pkgs;[clang_17 ninja ascip.packages."${system}".default (boost-build.override {useBoost = boost185;})];
         installPhase = "mkdir -p \"$out/include\" && cp ascip.hpp -t \"$out/include\"";

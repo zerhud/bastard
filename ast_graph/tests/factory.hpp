@@ -19,6 +19,7 @@
 
 #include <variant>
 #include <vector>
+#include <list>
 #include <memory>
 #include <string_view>
 #include <source_location>
@@ -110,5 +111,18 @@ struct factory {
 		throw std::runtime_error("access to no_value");
 	}
 };
+
+template<typename type>
+constexpr auto mk_list(const factory&) {
+	//return std::list<type>{};
+	std::vector<type> ret;
+	ret.reserve(1024);
+	return ret;
+}
+
+template<typename type>
+constexpr auto mk_vec(const factory&) {
+	return std::vector<type>{};
+}
 
 } // namespace ast_graph_tests
