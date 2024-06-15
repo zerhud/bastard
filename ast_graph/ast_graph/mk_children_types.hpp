@@ -50,8 +50,9 @@ constexpr auto mk_children_types(const factory& f, smart_ptr auto&& o) {
 }
 template<typename factory>
 constexpr auto mk_children_types(const factory& f, vector auto&& o) {
-	using cur = details::ref::decay_t<typename details::ref::decay_t<decltype(o)>::value_type>;
-	return push_front_if_not_contains(details::type_c<cur>, decltype(mk_children_types(f, details::lref<cur>())){});
+	using o_type = details::ref::decay_t<decltype(o)>;
+	using cur = details::ref::decay_t<typename o_type::value_type>;
+	return push_front<o_type>(push_front<cur>(decltype(mk_children_types(f, details::lref<cur>())){}));
 }
 template<typename factory>
 constexpr auto mk_children_types(const factory& f, variant auto&& o) {

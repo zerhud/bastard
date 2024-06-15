@@ -19,11 +19,15 @@ struct no_child {
 struct top {
 	int field1 = 1;
 	no_child child1;
+	std::vector<no_child> child_vec;
 };
 
 } // namespace test
 
-using ast_graph_tests::factory;
+struct factory : ast_graph_tests::factory{
+	using field_name_type = std::string_view;
+	using data_type = int;
+};
 
 static_assert( []{
 	test::top src;
@@ -37,9 +41,16 @@ static_assert( []{
 	src.child1.field1 = 42;
 	auto res = ast_graph::query(factory{}, src, "");
 	auto* found = child(res, res.root, 0);
-	//return static_cast<const test::no_child*>(found->data)->field1 * (found->index == index_of<test::no_child>(*found));
-	return exec(*found, [](auto* v){return v->field1;});
+	return found->info.field("field1") ;//* ( found->info.field("field1") == static_cast<const test::no_child*>(found->data)->field1 );
 }() == 42 );
+
+static_assert( []{
+	test::top src;
+	src.child_vec.emplace_back(42, 43);
+	auto res = ast_graph::query(factory{}, src, "");
+	auto* found = child(res, child(res, res.root, 1), 0);
+	return found->info.field("field2");
+}() == 43 );
 
 int main(int,char**) {
 	return 0;
