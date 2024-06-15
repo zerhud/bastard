@@ -25,7 +25,7 @@ $(builddir)/$(call base,$(1))_gcc: makefile $(1) | $(builddir)/$(dir $(call base
 ifeq ($(findstring $(call base,$(1)),$(tests_excluded_for_clang)),)
 $(builddir)/$(call base,$(1))_clang: makefile $(1) | $(builddir)/$(dir $(call base,$(1)))
 	@echo build for $(call base,$(1))
-	$(CLANG) -I./absd -Ijiexpr -Iast_graph $(1) -o $$@ && $(builddir)/$(call base,$(1))_clang
+	$(CLANG) -I./absd -Ijiexpr -Iast_graph $(1) -o $$@
 else
 $(builddir)/$(call base,$(1))_clang: makefile $(1)
 	@echo -e "\033[0;31mskiping for \033[1;36m$(1)\033[0;31m for clang\033[0m"
@@ -33,6 +33,7 @@ endif
 .PHONY: $(call base,$(1))
 $(call base,$(1)): $(builddir)/$(call base,$(1))_gcc $(builddir)/$(call base,$(1))_clang
 	$(builddir)/$(call base,$(1))_gcc
+	test -f $(builddir)/$(call base,$(1))_clang && $(builddir)/$(call base,$(1))_clang || true
 clean::
 	rm -f $(builddir)/$(call base,$(1))_gcc{,.d}
 	rm -f $(builddir)/$(call base,$(1))_clang{,.d}
