@@ -134,10 +134,13 @@ constexpr auto add_child(auto& result, const factory& f, auto&& name, const type
 }
 template<variant type, typename factory>
 constexpr auto add_child(auto& result, const factory& f, auto&& name, const type& child, unsigned parent) {
+	//TODO: what to do if it's in a monostate ?
 	return visit([&](const auto& child){ return add_child(result, f, std::forward<decltype(name)>(name), child, parent); }, child);
 }
+//TODO: add optional
 template<any_ptr type, typename factory>
 constexpr auto add_child(auto& result, const factory& f, auto&& name, const type& child, unsigned parent) {
+	//TODO: what if it is a nullptr (same as in variant in monostate?)?
 	return add_child(result, f, std::forward<decltype(name)>(name), *child, parent);
 }
 template<typename type, typename factory>

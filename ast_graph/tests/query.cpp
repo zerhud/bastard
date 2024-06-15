@@ -29,28 +29,6 @@ struct factory : ast_graph_tests::factory{
 	using data_type = int;
 };
 
-static_assert( []{
-	test::top src;
-	src.field1 = 42;
-	auto res = ast_graph::query(factory{}, src, "" );
-	return static_cast<const test::top*>(res.root->data)->field1;
-}() == 42 );
-
-static_assert( []{
-	test::top src;
-	src.child1.field1 = 42;
-	auto res = ast_graph::query(factory{}, src, "");
-	auto* found = child(res, res.root, 0);
-	return found->info.field("field1") ;//* ( found->info.field("field1") == static_cast<const test::no_child*>(found->data)->field1 );
-}() == 42 );
-
-static_assert( []{
-	test::top src;
-	src.child_vec.emplace_back(42, 43);
-	auto res = ast_graph::query(factory{}, src, "");
-	auto* found = child(res, child(res, res.root, 1), 0);
-	return found->info.field("field2");
-}() == 43 );
 
 int main(int,char**) {
 

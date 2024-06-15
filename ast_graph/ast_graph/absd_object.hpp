@@ -12,85 +12,8 @@
 
 #include "node.hpp"
 #include "concepts.hpp"
-#include "graph.hpp"
 
 namespace ast_graph {
-
-template<typename factory, typename origin>
-struct absd_object2 {
-	using data_type = typename factory::data_type;
-	using keys_type = decltype(details::lref<factory>().template mk_vec<data_type>());
-	struct base {
-		constexpr virtual ~base() =default ;
-		constexpr virtual data_type at(const data_type& key) const =0 ;
-		constexpr virtual unsigned size() const =0 ;
-		constexpr virtual bool contains(const data_type& k) const =0 ;
-		constexpr virtual keys_type keys() const =0 ;
-	};
-
-	template<typename content>
-	struct holder : base {
-		node<factory, content> info;
-		constexpr holder(node<factory, content> info) : info(info) {};
-		constexpr ~holder() =default ;
-		constexpr virtual data_type at(const data_type& key) const override { return data_type{}; }
-		constexpr virtual unsigned size() const override { return info.fields_count(); }
-		constexpr virtual bool contains(const data_type& k) const override { return false; }
-		constexpr virtual keys_type keys() const override {
-			return {};
-		}
-	};
-
-	struct field_info {
-		data_type name;
-		data_type value;
-	};
-	using field_vec_type = decltype(factory{}.template mk_vec<field_info>());
-
-	factory f;
-	graph<factory, origin> g;
-	field_vec_type store;
-
-	base* holder_storage=nullptr;
-
-	//struct node<factory, origin> node;
-
-	constexpr void mk_storage() {
-		exec_for_ptr(g, [this]<typename type>(const type* v){
-			//TODO: all holders will be the same size, we can alloc a buffer and use placement new
-			//      and move ctor and eq operator will need to call the placement new again
-			holder_storage = new holder<type>{node<factory,type>{f,v}};
-		});
-	}
-
-	constexpr absd_object2(absd_object2&& other) : f(other.f), g(std::move(other.g)), holder_storage(other.holder_storage) { other.holder_storage = nullptr; }
-	constexpr absd_object2& operator=(absd_object2&& other) { g = std::move(other.g); holder_storage = other.holder_storage; other.holder_storage=nullptr; return *this; }
-	constexpr explicit absd_object2(auto&& f, graph<factory, origin> g)
-		: f(std::forward<decltype(f)>(f))
-		, g(std::move(g))
-		, store(f.template mk_vec<field_info>())
-	{
-		mk_storage();
-	}
-
-	constexpr ~absd_object2() noexcept {
-		delete holder_storage;
-	}
-
-	constexpr auto at(const data_type& k) {
-		//for(auto& c:g.children) if(c.name==(typename data_type::string_t)k) data_type::mk(absd_object2( f, *c.value ));
-		return data_type{};
-	}
-	constexpr auto size() const {
-		return holder_storage ? holder_storage->size() : g.children.size() + fields_count(g);
-	}
-	constexpr bool contains(const data_type& k) const { return false; }
-	constexpr auto keys() const {
-		auto ret = f.template mk_vec<data_type>();
-		for(auto& c:g.children) ret.emplace_back(data_type{ typename data_type::string_t{ c.name } });
-		return ret;
-	}
-};
 
 template<typename factory, typename origin>
 struct absd_object {
