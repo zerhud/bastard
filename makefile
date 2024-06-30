@@ -1,5 +1,5 @@
 builddir := make_build
-tests_excluded_for_clang := "absd/callable jiexpr/math jiexpr/objects jiexpr/methods jiexpr/logic"
+tests_excluded_for_clang := "absd/callable jiexpr/math jiexpr/objects jiexpr/methods jiexpr/logic ast_graph/query"
 GCC := g++ -MMD -pipe -std=gnu++23 -fwhole-program -march=native -fdiagnostics-color=always
 CLANG := clang++ -MMD -pipe -std=gnu++23 -march=native -fdiagnostics-color=always
 

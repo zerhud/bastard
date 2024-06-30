@@ -149,6 +149,55 @@ constexpr auto fill_with_all_data(auto& result, const factory& f, const type& so
 		add_child(result, f, name, child, parent);
 	});
 }
+
+template<typename factory>
+struct query_description {
+	using string_type = typename factory::string_type;
+	string_type name;
+	string_type value;
+};
+
+template<typename factory>
+struct query_vertex {
+	template<typename type> using vec = decltype(mk_vec<type>(factory{}));
+	vec<query_description<factory>> data;
+};
+template<typename factory>
+struct query_edge {
+	template<typename type> using vec = decltype(mk_vec<type>(factory{}));
+	vec<query_description<factory>> data;
+};
+template<typename factory>
+struct query {
+	template<typename... types> using variant = typename factory::template variant<types...>;
+	template<typename type> using forward_ast = typename factory::template forward_ast<type>;
+	template<typename type> using optional = typename factory::template optional<type>;
+	int input_number = 0;
+	variant<query_vertex<factory>, query_edge<factory>> data;
+	forward_ast<query<factory>> next;
+};
+template<typename factory, typename gh, template<auto>class th=gh::template tmpl>
+constexpr auto make_query_parser(const factory& df) {
+	using string_t = typename factory::string_t;
+	constexpr auto ident =
+			lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))
+			- (gh::template lit<"and"> | gh::template lit<"is"> | gh::template lit<"in"> | gh::template lit<"or">);
+	constexpr auto desc = -ident >> th<':'>::_char >> ++(gh::quoted_string|ident);
+	return
+	(-gh::int_)++ >>
+	( cast<query_vertex<factory>>(gh::template lit<"{"> >> ((desc%',')([](auto& v){return &v.data;})|th<'*'>::_char) >> gh::template lit<"}">)
+	| cast<query_edge<factory>>(th<'['>::_char >> ((desc%',')([](auto& v){return &v.data;})|th<'*'>::_char) >> th<']'>::_char)
+	)++ >> -th<0>::req([]<typename type>(type& v){v.reset(new typename type::element_type{});return v.get();})
+	;
+}
+
+template<typename factory, typename gh>
+constexpr auto parse_query(const factory& f, auto&& src) {
+	query<factory> result;
+	parse(make_query_parser<factory, gh>(f), +gh::space, gh::make_source(std::forward<decltype(src)>(src)), result);
+	return result;
+}
+
 } // namespace details
 
 constexpr auto query(const auto& f, const auto& source, auto&& q) {
