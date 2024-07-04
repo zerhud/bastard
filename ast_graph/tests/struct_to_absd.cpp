@@ -69,7 +69,7 @@ struct with_subnode {
 	std::unique_ptr<with_subnode> sub3;
 };
 
-static_assert( ast_graph::smart_ptr<std::unique_ptr<simple_node>> );
+static_assert( tref::smart_ptr<std::unique_ptr<simple_node>> );
 
 template<typename type>
 constexpr auto test(auto&& fnc, auto&& tune) {

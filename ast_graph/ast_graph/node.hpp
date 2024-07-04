@@ -8,7 +8,7 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
-#include "field_names.hpp"
+#include <tref.hpp>
 
 namespace ast_graph {
 
@@ -22,7 +22,7 @@ struct node {
 	constexpr auto name() const {
 		if constexpr (requires{ node_name(f, ptr); })
 			return node_name(f, ptr);
-		else return details::ref::type_name<factory, origin>();
+		else return tref::gs::type_name<factory, origin>();
 	}
 
 	constexpr void for_each_field_value(auto&& fnc) const {
@@ -58,9 +58,9 @@ struct node {
 	}
 
 	template<auto ind> constexpr static auto key() {
-		if constexpr(requires{node_leaf_name(factory{}, static_cast<const origin*>(nullptr), details::object_c<ind>);})
-			return node_leaf_name(factory{}, static_cast<const origin*>(nullptr), details::object_c<ind>);
-		else return details::ref::field_name<factory, ind, origin>();
+		if constexpr(requires{node_leaf_name(factory{}, static_cast<const origin*>(nullptr), tref::object_c<ind>);})
+			return node_leaf_name(factory{}, static_cast<const origin*>(nullptr), tref::object_c<ind>);
+		else return tref::gs::field_name<factory, ind, origin>();
 	}
 
 	constexpr auto* value_ptr(auto&& name) const {
@@ -83,13 +83,13 @@ struct node {
 private:
 	template<auto ind>
 	constexpr static auto& st_value(const auto& f, const auto* ptr) {
-		constexpr bool value_overloaded = requires{ node_value(f, ptr, details::object_c<ind>); };
-		if constexpr (value_overloaded) return node_value(f, ptr, details::object_c<ind>);
-		else return details::ref::get<ind>(*ptr);
+		constexpr bool value_overloaded = requires{ node_value(f, ptr, tref::object_c<ind>); };
+		if constexpr (value_overloaded) return node_value(f, ptr, tref::object_c<ind>);
+		else return tref::gs::get<ind>(*ptr);
 	}
 
 	template<auto ind> using field_type = decltype(
-			details::decay(
+			tref::decay(
 					st_value<ind>(
 							factory{},
 							static_cast<const origin*>(nullptr)
@@ -111,15 +111,16 @@ private:
 		else return for_each_field<sz, cur+1, types..., field_type<cur>>(static_cast<decltype(fnc)&&>(fnc));
 	}
 	constexpr static auto struct_children_count() {
+		static_assert( !tref::vector<origin> );
 		if constexpr (requires{ node_children_count(factory{}, static_cast<const origin*>(nullptr)); })
 			return node_children_count(factory{}, static_cast<const origin*>(nullptr));
-		else return details::ref::size<origin>;
+		else return tref::gs::size<origin>;
 	}
 
 	template<auto cur, auto size>
 	constexpr static auto keys_impl(auto&& check, auto&&... args) {
 		if constexpr (cur==size) return factory{}.template mk_vec
-		    <decltype(details::lref<self_type>().template key<0>())>
+		    <decltype(tref::lref<self_type>().template key<0>())>
 			(static_cast<decltype(args)&&>(args)...);
 		else return check.template operator()<cur>()
 			? keys_impl<cur+1,size>(
@@ -133,9 +134,9 @@ private:
 	}
 	template<auto cur, auto size, typename... types, typename fnc>
 	constexpr static auto key_types_impl(const fnc& _fnc) {
-		if constexpr (cur==size) return transform_uniq(details::type_list<types...>{});
+		if constexpr (cur==size) return transform_uniq(tref::type_list<types...>{});
 		else {
-			using next_type = details::ref::decay_t<decltype(node{}.value<cur>())>;
+			using next_type = tref::decay_t<decltype(node{}.value<cur>())>;
 			if constexpr (fnc{}.template operator()<next_type>())
 				return key_types_impl< cur+1, size, types..., next_type>(_fnc);
 			else return key_types_impl<cur+1, size, types...>(_fnc);

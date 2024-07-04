@@ -39,6 +39,8 @@ struct sub_entity {
 	std::vector<std::vector<entity_variant>> vec_vec_evar;
 };
 
+static_assert( tref::vector<std::vector<std::vector<entity_variant>>> );
+
 struct file {
 	std::string name;
 	std::vector<sub_entity> singles;
@@ -47,9 +49,11 @@ struct file {
 	std::unique_ptr<file> rsptr;
 };
 
+static_assert( tref::vector<std::vector<sub_entity>> );
+
 static_assert(
 		ast_graph::mk_children_types(ast_graph_tests::factory{}, file{}) ==
-		ast_graph::details::type_list<
+		tref::type_list<
 				file,
 				std::vector<sub_entity>,
 				sub_entity,
@@ -63,14 +67,14 @@ static_assert(
 				single_entity
 		>{} );
 
-static_assert( ast_graph::any_ptr<file*> );
-static_assert( ast_graph::any_ptr<std::unique_ptr<file>> );
-static_assert( ast_graph::any_ptr_to<std::unique_ptr<file>, file> );
-static_assert( ast_graph::any_ptr_to<file*, file> );
+static_assert( tref::any_ptr<file*> );
+static_assert( tref::any_ptr<std::unique_ptr<file>> );
+static_assert( tref::any_ptr_to<std::unique_ptr<file>, file> );
+static_assert( tref::any_ptr_to<file*, file> );
 
-static_assert( fold(ast_graph::details::type_list<int,char>{}, ast_graph::details::type_list<>{}, [](auto r, auto t){
-	return push_back(push_back(r, t), ast_graph::details::type_c<int>);
-}) == ast_graph::details::type_list<int,int,char,int>{} );
+static_assert( fold(tref::type_list<int,char>{}, tref::type_list<>{}, [](auto r, auto t){
+	return push_back(push_back(r, t), tref::type_c<int>);
+}) == tref::type_list<int,int,char,int>{} );
 
 int main(int,char**) {
 	return 0;

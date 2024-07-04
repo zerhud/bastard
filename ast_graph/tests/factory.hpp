@@ -6,8 +6,6 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
-#include "ast_graph/field_names.hpp"
-
 #ifndef __clang__
 #define CTRT(code) static_assert( code );
 #else

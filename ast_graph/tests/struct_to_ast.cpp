@@ -52,25 +52,25 @@ requires (num==1) {
 	return 100;
 }
 
-static_assert(3 == ast_graph::details::ref::size<test_fields>);
-static_assert(1 == ast_graph::details::ref::get<0>(test_fields{}));
+static_assert(3 == tref::gs::size<test_fields>);
+static_assert(1 == tref::gs::get<0>(test_fields{}));
 static_assert(2 == [] {
 	const test_fields obj;
-	return ast_graph::details::ref::get<1>(obj);
+	return tref::gs::get<1>(obj);
 }());
 
-static_assert( contains<int>(ast_graph::details::type_list<int,char>{}) );
-static_assert( !contains<double>(ast_graph::details::type_list<int,char>{}) );
-static_assert( ast_graph::details::type_list<int,char>{} == push_back<char>(ast_graph::details::type_list<int>{}) );
-static_assert( ast_graph::details::type_list<int,char>{} == push_front_if_not_contains(ast_graph::details::type_c<int>,ast_graph::details::type_list<char>{}) );
-static_assert( ast_graph::details::type_list<int>{} == transform_uniq(ast_graph::details::type_list<int>{}) );
-static_assert( ast_graph::details::type_list<int,char>{} == transform_uniq(ast_graph::details::type_list<int,char>{}) );
-static_assert( ast_graph::details::type_list<int>{} == transform_uniq(ast_graph::details::type_list<int,int>{})) ;
-static_assert( ast_graph::details::type_list<char,int>{} == transform_uniq(ast_graph::details::type_list<char,int,int>{}) );
+static_assert( contains<int>(tref::type_list<int,char>{}) );
+static_assert( !contains<double>(tref::type_list<int,char>{}) );
+static_assert( tref::type_list<int,char>{} == push_back<char>(tref::type_list<int>{}) );
+static_assert( tref::type_list<int,char>{} == push_front_if_not_contains(tref::type_c<int>,tref::type_list<char>{}) );
+static_assert( tref::type_list<int>{} == transform_uniq(tref::type_list<int>{}) );
+static_assert( tref::type_list<int,char>{} == transform_uniq(tref::type_list<int,char>{}) );
+static_assert( tref::type_list<int>{} == transform_uniq(tref::type_list<int,int>{})) ;
+static_assert( tref::type_list<char,int>{} == transform_uniq(tref::type_list<char,int,int>{}) );
 
-static_assert( "field_1"sv == ast_graph::details::ref::field_name<factory, 0, test_fields>() );
-static_assert( "leafs"sv == ast_graph::details::ref::field_name<factory, 2, test_fields>() );
-static_assert( "test_leaf"sv == ast_graph::details::ref::type_name<factory, test_leaf>() );
+static_assert( "field_1"sv == tref::gs::field_name<factory, 0, test_fields>() );
+static_assert( "leafs"sv == tref::gs::field_name<factory, 2, test_fields>() );
+static_assert( "test_leaf"sv == tref::gs::type_name<factory, test_leaf>() );
 
 static_assert( "leaf"sv == ast_graph::node<factory,test_leaf>{}.name() );
 static_assert( "test_fields"sv == ast_graph::node<factory,test_fields>{}.name() );
@@ -97,7 +97,7 @@ static_assert( std::is_same_v<
         std::variant<std::monostate,int,std::vector<test_leaf>>,
 		decltype( ast_graph::node<factory,test_fields>{}.value("not_exists") )
 		> );
-static_assert( ast_graph::details::type_list<int,std::vector<test_leaf>>{} ==
+static_assert( tref::type_list<int,std::vector<test_leaf>>{} ==
 		ast_graph::node<factory,test_fields>{}.value_types() ) ;
 
 template<typename type>
@@ -117,7 +117,7 @@ struct test_with_ptr {
 	std::unique_ptr<test_with_ptr> f2;
 };
 
-static_assert( 2 == ast_graph::details::ref::size<test_with_ptr> );
+static_assert( 2 == tref::gs::size<test_with_ptr> );
 static_assert( 1 == ast_graph::node<factory,test_with_ptr>{}.fields_count() );
 static_assert( 1 == ast_graph::node<factory,test_with_ptr>{}.children_count() );
 static_assert( 1 == ast_graph::node<factory,test_with_ptr>{}.list_children().size() );

@@ -1,7 +1,7 @@
 builddir := make_build
 tests_excluded_for_clang := "absd/callable jiexpr/math jiexpr/objects jiexpr/methods jiexpr/logic ast_graph/query"
 GCC := g++ -MMD -pipe -std=gnu++23 -fwhole-program -march=native -fdiagnostics-color=always
-CLANG := clang++ -MMD -pipe -std=gnu++23 -march=native -fdiagnostics-color=always
+CLANG := clang++ -MMD -pipe -std=gnu++23 -march=native -fdiagnostics-color=always -ftemplate-backtrace-limit=0
 
 tests_src := $(shell find . -ipath '*/tests/*.cpp' | sed 's/^..//g')
 

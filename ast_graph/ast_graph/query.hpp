@@ -9,7 +9,7 @@
 #pragma once
 
 #include <utility>
-#include "concepts.hpp"
+#include <tref.hpp>
 #include "mk_children_types.hpp"
 #include "node.hpp"
 
@@ -39,9 +39,9 @@ struct vertex_info : base_vertex<factory> {
 	factory f;
 	const type* data;
 	constexpr explicit vertex_info(const factory& f, const type* data) : f(f), data(data) {}
-	constexpr bool is_array() const override { return vector<type>; }
+	constexpr bool is_array() const override { return tref::vector<type>; }
 	constexpr virtual data_type field(field_name_type fn) const override {
-		if constexpr (vector<type>) return data_type{} ;
+		if constexpr (tref::vector<type>) return data_type{} ;
 		else {
 			struct node<factory, type> node{f, data};
 			data_type ret{};
@@ -124,7 +124,7 @@ constexpr auto add_child(auto& result, const factory& f, auto&& name, const type
 	result.edges.emplace_back(name, parent, cur);
 	fill_with_all_data(result, f, child, cur);
 }
-template<vector type, typename factory>
+template<tref::vector type, typename factory>
 constexpr auto add_child(auto& result, const factory& f, auto&& name, const type& child, unsigned parent) {
 	auto cur = add_vertex(result, child, f);
 	result.edges.emplace_back(name, parent, cur);
@@ -132,13 +132,13 @@ constexpr auto add_child(auto& result, const factory& f, auto&& name, const type
 		add_child(result, f, to_field_name(f, i), child[i], cur);
 	}
 }
-template<variant type, typename factory>
+template<tref::variant type, typename factory>
 constexpr auto add_child(auto& result, const factory& f, auto&& name, const type& child, unsigned parent) {
 	//TODO: what to do if it's in a monostate ?
 	return visit([&](const auto& child){ return add_child(result, f, std::forward<decltype(name)>(name), child, parent); }, child);
 }
 //TODO: add optional
-template<any_ptr type, typename factory>
+template<tref::any_ptr type, typename factory>
 constexpr auto add_child(auto& result, const factory& f, auto&& name, const type& child, unsigned parent) {
 	//TODO: what if it is a nullptr (same as in variant in monostate?)?
 	return add_child(result, f, std::forward<decltype(name)>(name), *child, parent);

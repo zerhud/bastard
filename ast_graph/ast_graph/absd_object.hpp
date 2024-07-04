@@ -9,9 +9,9 @@
 #pragma once
 
 #include <utility>
+#include <tref.hpp>
 
 #include "node.hpp"
-#include "concepts.hpp"
 
 namespace ast_graph {
 
@@ -61,11 +61,11 @@ private:
 			add_to_subs(n, create_absd_from_object(v));
 		});
 	}
-	template<smart_ptr value_type>
+	template<tref::smart_ptr value_type>
 	constexpr auto create_absd_from_object(const value_type& v) const {
 		return v ? create_absd_from_object(*v) : empty;
 	}
-	template<vector value_type>
+	template<tref::vector value_type>
 	constexpr auto create_absd_from_object(const value_type& v) const {
 		using val_t = typename value_type::value_type;
 		data_type val;
