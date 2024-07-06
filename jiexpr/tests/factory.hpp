@@ -60,19 +60,17 @@ struct bastard_factory {
 		using expr_t = std::decay_t<decltype(v)>;
 		return std::make_unique<expr_t>(std::move(v));
 	}
-	template<typename type> constexpr auto mk_vec() const {
-		return std::vector<type>{};
-	}
 	constexpr auto mk_str() const {
 		return std::string{};
 	}
 	constexpr auto back_inserter(auto& v) const {
 		return std::back_inserter(v);
 	}
-
-	template<typename type>
-	constexpr auto mk_ptr(auto&&... args) { return std::make_unique<type>(std::forward<decltype(args)>(args)...); }
 };
+
+template<typename type> constexpr auto mk_vec(const bastard_factory&) {
+	return std::vector<type>{};
+}
 
 using parser = ascip<std::tuple>;
 using absd_data = absd::data<absd_factory<double>>;

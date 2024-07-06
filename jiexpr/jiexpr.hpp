@@ -34,10 +34,7 @@ struct jiexpr {
 			constexpr impl() =default ;
 			constexpr impl(type&& d) : data(std::forward<decltype(d)>(d)) {}
 			constexpr data_type cvt(const self_type& solver) const override {
-				//if constexpr (requires{ solver(data); })
 				return solver(data);
-				//else return data_type{42};
-				//return data_type{1042};
 			}
 		};
 
@@ -114,12 +111,12 @@ struct jiexpr {
 
 	template<typename expr_t>
 	struct list_expr {
-		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) list;
+		decltype(mk_vec<expr_t>(std::declval<data_factory>())) list;
 	};
 	template<typename expr_t>
 	struct dict_expr {
-		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) names;
-		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) values;
+		decltype(mk_vec<expr_t>(std::declval<data_factory>())) names;
+		decltype(mk_vec<expr_t>(std::declval<data_factory>())) values;
 	};
 
 
@@ -129,7 +126,7 @@ struct jiexpr {
 
 	template<typename expr_t>
 	struct var_expr {
-		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) path;
+		decltype(mk_vec<expr_t>(std::declval<data_factory>())) path;
 	};
 
 	struct op_eq_tag{};
@@ -143,7 +140,7 @@ struct jiexpr {
 	template<typename expr_t>
 	struct fnc_call_expr {
 		var_expr<expr_t> name;
-		decltype(std::declval<data_factory>().template mk_vec<expr_t>()) params;
+		decltype(mk_vec<expr_t>(std::declval<data_factory>())) params;
 	};
 
 	template<typename expr_t>
