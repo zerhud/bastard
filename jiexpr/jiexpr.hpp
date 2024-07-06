@@ -11,6 +11,7 @@
 #include <utility>
 #include <concepts>
 #include <cassert>
+#include <tref.hpp>
 
 #include "jiexpr/details.hpp"
 
@@ -19,6 +20,65 @@ struct jiexpr {
 	template<typename... types> using variant_t = typename data_factory::template variant_t<types...>;
 	using self_type = jiexpr<data_type, operators_factory, data_factory>;
 	using operators_executer = operators_factory;
+
+	template<typename... types>
+	struct dynamic_variant {
+		struct base {
+			constexpr virtual ~base() noexcept =default ;
+			constexpr virtual data_type cvt(const self_type&) const =0 ;
+		};
+
+		template<typename type>
+		struct impl : base {
+			type data;
+			constexpr impl() =default ;
+			constexpr impl(type&& d) : data(std::forward<decltype(d)>(d)) {}
+			constexpr data_type cvt(const self_type& solver) const override {
+				//if constexpr (requires{ solver(data); })
+				return solver(data);
+				//else return data_type{42};
+				//return data_type{1042};
+			}
+		};
+
+		const base* ptr=nullptr;
+		variant_t<impl<types>...> holder;
+
+		constexpr dynamic_variant() {
+			create<0>(*this);
+		}
+		constexpr dynamic_variant(const dynamic_variant& other) : holder(other.holder) {
+			visit( [this](auto& v){ ptr = &v; }, holder );
+		}
+		constexpr dynamic_variant(dynamic_variant&& other) : holder(std::move(other.holder)) {
+			visit( [this](auto& v){ ptr = &v; }, holder );
+			other.ptr = nullptr;
+		}
+		constexpr ~dynamic_variant() noexcept {
+			ptr = nullptr;
+		}
+
+		constexpr auto index() const { return holder.index(); }
+		friend constexpr auto visit(const auto& fnc, const dynamic_variant<types...>& v) {
+			return visit([&fnc](auto& v){ return fnc(v.data); }, v.holder);
+		}
+		template<typename ind>
+		friend constexpr auto& create(dynamic_variant<types...>& v) {
+			auto& ret = v.holder.template emplace<tref::index_of<ind, types...>()>();
+			v.ptr = &ret;
+			return ret.data;
+		}
+		template<auto ind>
+		friend constexpr auto& create(dynamic_variant<types...>& v) {
+			auto& ret = v.holder.template emplace<ind>();
+			v.ptr = &ret;
+			return ret.data;
+		}
+		template<auto ind> friend constexpr auto& get(dynamic_variant<types...>& v) { return get<ind>(v.holder).data; }
+		template<auto ind> friend constexpr const auto& get(const dynamic_variant<types...>& v) { return get<ind>(v.holder).data; }
+		template<typename ind> friend constexpr const auto& get(const dynamic_variant<types...>& v) { return get<tref::index_of<ind,types...>()>(v.holder).data; }
+		template<typename ind> friend constexpr bool holds_alternative(const dynamic_variant<types...>& v){ return v.holder.index() == tref::index_of<ind,types...>(); }
+	};
 
 	template<typename expr_t>
 	struct binary_op {
@@ -100,20 +160,21 @@ struct jiexpr {
 
 	template<typename type> using ast_forwarder = typename data_factory::template ast_forwarder<type>;
 
+
 	template<typename... operators>
-	using parse_result = variant_t<std::decay_t<operators>...,string_t,integer_t,float_point_t,bool>;
+	using parse_result = dynamic_variant<std::decay_t<operators>...,string_t,integer_t,float_point_t,bool>;
 
 	template<template<class>class fa> struct expr_type : parse_result<
 	       ternary_op< fa<expr_type<fa>> >
 	     , apply_filter_expr< fa<expr_type<fa>> >
-	     , variant_t< op_and< fa<expr_type<fa>> >, op_or< fa<expr_type<fa>> > >
-	     , variant_t
+	     , dynamic_variant< op_and< fa<expr_type<fa>> >, op_or< fa<expr_type<fa>> > >
+	     , dynamic_variant
 	        < op_ceq<fa<expr_type<fa>>>, op_neq<fa<expr_type<fa>>>, op_lt<fa<expr_type<fa>>>
 	        , op_gt<fa<expr_type<fa>>>, op_get<fa<expr_type<fa>>>, op_let<fa<expr_type<fa>>>
 	        , op_in<fa<expr_type<fa>>>, is_test_expr<fa<expr_type<fa>>>
 	        >
-	     , variant_t< op_subtract < fa<expr_type<fa>> >, op_addition< fa<expr_type<fa>> >, op_concat< fa<expr_type<fa>> > >
-	     , variant_t< op_multiply < fa<expr_type<fa>> >, op_division< fa<expr_type<fa>> >, op_fp_div< fa<expr_type<fa>> > >
+	     , dynamic_variant< op_subtract < fa<expr_type<fa>> >, op_addition< fa<expr_type<fa>> >, op_concat< fa<expr_type<fa>> > >
+	     , dynamic_variant< op_multiply < fa<expr_type<fa>> >, op_division< fa<expr_type<fa>> >, op_fp_div< fa<expr_type<fa>> > >
 	     , op_power    < fa<expr_type<fa>> >
 	     , op_not      < fa<expr_type<fa>> >
 	     , list_expr   < fa<expr_type<fa>> >
@@ -128,8 +189,7 @@ struct jiexpr {
 	data_factory df;
 
 	template<template<class>class fa> constexpr data_type operator()(const expr_type<fa>& e) {
-		return visit(*this, e);
-		//return jiexpr_details::inner_visit(*this,e);
+		return e.ptr->cvt(*this);
 	}
 	constexpr data_type operator()(string_t v) const { return data_type{ v }; }
 	constexpr data_type operator()(integer_t v) const { return data_type{ v }; }

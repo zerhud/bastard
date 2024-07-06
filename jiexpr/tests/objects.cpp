@@ -1,17 +1,17 @@
 #include "factory.hpp"
 
 int main(int,char**) {
-	test_rt( true, eval("[]").is_array() )
-	test_rt( true, eval("[1,2,3]").is_array() )
-	test_rt( 1, (absd_data::integer_t)(eval("[1,2,3]")[0]) )
-	test_rt( true, (bool)(eval("[1,true,3]")[1]) )
-	test_rt( 6, (absd_data::integer_t)(eval("[1,2,3+3]")[2]) )
-	test_rt( true, eval("{}").is_object() )
-	test_rt( 0, (eval("{}")).size() )
-	test_rt( 1, (eval("{2:3}")).size() )
-	test_rt( 2, (eval("{2:3, 4:5}")).size() )
-	test_rt( 3, (absd_data::integer_t)(eval("{2:3}")[absd_data{2}]) )
-	test_rt( 5, (absd_data::integer_t)(eval("{2:3, 4:5}")[absd_data{4}]) )
+	test( true, eval("[]").is_array() )
+	test( true, eval("[1,2,3]").is_array() )
+	test( 1, (absd_data::integer_t)(eval("[1,2,3]")[0]) )
+	test( true, (bool)(eval("[1,true,3]")[1]) )
+	test( 6, (absd_data::integer_t)(eval("[1,2,3+3]")[2]) )
+	test( true, eval("{}").is_object() )
+	test( 0, (eval("{}")).size() )
+	test( 1, (eval("{2:3}")).size() )
+	test( 2, (eval("{2:3, 4:5}")).size() )
+	test( 3, (absd_data::integer_t)(eval("{2:3}")[absd_data{2}]) )
+	test( 5, (absd_data::integer_t)(eval("{2:3, 4:5}")[absd_data{4}]) )
 	test( 3, (absd_data::integer_t)(eval("{2:3, 4:5}")[absd_data{2}]) )
 
 	test( 7, []{

@@ -17,7 +17,7 @@ constexpr auto jiexpr<data_type,operators_factory,data_factory>::create_parser()
 	auto mk_fwd_emp = [this](auto& v){ return df.mk_fwd(v.emplace_back()); };
 	//TODO: initialize string (ident, quoted_string, array) and vectors (array only) with data factory
 	constexpr auto ident =
-			lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))([](auto& v){return &v.template emplace<string_t>();})
+			lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))([](auto& v){return &create<string_t>(v);})
 			- (gh::template lit<"and"> | gh::template lit<"is"> | gh::template lit<"in"> | gh::template lit<"or">);
 	auto var_expr_mk_result = [this](auto& v){result_t r; return v.path.emplace_back(df.mk_result(r)).get();};
 	auto var_expr_parser = cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)));
