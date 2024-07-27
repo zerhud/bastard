@@ -26,6 +26,7 @@ struct jiexpr {
 		struct base {
 			constexpr virtual ~base() noexcept =default ;
 			constexpr virtual data_type cvt(const self_type&) const =0 ;
+			constexpr virtual const base* move(dynamic_variant<types...>& v) =0 ;
 		};
 
 		template<typename type>
@@ -36,6 +37,11 @@ struct jiexpr {
 			constexpr data_type cvt(const self_type& solver) const override {
 				return solver(data);
 			}
+			constexpr const base* move(dynamic_variant<types...>& v) override {
+				auto& val = v.holder.template emplace<tref::index_of<type, types...>()>( std::move(data) );
+				v.ptr = &val;
+				return v.ptr; //TODO: we can check all types if remove this lien
+			}
 		};
 
 		const base* ptr=nullptr;
@@ -44,11 +50,9 @@ struct jiexpr {
 		constexpr dynamic_variant() {
 			create<0>(*this);
 		}
-		constexpr dynamic_variant(const dynamic_variant& other) : holder(other.holder) {
-			visit( [this](auto& v){ ptr = &v; }, holder );
-		}
-		constexpr dynamic_variant(dynamic_variant&& other) : holder(std::move(other.holder)) {
-			visit( [this](auto& v){ ptr = &v; }, holder );
+		constexpr dynamic_variant(const dynamic_variant& other) =delete ;
+		constexpr dynamic_variant(dynamic_variant&& other) {
+			const_cast<base*>(other.ptr)->move(*this);
 			other.ptr = nullptr;
 		}
 		constexpr ~dynamic_variant() noexcept {
