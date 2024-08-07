@@ -15,10 +15,11 @@
 #define RT(code)  assert( code );
 #include "ast_graph/node.hpp"
 
-#include <variant>
-#include <vector>
 #include <list>
 #include <memory>
+#include <vector>
+#include <variant>
+#include <optional>
 #include <string_view>
 #include <source_location>
 
@@ -57,6 +58,8 @@ template<typename type>
 struct clang_bug_74963_wa {
 	//NOTE: std::unique_ptr should to be used, but clang has a bug
 	//      https://github.com/llvm/llvm-project/issues/74963
+
+	using element_type = type;
 
 	clang_bug_74963_wa(const clang_bug_74963_wa&&) =delete ;
 
@@ -154,5 +157,32 @@ constexpr auto to_field_name(const factory&, auto val) {
 	using namespace std::literals;
 	return ""sv;
 }
+
+struct query_factory : factory {
+	using field_name_type = std::string_view;
+	using integer_type = int;
+	using float_point_type = double;
+	using data_type = int;
+
+	//template<typename type> using forward_ast = clang_bug_74963_wa<type>;
+	template<typename type> using forward_ast = std::unique_ptr<type>;
+	template<typename type> using optional = std::optional<type>;
+	using string_t = std::string;
+	using string_type = std::string;
+
+	constexpr auto mk_fwd(auto& v) const {
+		using v_type = std::decay_t<decltype(v)>;
+		static_assert( !std::is_pointer_v<v_type>, "the result have to be a unique_ptr like type" );
+		static_assert( !std::is_reference_v<v_type>, "the result have to be a unique_ptr like type" );
+		v = std::make_unique<typename v_type::element_type>();
+		//v = clang_bug_74963_wa<v_type>(new typename v_type::element_type(std::forward<decltype(v)>(v)));
+		return v.get();
+	}
+	constexpr auto mk_result(auto&& v) const {
+		using expr_t = std::decay_t<decltype(v)>;
+		return std::make_unique<expr_t>(std::move(v));
+		//return clang_bug_74963_wa<expr_t>(new expr_t(std::forward<decltype(v)>(v)));
+	}
+};
 
 } // namespace ast_graph_tests

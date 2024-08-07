@@ -142,4 +142,73 @@ struct expr_operators_simple {
 	}
 };
 
+template<typename to_type>
+constexpr static auto div(const expr_operators_simple&, const auto& l, const auto& r) {
+	using data_type = std::decay_t<decltype(l)>;
+	using integer_t = typename data_type::integer_t;
+	using float_point_t = typename data_type::float_point_t;
+	if(l.is_int()) {
+		if(r.is_float_point()) return data_type{ to_type((integer_t)l / (float_point_t)r) };
+		return data_type{ to_type((integer_t)l / (integer_t)r) };
+	}
+	else {
+		if(r.is_float_point()) return data_type{ to_type((float_point_t)l / (float_point_t)r) };
+		return data_type{ to_type((float_point_t)l / (integer_t)r) };
+	}
+}
+template<typename data_type>
+constexpr static auto math_op(const expr_operators_simple&, auto&& l, auto&& r, auto&& op) {
+	using integer_t = typename data_type::integer_t;
+	using float_point_t = typename data_type::float_point_t;
+	if(l.is_int()) {
+		if(r.is_float_point()) return data_type{ float_point_t( op((integer_t)l,(float_point_t)r) ) };
+		return data_type{ integer_t( op((integer_t)l,(integer_t)r) ) };
+	}
+	else {
+		if(r.is_float_point()) return data_type{ float_point_t( op((float_point_t)l,(float_point_t)r) ) };
+		return data_type{ float_point_t( op((float_point_t)l,(integer_t)r) ) };
+	}
+}
+
+template<typename data_type>
+constexpr static auto int_div(const expr_operators_simple& op, auto&& left, auto&& right) {
+	return div<typename data_type::integer_t>( op, left, right );
+}
+
+template<typename data_type>
+constexpr static auto fp_div(const expr_operators_simple& op, auto&& left, auto&& right) {
+	return div<typename data_type::float_point_t>( op, left, right );
+}
+
+template<typename data_type>
+constexpr static auto pow(const expr_operators_simple&, auto&& l, auto&& r) {
+	using integer_t = typename data_type::integer_t;
+	using float_point_t = typename data_type::float_point_t;
+	auto right = (integer_t)r;
+	if(l.is_int()) {
+		auto left = (integer_t)l;
+		while(--right > 0) left *= left;
+		return data_type{ left };
+	}
+	else {
+		auto left = (float_point_t)l;
+		while(--right > 0) left *= left;
+		return data_type{ left };
+	}
+}
+template<typename data_type>
+constexpr static auto multiply(const expr_operators_simple& op, auto&& l, auto&& r) {
+	return math_op<data_type>(op, l,r, [](const auto& l, const auto& r){ return l * r; });
+}
+
+template<typename data_type>
+constexpr static auto substruct(const expr_operators_simple& op, auto&& l, auto&& r) {
+	return math_op<data_type>(op, l,r, [](const auto& l, const auto& r){ return l - r; });
+}
+
+template<typename data_type>
+constexpr static auto add(const expr_operators_simple& op, auto&& l, auto&& r) {
+	return math_op<data_type>(op, l,r, [](const auto& l, const auto& r){ return l + r; });
+}
+
 } // namespace jiexpr_details

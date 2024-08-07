@@ -150,43 +150,102 @@ constexpr auto fill_with_all_data(auto& result, const factory& f, const type& so
 	});
 }
 
+// eq neq and not in ()
+// (a:b && c:d) || ((d):())
+// 0{} -[]-> (3!{a=b} -0-> {b>a})
+
+template<typename factory> struct query_ident { typename factory::string_type val; };
+template<typename expr> struct query_unary { expr val; };
+template<typename expr> struct query_binary { expr left; expr right; };
+template<typename expr> struct query_eq : query_binary<expr> { };
+template<typename expr> struct query_neq : query_binary<expr> { };
+template<typename expr> struct query_and : query_binary<expr> { };
+template<typename expr> struct query_or : query_binary<expr> { };
+template<typename expr> struct query_not : query_unary<expr> { };
+template<typename expr> struct query_name_eq : query_unary<expr> { };
+template<typename expr, typename factory> struct query_in {
+	template<typename type> using vec = decltype(mk_vec<type>(factory{}));
+	expr name;
+	vec<expr> values;
+};
+
+template<typename factory> struct query_expr;
+template<typename factory> using fwd_ast = typename factory::template forward_ast<query_expr<factory>>;
 template<typename factory>
-struct query_description {
-	using string_type = typename factory::string_type;
-	string_type name;
-	string_type value;
+struct query_expr : factory::template variant<
+		  typename factory::template variant<
+		  query_eq <fwd_ast<factory>>
+		, query_neq<fwd_ast<factory>>
+		, query_and<fwd_ast<factory>>
+		, query_or<fwd_ast<factory>>
+		>
+		, query_in <fwd_ast<factory>, factory>
+		, query_not<fwd_ast<factory>>
+		, query_name_eq<fwd_ast<factory>>
+		, query_ident<factory>
+		, typename factory::string_type, typename factory::integer_type, typename factory::float_point_type, bool
+		>
+{
 };
 
 template<typename factory>
 struct query_vertex {
-	template<typename type> using vec = decltype(mk_vec<type>(factory{}));
-	vec<query_description<factory>> data;
+	query_expr<factory> data;
 };
 template<typename factory>
 struct query_edge {
-	template<typename type> using vec = decltype(mk_vec<type>(factory{}));
-	vec<query_description<factory>> data;
+	query_expr<factory> data;
 };
 template<typename factory>
 struct query {
 	template<typename... types> using variant = typename factory::template variant<types...>;
 	template<typename type> using forward_ast = typename factory::template forward_ast<type>;
 	template<typename type> using optional = typename factory::template optional<type>;
-	int input_number = 0;
-	variant<query_vertex<factory>, query_edge<factory>> data;
-	forward_ast<query<factory>> next;
+
+	using ident_type = query_ident<factory>;
+	using name_eq_type = query_name_eq<fwd_ast<factory>>;
+
+	using self_forward = forward_ast<query>;
+
+	int input_number = 0; // the number before {
+	bool to_output = true; // ! == false, nothing == true
+	variant<query_vertex<factory>, unsigned int, query_edge<factory>, self_forward> data;
+	//      {}                     -0->          -[]->                ({} --> {})
+	//                             -> == -0->
+	self_forward next;
 };
+
 template<typename factory, typename gh, template<auto>class th=gh::template tmpl>
 constexpr auto make_query_parser(const factory& df) {
+	auto mk_fwd = [&df](auto& v){ return df.mk_fwd(v); };
 	using string_t = typename factory::string_t;
+	using expr_type = fwd_ast<factory>;
+	using binary = query_binary<expr_type>;
 	constexpr auto ident =
-			lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))
-			- (gh::template lit<"and"> | gh::template lit<"is"> | gh::template lit<"in"> | gh::template lit<"or">);
-	constexpr auto desc = -ident >> th<':'>::_char >> ++(gh::quoted_string|ident);
+			lexeme(gh::alpha++ >> --(*(gh::alpha | gh::d10 | th<'_'>::char_)))
+			- (gh::template lit<"and"> | gh::template lit<"in"> | gh::template lit<"or"> | gh::template lit<"true"> | gh::template lit<"false">);
+	auto query_expr = rv([&df](auto& v){ return df.mk_result(std::move(v)); }
+			,(cast<binary>(gh::rv_lreq >> (gh::template lit<"==">|th<':'>::_char) >>  ++gh::rv_rreq(mk_fwd))
+			| cast<binary>(gh::rv_lreq >> gh::template lit<"!="> >>  ++gh::rv_rreq(mk_fwd))
+			| cast<binary>(gh::rv_lreq >> (gh::template lit<"and">|gh::template lit<"&&">) >> ++gh::rv_rreq(mk_fwd))
+			| cast<binary>(gh::rv_lreq >> (gh::template lit<"or">|gh::template lit<"||">) >>  ++gh::rv_rreq(mk_fwd))
+			 )
+			, cast<query_in <expr_type, factory>>(gh::rv_lreq >> gh::template lit<"in"> >>  ++(gh::rv_rreq(mk_fwd) % ',') )
+			, cast<query_unary<expr_type       >>(th<'!'>::_char++ >> --gh::rv_rreq(mk_fwd))
+			, cast<query_unary<expr_type       >>(th<':'>::_char++ >> --gh::rv_rreq(mk_fwd))
+			, ident
+			, gh::quoted_string
+			, gh::int_
+			, gh::fp
+			, (as<true>(gh::template lit<"true">)|as<false>(gh::template lit<"false">))
+			, rv_result(th<'('>::_char >> gh::rv_req >> th<')'>::_char)
+	);
+
 	return
-	(-gh::int_)++ >>
-	( cast<query_vertex<factory>>(gh::template lit<"{"> >> ((desc%',')([](auto& v){return &v.data;})|th<'*'>::_char) >> gh::template lit<"}">)
-	| cast<query_edge<factory>>(th<'['>::_char >> ((desc%',')([](auto& v){return &v.data;})|th<'*'>::_char) >> th<']'>::_char)
+	(-gh::int_)++ >> (-as<false>(th<'!'>::_char))++ >>
+	( cast<query_vertex<factory>>((th<'{'>::_char++ >> --th<'}'>::_char) | (th<'{'>::_char >> query_expr++ >> --th<'}'>::_char))
+	| (as<0>(gh::template lit<"->">) | (th<'-'>::_char >> gh::int_ >> gh::template lit<"->">))
+	| cast<query_edge<factory>>(th<'-'>::_char >> th<'['>::_char >> query_expr++ >> --th<']'>::_char >> gh::template lit<"->">)
 	)++ >> -th<0>::req([]<typename type>(type& v){v.reset(new typename type::element_type{});return v.get();})
 	;
 }
@@ -194,7 +253,7 @@ constexpr auto make_query_parser(const factory& df) {
 template<typename factory, typename gh>
 constexpr auto parse_query(const factory& f, auto&& src) {
 	query<factory> result;
-	parse(make_query_parser<factory, gh>(f), +gh::space, gh::make_source(std::forward<decltype(src)>(src)), result);
+	auto parsed_sz = parse(make_query_parser<factory, gh>(f), +gh::space, gh::make_source(std::forward<decltype(src)>(src)), result);
 	return result;
 }
 

@@ -10,76 +10,56 @@
 #include "factory.hpp"
 #include "ascip.hpp"
 
-#include <optional>
-
-namespace test {
-
-struct no_child {
-	int field1 = 1;
-	int field2 = 2;
-};
-
-struct top {
-	int field1 = 1;
-	no_child child1;
-	std::vector<no_child> child_vec;
-};
-
-} // namespace test
-
-struct factory : ast_graph_tests::factory{
-	using field_name_type = std::string_view;
-	using data_type = int;
-
-	template<typename type> using forward_ast = std::unique_ptr<type>;
-	template<typename type> using optional = std::optional<type>;
-	using string_t = std::string;
-	using string_type = std::string;
-};
+struct factory : ast_graph_tests::query_factory{ };
 
 int main(int,char**) {
 
-	static_assert(  []{
-		auto result = ast_graph::details::parse_query<factory, ascip<std::tuple, factory>>(factory{}, "{:ident}");
-		return get<0>(result.data).data[0].value;
-	}() == "ident");
-	static_assert(  []{
-		auto result = ast_graph::details::parse_query<factory, ascip<std::tuple, factory>>(factory{}, "3{:ident}[a:b]");
-		return (result.input_number==3) + 2*(get<0>(result.data).data[0].value=="ident") + 4*(get<1>(result.next->data).data[0].value=="b") + 8*(get<1>(result.next->data).data[0].name=="a");
-	}() == 15);
-	static_assert(  []{
-		auto result = ast_graph::details::parse_query<factory, ascip<std::tuple, factory>>(factory{}, "3{*}[*]");
-		return (result.input_number==3) + 2*(get<0>(result.data).data.empty()) + 4*(get<1>(result.next->data).data.empty()) + 8*(get<1>(result.next->data).data.empty());
-	}() == 15);
-	static_assert(  []{
-		auto result = ast_graph::details::parse_query<factory, ascip<std::tuple, factory>>(factory{}, "3{:ident}[a:b,c:'::']");
-		return (get<1>(result.next->data).data[0].value=="b") + 2*(get<1>(result.next->data).data[0].name=="a") + 4*(get<1>(result.next->data).data[1].name=="c") + 8*(get<1>(result.next->data).data[1].value=="::");
-	}() == 15);
+	using query_type = ast_graph::details::query<factory>;
+	using ident_type = query_type::ident_type;
+	using name_eq_type = query_type::name_eq_type;
 
-#if (__cplusplus > 202400)
+	static_assert(  []{
+		auto result = ast_graph::details::parse_query<factory, ascip<std::tuple, factory>>(factory{}, "{a==1}");
+		auto& q = get<0>(get<0>(result.data).data);
+		auto& val = get<ident_type>(*get<0>(q).left).val;
+		return (val.size()==1) + 2*(val[0]=='a') + 4*result.to_output + 8*(result.input_number==0);
+	}() == 15);
+	static_assert(  []{
+		auto result = ast_graph::details::parse_query<factory, ascip<std::tuple, factory>>(factory{}, "{a:41}");
+		auto& q = get<0>(get<0>(result.data).data);
+		auto& val = get<ident_type>(*get<0>(q).left).val;
+		return (get<factory::integer_type>(*get<0>(q).right)==41) + 2*(val.size()==1) + 4*(result.next==nullptr);
+	}() == 7);
+	static_assert(  []{
+		auto result = ast_graph::details::parse_query<factory, ascip<std::tuple, factory>>(factory{}, "3!{a:41}-[a:b]->{}");
+		auto& q = get<0>(get<0>(result.data).data);
+		auto& val = get<ident_type>(*get<0>(q).left).val;
+		return (get<factory::integer_type>(*get<0>(q).right)==41) + 2*(val.size()==1) + 4*(result.next!=nullptr);
+	}() == 7);
+	static_assert(  []{
+		auto result = ast_graph::details::parse_query<factory, ascip<std::tuple, factory>>(factory{}, "{:42}");
+		auto& vertex = get<0>(result.data).data;
+		auto& val = get<name_eq_type>(vertex).val;
+		return get<factory::integer_type>(*val);
+	}() == 42);
+	static_assert(  []{
+		auto result = ast_graph::details::parse_query<factory, ascip<std::tuple, factory>>(factory{}, "3{:ident}-[a==b]->{}");
+		auto& vertex1 = get<0>(result.data).data;
+		auto& edge = get<2>(result.next->data).data;
+		auto& vertex2 = get<0>(result.next->next->data).data;
+		return 
+			(get<ident_type>(*get<name_eq_type>(vertex1).val).val=="ident")
+			+ 2*(get<ident_type>(*get<0>(get<0>(edge)).left).val=="a")
+			+ 4*(get<ident_type>(*get<0>(get<0>(edge)).right).val=="b")
+			+ 8*(get<0>(get<0>(vertex2)).left==nullptr)
+			+ 16*(get<0>(get<0>(vertex2)).right==nullptr)
+			;
+	}() == 31);
+
 	static_assert( []{
-		test::top src;
-		src.field1 = 42;
-		auto res = ast_graph::query(factory{}, src, "" );
-		return static_cast<const test::top*>(res.root->data)->field1;
-	}() == 42 );
-#endif
-
-	CTRT( []{
-		test::top src;
-		src.child1.field1 = 42;
-		auto res = ast_graph::query(factory{}, src, "");
-		auto* found = child(res, res.root, 0);
-		return found->info.field("field1") ;//* ( found->info.field("field1") == static_cast<const test::no_child*>(found->data)->field1 );
-	}() == 42 );
-
-	CTRT( []{
-		test::top src;
-		src.child_vec.emplace_back(42, 43);
-		auto res = ast_graph::query(factory{}, src, "");
-		auto* found = child(res, child(res, res.root, 1), 0);
-		return found->info.field("field2");
-	}() == 43 );
+		auto result = ast_graph::details::parse_query<factory, ascip<std::tuple, factory>>(factory{}, "{:42}");
+		return 1;
+	}() == 1 );
 
 	return 0;
 }
