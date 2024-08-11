@@ -12,6 +12,9 @@
 #include <memory>
 #include <vector>
 
+struct factory : ast_graph_tests::factory {};
+struct factory_without_vec : ast_graph_tests::factory {};
+
 struct single_entity2 {
 	int f0 = 0;
 };

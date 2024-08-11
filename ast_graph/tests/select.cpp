@@ -10,6 +10,7 @@
 #include "factory.hpp"
 #include "ascip.hpp"
 #include "ast_graph/absd_object.hpp"
+#include "absd.hpp"
 
 namespace test {
 
@@ -26,14 +27,15 @@ struct top {
 
 } // namespace test
 
-struct factory : ast_graph_tests::query_factory{ };
+struct factory : ast_graph_tests::query_factory{
+};
 
 constexpr auto parse(auto&& src) {
 	return ast_graph::details::parse_query<factory, ascip<std::tuple, factory>>(factory{}, std::forward<decltype(src)>(src));
 }
 
 static_assert( []{
-	auto result = ast_graph::details::parse_query<factory, ascip<std::tuple, factory>>(factory{}, "{:42}");
+	auto result = parse("{:42}");
 	return 1;
 }() == 1 );
 

@@ -160,8 +160,8 @@ private:
 		if constexpr (cur==size) return f.mk_val(value_types());
 		else return request == key<cur>()
 		    ? f.mk_val(value_types(), value<cur>())
-			: value_impl<cur+1, size>(request)
-			;
+		    : value_impl<cur+1, size>(request)
+		    ;
 	}
 };
 

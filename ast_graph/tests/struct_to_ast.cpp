@@ -9,6 +9,7 @@
 #include <iostream>
 
 #include "factory.hpp"
+#include "ast_graph/graph.hpp"
 
 #include <memory>
 

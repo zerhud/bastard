@@ -22,6 +22,7 @@
 #include <optional>
 #include <string_view>
 #include <source_location>
+#include "absd.hpp"
 
 using namespace std::literals;
 
@@ -94,9 +95,32 @@ struct clang_bug_74963_wa {
 	type* v;
 };
 
+struct absd_factory {
+	template<typename... types> using variant = std::variant<types...>;
+	template<typename type> using vector = std::vector<type>;
+	using float_point_t = double;
+	using string_t = std::string;
+	using empty_t = std::monostate;
+
+	template<typename type> constexpr static auto mk_vec(){ return std::vector<type>{}; }
+//	template<typename key, typename value>
+//	constexpr static auto mk_map(){ return map_t<key,value>{}; }
+	constexpr static auto mk_ptr(auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
+	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
+	template<typename interface>
+	[[noreturn]] constexpr static void throw_wrong_interface_error() {
+		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
+	}
+	template<auto cnt>
+	[[noreturn]] constexpr static void throw_wrong_parameters_count() {
+		throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
+	}
+};
+
 struct factory {
 	using string_view = std::string_view;
 	using source_location = std::source_location;
+	using data_type = absd::data<absd_factory>;
 
 	template<typename... types>
 	using variant = std::variant<types...>;
