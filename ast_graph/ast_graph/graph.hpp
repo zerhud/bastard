@@ -60,7 +60,7 @@ struct ast_vertex_holder : ast_vertex<factory> {
 		else return visit([](const auto& v){
 			if constexpr (requires{ data_type{v}; }) return data_type{v};
 			else return data_type{};
-		}, node_type{f, src}.value(name));
+		}, node_type{f, src}.field_value(name));
 	}
 
 };
@@ -117,7 +117,7 @@ constexpr auto mk_graph(const factory& f, auto& storage, auto&& name, auto& pare
 template<typename factory>
 constexpr auto mk_graph(const factory& f, const auto& src) {
 	using children_type = decltype(mk_children_types(factory{}, src));
-	using node_type = typename decltype(mk_vertex_holder_type<factory>(mk_children_types(factory{}, src)))::type;
+	using node_type = typename decltype(mk_vertex_holder_type<factory>(children_type{}))::type;
 	auto graph_nodes = mk_vec<node_type>(f);
 	graph_nodes.reserve( mk_graph_calc_size(f, src) );
 	graph_nodes.emplace_back( f, src );

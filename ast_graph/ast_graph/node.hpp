@@ -69,9 +69,15 @@ struct node {
 	constexpr auto value(auto&& name) const {
 		return value_impl<0, struct_children_count()>(name);
 	}
+	constexpr auto field_value(auto&& name) const {
+		return field_value_impl<0, struct_children_count()>(name);
+	}
 
 	constexpr static auto value_types() {
 		return key_types_impl<0, struct_children_count()>([]<typename>{return true;});
+	}
+	constexpr static auto field_value_types() {
+		return key_types_impl<0, struct_children_count()>([]<typename t>{return factory::template is_field_type<t>();});
 	}
 
 	constexpr static auto children_types() {
@@ -162,6 +168,15 @@ private:
 		    ? f.mk_val(value_types(), value<cur>())
 		    : value_impl<cur+1, size>(request)
 		    ;
+	}
+	template<auto cur, auto size>
+	constexpr auto field_value_impl(auto&& request) const {
+		if constexpr (cur==size) return f.mk_val(field_value_types());
+		else if constexpr (!contains<field_type<cur>>(field_value_types())) return field_value_impl<cur+1, size>(request);
+		else return request == key<cur>()
+		            ? f.mk_val(field_value_types(), value<cur>())
+		            : field_value_impl<cur+1, size>(request)
+					;
 	}
 };
 
