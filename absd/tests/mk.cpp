@@ -40,6 +40,42 @@ struct constant_object {
 	}
 };
 
+struct constant_array {
+	absd_data m0{5}, m1{7};
+	constexpr absd_data at(absd_data::integer_t ind) {
+		if(ind==0) return m0;
+		if(ind==1) return m1;
+		return absd_data{};
+	}
+	constexpr bool contains(const absd_data& key) const {
+		return key.is_int() && (key==absd_data{0} || key==absd_data{1});
+	}
+	constexpr std::size_t size() const { return 2; }
+	constexpr std::vector<absd_data> keys() const {
+		return {absd_data{0}, absd_data{1}};
+	}
+};
+
+struct constant_array_and_obj {
+	absd_data m0{5}, m1{7};
+	constexpr absd_data at(absd_data key) {
+		if(key.is_string() && key==absd_data{"m0"}) return m0;
+		return absd_data{};
+	}
+	constexpr absd_data at(absd_data::integer_t ind) {
+		if(ind==0) return m0;
+		if(ind==1) return m1;
+		return absd_data{};
+	}
+	constexpr bool contains(const absd_data& key) const {
+		return key.is_int() && (key==absd_data{0} || key==absd_data{1});
+	}
+	constexpr std::size_t size() const { return 2; }
+	constexpr std::vector<absd_data> keys() const {
+		return {absd_data{0}, absd_data{1}};
+	}
+};
+
 template<bool run_ct>
 constexpr void test() {
 	CTRT( absd_data::mk(1) == absd_data{1} );
@@ -47,6 +83,11 @@ constexpr void test() {
 	CTRT( absd_data::mk(constant_object{}).size() == 2 );
 	CTRT( absd_data::mk(constant_object{})[absd_data{0}] == absd_data{3} );
 	CTRT( absd_data::mk(constant_object{}).keys().size() == 2 );
+	CTRT( absd_data::mk(constant_array{}).is_array() );
+	CTRT( absd_data::mk(constant_array_and_obj{}).is_array() );
+	CTRT( absd_data::mk(constant_array_and_obj{}).is_object() );
+	CTRT( absd_data::mk(constant_array_and_obj{})[absd_data{"m0"}].is_int() );
+	CTRT( absd_data::mk(constant_array_and_obj{})[absd_data{0}].is_int() );
 }
 
 void cannt_modify() {
