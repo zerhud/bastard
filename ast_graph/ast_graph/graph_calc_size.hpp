@@ -18,7 +18,7 @@ template<typename factory, tref::any_ptr source> constexpr auto mk_graph_calc_si
 template<typename factory, typename source_1> constexpr auto mk_graph_calc_size(const factory& f, const source_1& src) ;
 template<typename factory, tref::vector source>
 constexpr auto mk_graph_calc_size(const factory& f, const source& src) {
-	unsigned inner_cnt = 0;
+	unsigned inner_cnt = 1; // 1 is vector itself
 	for(const auto& i:src) inner_cnt += mk_graph_calc_size(f, i);
 	return src.size() + inner_cnt;
 }

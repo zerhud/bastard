@@ -164,6 +164,13 @@ struct factory {
 	}
 };
 
+constexpr auto mk_data(const factory&, std::string_view src) {
+	return factory::data_type{ factory::data_type::string_t{src} };
+}
+constexpr auto mk_data(const factory&, auto&& src) {
+	return factory::data_type{ std::forward<decltype(src)>(src) };
+}
+
 template<typename type>
 constexpr auto mk_list(const factory&) {
 	//return std::list<type>{};

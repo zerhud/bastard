@@ -28,12 +28,14 @@ struct ast_vertex {
 
 	virtual constexpr ~ast_vertex() noexcept =default ;
 
-	link_holder links ;
-	link_holder children ;
+	link_holder children ; //< all children. links will be added to children later
 	const ast_vertex* parent = nullptr ;
 
 	virtual names_type fields() const =0 ;
 	virtual data_type field(string_view name) const =0 ;
+	virtual bool is_array() const =0 ;
+	virtual unsigned size() const =0 ;
+	virtual const char* debug_info() const {return "";}
 };
 
 template<typename factory, typename source>
@@ -62,7 +64,18 @@ struct ast_vertex_holder : ast_vertex<factory> {
 			else return data_type{};
 		}, node_type{f, src}.field_value(name));
 	}
+	constexpr bool is_array() const override {
+		return tref::iterable<source>;
+	}
+	constexpr unsigned size() const override {
+		if constexpr (requires{ src->size(); }) return src->size();
+		else {
+			node_type n{f, src};
+			return n.fields_count() + this->children.size();
+		}
+	}
 
+	constexpr const char* debug_info() const override {return __PRETTY_FUNCTION__;}
 };
 
 template<typename factory, typename... types>
@@ -92,7 +105,11 @@ constexpr auto mk_graph(const factory& f, auto& storage, auto&& name, auto& pare
 
 template<typename factory, tref::vector source>
 constexpr auto mk_graph(const factory& f, auto& storage, auto&& name, auto& parent, const source& src) {
-	for(const auto& i:src) mk_graph(f, storage, std::forward<decltype(name)>(name), parent, i);
+	auto& cur_parent = *storage.emplace_back(f, src).base;
+	cur_parent.parent = &parent;
+	parent.children.emplace_back( typename ast_vertex<factory>::link{ std::forward<decltype(name)>(name), &cur_parent} );
+	parent.children.back().vertex = &cur_parent;
+	for(const auto& i:src) mk_graph(f, storage, "", cur_parent, i);
 }
 template<typename factory, tref::variant source>
 constexpr auto mk_graph(const factory& f, auto& storage, auto&& name, auto& parent, const source& src) {
