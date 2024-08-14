@@ -1,16 +1,17 @@
 builddir := make_build
-tests_excluded_for_clang := "absd/callable jiexpr/math jiexpr/objects jiexpr/methods jiexpr/logic ast_graph/query ast_graph/select ast_graph/gcconly_build_graph ast_graph/gcconly_graph_absd"
 GCC := g++ -MMD -pipe -std=gnu++23 -fwhole-program -march=native -fdiagnostics-color=always -fdiagnostics-all-candidates 
 CLANG := clang++ -MMD -pipe -std=gnu++23 -march=native -fdiagnostics-color=always -ftemplate-backtrace-limit=0
 
 tests_src := $(shell find . -ipath '*/tests/*.cpp' | sed 's/^..//g')
 
-.PHONY: all
+.PHONY: all force_clang
 
 base = $(basename $(subst tests/,,$(1)))
 
 all: $(foreach src_file,$(tests_src),$(call base,$(src_file)))
 	@echo -e "\e[7;32mAll Done\e[0m"
+
+force_clang: $(foreach src_file,$(tests_src),$(call base,$(src_file))_force_clang)
 
 define create_test_dir_template
 $(1):
@@ -22,15 +23,22 @@ define create_test_template
 $(builddir)/$(call base,$(1))_gcc: makefile $(1) | $(builddir)/$(dir $(call base,$(1)))
 	$(GCC) -I./absd -Ijiexpr -Iast_graph $(1) -o $$@
 -include $(builddir)/$(call base,$(1))_clang.d
-ifeq ($(findstring $(call base,$(1)),$(tests_excluded_for_clang)),)
+ifeq (,$(findstring gcconly_,$(1)))
 $(builddir)/$(call base,$(1))_clang: makefile $(1) | $(builddir)/$(dir $(call base,$(1)))
 	@echo build for $(call base,$(1))
 	$(CLANG) -I./absd -Ijiexpr -Iast_graph $(1) -o $$@
+$(builddir)/$(call base,$(1))_force_clang: makefile $(1)
+	@echo -e "\033[0;31mskiping \033[1;36m$(1)\033[0;31m for FORCE clang\033[0m"
 else
 $(builddir)/$(call base,$(1))_clang: makefile $(1)
 	@echo -e "\033[0;31mskiping for \033[1;36m$(1)\033[0;31m for clang\033[0m"
+$(builddir)/$(call base,$(1))_force_clang: makefile $(1) | $(builddir)/$(dir $(call base,$(1)))
+	@echo build for $(call base,$(1))
+	$(CLANG) -I./absd -Ijiexpr -Iast_graph $(1) -o $$@
+
 endif
-.PHONY: $(call base,$(1))
+.PHONY: $(call base,$(1)) $(call base,$(1))_force_clang
+$(call base,$(1))_force_clang: $(builddir)/$(call base,$(1))_force_clang
 $(call base,$(1)): $(builddir)/$(call base,$(1))_gcc $(builddir)/$(call base,$(1))_clang
 	$(builddir)/$(call base,$(1))_gcc
 	test -f $(builddir)/$(call base,$(1))_clang && $(builddir)/$(call base,$(1))_clang || true
