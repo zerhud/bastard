@@ -107,7 +107,10 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 			constexpr te(src_type s) : src_type(std::move(s)) {}
 
 			constexpr decltype(sizeof(data_type)) size() const override { return this->orig_val().size(); }
-			constexpr bool is_obj() const override { return true; }
+			constexpr bool is_obj() const override {
+				if constexpr (requires{this->orig_val().is_object();}) return this->orig_val().is_object();
+				else return true;
+			}
 			constexpr bool contains(const data_type& key) const override { return this->orig_val().contains(key); }
 			constexpr data_type at(const data_type& ind) override { return this->orig_val().at(ind); }
 			constexpr data_type& put(data_type key, data_type value) override {

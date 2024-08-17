@@ -1,0 +1,8 @@
+//
+// Created by zerhud on 15/08/24.
+//
+
+#ifndef BASTARD_QUERY_EXECUTOR_HPP
+#define BASTARD_QUERY_EXECUTOR_HPP
+
+#endif //BASTARD_QUERY_EXECUTOR_HPP

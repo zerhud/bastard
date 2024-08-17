@@ -53,7 +53,10 @@ constexpr auto mk_te_array(const auto& f, auto&& src) {
 			constexpr te_ar2(src_type v) : src_type(std::move(v)) {}
 			constexpr ~te_ar2() noexcept override {}
 
-			constexpr bool is_arr() const override { return true; }
+			constexpr bool is_arr() const override {
+				if constexpr (requires{this->orig_val().is_array();}) return this->orig_val().is_array();
+				else return true;
+			}
 			constexpr data_type& emplace_back(data_type d) override {
 				if constexpr (requires{this->orig_val().emplace_back(std::move(d));})
 					return this->orig_val().emplace_back(std::move(d));

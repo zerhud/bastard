@@ -49,6 +49,7 @@ constexpr void back_insert_format(auto&& pos, const data_type& src) {
 		}
 		pos = '}';
 	}
+	else if(src.is_none()) pos = 'n', pos = 'u', pos = 'l', pos = 'l';
 }
 
 template<auto qsym, typename data_type>
