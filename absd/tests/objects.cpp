@@ -43,6 +43,19 @@ constexpr void main_test() {
 		d.put(absd_data{1}, absd_data{7});
 		return d.contains(absd_data{1}) + (2*!d.contains(absd_data{7}));
 	}() == 3)
+
+	CTRT( ([]{
+		absd_data l,r;
+		l.mk_empty_object();
+		r.mk_empty_object();
+		return l == r;
+	}() == true) )
+	CTRT( ([]{
+		absd_data l,r;
+		l.put(absd_data{1}, absd_data{7});
+		r.put(absd_data{1}, absd_data{7});
+		return l == r;
+	}() == true) )
 }
 
 int main(int,char**) {

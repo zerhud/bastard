@@ -48,6 +48,13 @@ struct constexpr_kinda_map {
 	constexpr auto begin() { return store.begin(); }
 	constexpr auto end() const { return store.end(); }
 	constexpr auto begin() const { return store.begin(); }
+
+	constexpr bool is_eq(const constexpr_kinda_map& other) const {
+		if(store.size() != other.store.size()) return false;
+		for(auto i=0;i<store.size();++i)
+			if(store[i].k!=other.store[i].k || store[i].v!=other.store[i].v) return false;
+		return true;
+	}
 };
 template<typename key, typename value, typename factory> constexpr auto mk_map_type(const factory& f) {
 	if constexpr(requires{ f.template mk_map<key,value>(); }) return f.template mk_map<key,value>();

@@ -46,6 +46,20 @@ constexpr void main_test() {
 		d.push_back(data{3});
 		return d.contains(data{3}) + !d.contains(data{1});
 	}() == 2 );
+
+	CTRT( ([]{
+		data l,r;
+		l.push_back(data{2});
+		r.push_back(data{2});
+		return l == r;
+	}() == true) );
+
+	CTRT( ([]{
+		data l,r;
+		l.push_back(data{2});
+		r.mk_empty_object();
+		return l == r;
+	}() == false) );
 }
 
 int main(int,char**) {

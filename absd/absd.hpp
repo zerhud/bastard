@@ -278,7 +278,8 @@ public:
 
 	[[nodiscard]] friend constexpr bool operator==(const self_type& left, const self_type& right) {
 		return left.holder.index() == right.holder.index() && visit([](const auto& l, const auto& r){
-			if constexpr(requires{ l==r; }) return l==r;
+			if constexpr(requires{ l->is_eq(*r); }) return l->is_eq(*r);
+			else if constexpr(requires{ l==r; }) return l==r;
 			else return false;
 			}, left.holder, right.holder);
 	}

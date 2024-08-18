@@ -27,6 +27,13 @@ struct array : inner_counter {
 	constexpr data& emplace_back(data d) { return holder.emplace_back(std::move(d)); }
 	constexpr data& at(std::integral auto ind) { return holder.at(ind); }
 	constexpr auto size() const { return holder.size(); }
+
+	constexpr bool is_eq(const array& other) const {
+		if(holder.size() != other.holder.size()) return false;
+		for(auto i=0;i<holder.size();++i)
+			if(holder[i]!=other.holder[i]) return false;
+		return true;
+	}
 };
 template<typename data, typename factory> constexpr auto mk_array_type(const factory& f) {
 	if constexpr(!requires{ typename factory::array_t; }) return array<factory, data>(f);

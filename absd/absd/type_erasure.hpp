@@ -29,6 +29,12 @@ struct multiobject_tag : counter_interface {
 	constexpr virtual bool is_arr() const { return false; }
 	constexpr virtual bool is_obj() const { return false; }
 	constexpr virtual bool is_cll() const { return false; }
+	constexpr virtual bool is_eq(const multiobject_tag& other) const {
+		return this == &other;
+	}
+	constexpr virtual const char* dynamic_cast_workaround() const {
+		return "";
+	}
 };
 
 template<typename type>
@@ -61,6 +67,34 @@ struct origin : details::multiobject_tag {
 	}
 
 	constexpr auto& call_val() { return val; }
+
+	constexpr const char* dynamic_cast_workaround() const override {
+		// same strings and same pointers for same types,
+		// so we can compare only pointers instead of whole string
+		return __PRETTY_FUNCTION__ ;
+	}
+	constexpr bool is_eq(const multiobject_tag& other) const override {
+		if(static_cast<const multiobject_tag*>(this) == &other) return true;
+		if constexpr(requires{this->orig_val()==this->orig_val();}) {
+#if (defined(__GNUC__) && !defined(__clang__))
+			if(other.dynamic_cast_workaround() == dynamic_cast_workaround())
+				return this->orig_val() == static_cast<const origin&>(other).orig_val();
+#else
+			if(auto* o=dynamic_cast<const origin*>(&other);o) return this->orig_val() == o->orig_val();
+#endif
+			return false;
+		}
+		else if constexpr(requires{this->orig_val().is_eq(std::declval<val_type>());}) {
+#if (defined(__GNUC__) && !defined(__clang__))
+			if(other.dynamic_cast_workaround() == dynamic_cast_workaround())
+				return this->orig_val().is_eq(static_cast<const origin&>(other).orig_val());
+#else
+			if(auto* o=dynamic_cast<const origin*>(&other);o) return this->orig_val().is_eq(o->orig_val());
+#endif
+			return false;
+		}
+		else return multiobject_tag::is_eq(other);
+	}
 };
 
 } // namespace absd::details
