@@ -65,6 +65,7 @@ struct clang_bug_74963_wa {
 	clang_bug_74963_wa(const clang_bug_74963_wa&&) =delete ;
 
 	constexpr clang_bug_74963_wa() : v(nullptr) {}
+	constexpr clang_bug_74963_wa(std::unique_ptr<type> v) : v(v.get()) { v.release(); }
 	constexpr clang_bug_74963_wa(type* v) : v(v) {}
 	constexpr clang_bug_74963_wa(clang_bug_74963_wa&& other) : v(other.v) {
 		other.v = nullptr;
@@ -91,6 +92,15 @@ struct clang_bug_74963_wa {
 	constexpr const type* operator->() const { return v; }
 
 	constexpr auto* get() const { return v; }
+	constexpr void reset() { if(v) delete v; v=nullptr; }
+	constexpr type* reset(type* nv) {
+		reset();
+		v = nv;
+		return v;
+	}
+
+	constexpr operator bool() const { return !!v; }
+	constexpr friend bool operator==(const clang_bug_74963_wa<type>& l, const type* r) { return l.v == r; }
 
 	type* v;
 };
@@ -195,24 +205,25 @@ struct query_factory : factory {
 	using float_point_type = double;
 	using data_type = int;
 
-	//template<typename type> using forward_ast = clang_bug_74963_wa<type>;
-	template<typename type> using forward_ast = std::unique_ptr<type>;
+	//NOTE: c++23 standard bug and clang implement it. the dtor will be instantiated
+	//      inside class, where the sizeof is cannot to be called, and we cannot use
+	//      std::unique_ptr for forward_ast (only in clang) with a constexpr dtor.
+	//template<typename type> using forward_ast = std::shared_ptr<type>;
+	template<typename type> using forward_ast = clang_bug_74963_wa<type>;
 	template<typename type> using optional = std::optional<type>;
 	using string_t = std::string;
 	using string_type = std::string;
 
 	constexpr auto mk_fwd(auto& v) const {
 		using v_type = std::decay_t<decltype(v)>;
-		static_assert( !std::is_pointer_v<v_type>, "the result have to be a unique_ptr like type" );
-		static_assert( !std::is_reference_v<v_type>, "the result have to be a unique_ptr like type" );
+		static_assert( !std::is_pointer_v<v_type>, "the result have to be a smart ptr like type" );
+		static_assert( !std::is_reference_v<v_type>, "the result have to be a smart ptr like type" );
 		v = std::make_unique<typename v_type::element_type>();
-		//v = clang_bug_74963_wa<v_type>(new typename v_type::element_type(std::forward<decltype(v)>(v)));
 		return v.get();
 	}
 	constexpr auto mk_result(auto&& v) const {
 		using expr_t = std::decay_t<decltype(v)>;
 		return std::make_unique<expr_t>(std::move(v));
-		//return clang_bug_74963_wa<expr_t>(new expr_t(std::forward<decltype(v)>(v)));
 	}
 };
 
