@@ -26,6 +26,21 @@ struct graph_absd {
 	, g(g)
 	{}
 
+	constexpr bool is_eq(const graph_absd& other) const {
+		if(g==other.g) return true;
+		if(g->size() != other.g->size() || g->children.size() != other.g->children.size()) return false;
+		for(auto i=0;i<g->children.size();++i) {
+			if(g->children[i].name != other.g->children[i].name) return false;
+			graph_absd l(f, g->children[i].vertex);
+			graph_absd r(f, other.g->children[i].vertex);
+			if(!l.is_eq(r)) return false;
+		}
+		for(auto& name:g->fields()) if(g->field(name)!=other.g->field(name)) return false;
+		return true;
+	}
+	constexpr bool is_array() const {
+		return g->is_array();
+	}
 	constexpr auto at(int_t k) {
 		if(!g->is_array() || k > g->children.size()) return data_type{};
 		return data_type::mk(graph_absd(f, g->children[k].vertex));

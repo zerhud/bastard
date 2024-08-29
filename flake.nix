@@ -22,14 +22,33 @@
         config.allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [ "clion" ];
       };
 
+      snitch = pkgs.gcc14Stdenv.mkDerivation {
+        name = "snitch_tests";
+        buildInputs = [ ];
+        nativeBuildInputs = with pkgs; [ cmake ninja python3 ];
+        #cmakeFlags = [ "-D" "snitch:create_library=true" ];
+        #cmakeFlags = [ "-DSNITCH_HEADER_ONLY=ON" ];
+        src = pkgs.fetchzip {
+          url = "https://github.com/cschreib/snitch/archive/refs/tags/v1.2.5.tar.gz";
+          sha256 = "sha256-7O3L9v/TXKfbAl/G1MKKluLgj6v5m1x4C+/+DMLRyhM=";
+        };
+      };
+
       der = pkgs.gcc14Stdenv.mkDerivation {
         name = "jiexpr";
         buildInputs = with pkgs;[ tref ];
-        nativeBuildInputs = with pkgs;[clang_17 ninja ascip (boost-build.override {useBoost = boost185;})];
+        snitch_header = snitch.out;
+        nativeBuildInputs = with pkgs;[clang_17 ninja ascip snitch boost185 (boost-build.override {useBoost = boost185;})];
         installPhase = "mkdir -p \"$out/include\" && cp ascip.hpp -t \"$out/include\"";
         buildPhase = "g++ -std=c++23 -fwhole-program -march=native ./test.cpp -o ascip_test && ./ascip_test";
         meta.description = "jiexpr is an jinja interpretator with extensions writted in cpp. it can to be embbadded in your projects with open source license.";
         src = ./.;
+        CPATH = pkgs.lib.strings.concatStringsSep ":" [
+          "${snitch}/include/snitch"
+        ];
+        LIBRARY_PATH = pkgs.lib.strings.concatStringsSep ":" [
+          "${snitch}/lib"
+        ];
       };
     in rec {
       devShell = der.overrideAttrs(finalAttrs: previousAttrs: {

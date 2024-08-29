@@ -132,10 +132,15 @@ constexpr auto mk_graph(const factory& f, auto& storage, auto&& name, auto& pare
 }
 
 template<typename factory>
-constexpr auto mk_graph(const factory& f, const auto& src) {
+constexpr auto mk_empty_graph(const factory& f, const auto& src) {
 	using children_type = decltype(mk_children_types(factory{}, src));
 	using node_type = typename decltype(mk_vertex_holder_type<factory>(children_type{}))::type;
-	auto graph_nodes = mk_vec<node_type>(f);
+	return mk_vec<node_type>(f);
+}
+
+template<typename factory>
+constexpr auto mk_graph(const factory& f, const auto& src) {
+	auto graph_nodes = mk_empty_graph(f, src);
 	graph_nodes.reserve( mk_graph_calc_size(f, src) );
 	graph_nodes.emplace_back( f, src );
 	auto& parent = *graph_nodes.back().base;

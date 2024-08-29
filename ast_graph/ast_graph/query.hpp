@@ -75,6 +75,40 @@ struct query_edge {
 	string_t name;
 };
 template<typename factory>
+struct query_path {
+	using vertex_type = query_vertex<factory>;
+	struct path_element {
+		query_edge<factory> edge;
+		vertex_type to;
+	};
+	using tail_type = std::decay_t<decltype(mk_vec<path_element>(std::declval<factory>()))>;
+
+	vertex_type base;
+	tail_type tail;
+};
+
+template<typename factory>
+struct query_path_plus {
+	query_path<factory> left;
+	query_path<factory> right;
+};
+template<typename factory>
+struct query_path_minus {
+	query_path<factory> left;
+	query_path<factory> right;
+};
+
+template<typename factory>
+struct query2 {
+	template<typename... types> using variant = typename factory::template variant<types...>;
+	template<typename type> using forward_ast = typename factory::template forward_ast<type>;
+	using self_forward = forward_ast<query2>;
+
+	factory f;
+	variant<query_path_plus<factory>, query_path_minus<factory>, query_path<factory>, self_forward> data;
+};
+
+template<typename factory>
 struct query {
 	template<typename... types> using variant = typename factory::template variant<types...>;
 	template<typename type> using forward_ast = typename factory::template forward_ast<type>;
@@ -93,7 +127,6 @@ struct query {
 	self_forward next;
 };
 
-//STEP: use new edge parser: -[_stop_on_good_:max_deep:name]-> (see query_edge)
 template<typename factory, typename gh, template<auto>class th=gh::template tmpl>
 constexpr auto make_query_parser(const factory& df) {
 	auto mk_fwd = [&df](auto& v){ return df.mk_fwd(v); };
@@ -121,6 +154,22 @@ constexpr auto make_query_parser(const factory& df) {
 			, rv_result(th<'('>::_char >> gh::rv_req >> th<')'>::_char)
 	);
 
+	auto vertex_parser = (th<'{'>::_char >> th<'}'>::_char) | (th<'{'>::_char >> query_expr >> th<'}'>::_char);
+	auto edge_parser =
+		 ( as<-1>(th<'-'>::_char)++ >> as<1>(th<'['>::_char)++ >> query_edge_name_parser >> gh::template lit<"]->"> )
+		|( th<'-'>::_char >> th<'['>::_char >> -gh::int_ >> th<':'>::_char++ >> -gh::int_ >> th<':'>::_char++ >> query_edge_name_parser >> gh::template lit<"]->"> )
+		;
+	return th<';'>::_char++ >> 
+	rv([&df](auto& v){return df.mk_result(std::move(v));}
+	//TODO: add {} in ({} + {}) parser as more priority
+	 //TODO: use simple variant for + and - theay are same priority
+	 , cast<query_path_plus<factory>>(++gh::rv_lreq >> th<'+'>::_char >> ++gh::rv_rreq(mk_fwd))
+	 , cast<query_path_minus<factory>>(++gh::rv_lreq >> th<'-'>::_char >> ++gh::rv_rreq(mk_fwd))
+	 , cast<query_path<factory>>( vertex_parser++ >> *(edge_parser++ >> vertex_parser) )
+	 //, rv_result(th<'('>::_char++ >> gh::rv_req >> th<')'>::_char)
+	 )
+	;
+	/*
 	return
 	(-gh::int_)++ >> (-as<false>(th<'!'>::_char))++ >>
 	( cast<query_vertex<factory>>((th<'{'>::_char++ >> --th<'}'>::_char) | (th<'{'>::_char >> query_expr++ >> --th<'}'>::_char))
@@ -132,11 +181,12 @@ constexpr auto make_query_parser(const factory& df) {
 	)++ >> -th<0>::req([]<typename type>(type& v){v.reset(new typename type::element_type{});return v.get();})
 	//TODO: use factory instead of new in req semact
 	;
+	*/
 }
 
 template<typename gh, typename factory>
 constexpr auto parse_query(const factory& f, auto&& src) {
-	query<factory> result;
+	query2<factory> result{ f };
 	auto parsed_sz = parse(make_query_parser<factory, gh>(f), +gh::space, gh::make_source(std::forward<decltype(src)>(src)), result);
 	return result;
 }
