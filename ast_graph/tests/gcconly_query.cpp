@@ -16,12 +16,9 @@ struct factory : ast_graph_tests::query_factory{ };
 using parser = ascip<std::tuple, factory>;
 using qedge = ast_graph::details::query_edge<factory>;
 using vertex = ast_graph::details::query_vertex<factory>;
+using qgraph = ast_graph::details::query_graph<factory>;
 
 int main(int,char**) {
-
-	//using query_type = ast_graph::details::query<factory>;
-	//using ident_type = query_type::ident_type;
-	//using name_eq_type = query_type::name_eq_type;
 
 	static_assert( []{
 		qedge r;
@@ -45,62 +42,10 @@ int main(int,char**) {
 		auto rr2 = parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{1==2}"), r2);
 		return (r1.arg_number==2) + 2*(r1.data.index()==0) + 4*(r2.arg_number==0) + 8*(rr2==6);
 	}() == 15 );
-	static_assert(  []{
-		/*
-		auto result = ast_graph::details::parse_query<ascip<std::tuple, factory>>(factory{}, "{a==1}");
-		auto& q = get<2>(result.data).base;
-		auto& val = get<ident_type>(q.data).val;
-		return (val.size()==1) + 2*(val[0]=='a');
-		*/
-		return 3;
-	}() == 3);
-	/*
-	static_assert(  []{
-		auto result = ast_graph::details::parse_query<ascip<std::tuple, factory>>(factory{}, "{a:41}");
-		auto& q = get<0>(get<0>(result.data).data);
-		auto& val = get<ident_type>(*get<0>(q).left).val;
-		return (get<factory::integer_type>(*get<0>(q).right)==41) + 2*(val.size()==1) + 4*(result.next==nullptr);
-	}() == 7);
-	static_assert(  []{
-		auto result = ast_graph::details::parse_query<ascip<std::tuple, factory>>(factory{}, "3!{a:41}-[a:b]->{}");
-		auto& q = get<0>(get<0>(result.data).data);
-		auto& val = get<ident_type>(*get<0>(q).left).val;
-		return (get<factory::integer_type>(*get<0>(q).right)==41) + 2*(val.size()==1) + 4*(result.next!=nullptr);
-	}() == 7);
-	static_assert(  []{
-		auto result = ast_graph::details::parse_query<ascip<std::tuple, factory>>(factory{}, "{:42}");
-		auto& vertex = get<0>(result.data).data;
-		auto& val = get<name_eq_type>(vertex).val;
-		return get<factory::integer_type>(*val);
-	}() == 42);
-	static_assert(  []{
-		auto result1 = ast_graph::details::parse_query<ascip<std::tuple, factory>>(factory{}, "{}-[3:2:edge]->{}");
-		auto result2 = ast_graph::details::parse_query<ascip<std::tuple, factory>>(factory{}, "{}-[edge]->{}");
-		auto result3 = ast_graph::details::parse_query<ascip<std::tuple, factory>>(factory{}, "{}-[::edge]->{}");
-		auto& edge1 = get<2>(result1.next->data);
-		auto& edge2 = get<2>(result2.next->data);
-		auto& edge3 = get<2>(result3.next->data);
-		return (edge1.name == "edge") + 2*(edge2.name == "edge") + 4*(edge3.name == "edge") ;
-	}() == 7 );
-	static_assert(  []{
-		auto result = ast_graph::details::parse_query<ascip<std::tuple, factory>>(factory{}, "3{:ident}-[3:2:edge]->{}");
-		auto& vertex1 = get<0>(result.data).data;
-		auto& edge = get<2>(result.next->data);
-		auto& vertex2 = get<0>(result.next->next->data).data;
-		return 
-			    (get<ident_type>(*get<name_eq_type>(vertex1).val).val=="ident")
-			+ 2*(edge.stop_on_match == 3)
-			+ 4*(edge.max_deep == 2)
-			+ 8*(get<0>(get<0>(vertex2)).left==nullptr)
-			+ 16*(get<0>(get<0>(vertex2)).right==nullptr)
-			;
-	}() == 31);
-
 	static_assert( []{
-		auto result = ast_graph::details::parse_query<ascip<std::tuple, factory>>(factory{}, "{:42}");
-		return 1;
-	}() == 1 );
-	*/
+		qgraph r1;
+		return parse(qgraph::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{1==2}->{}->{}"), r1.data);
+	}() == 14 );
 
 	return 0;
 }
