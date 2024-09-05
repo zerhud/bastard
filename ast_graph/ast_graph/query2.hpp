@@ -144,9 +144,8 @@ struct query_graph {
 
 	struct expr : variant<
 		  path
-		//  variant< add, sub >
+		, variant< add, sub >
 		, qvertex
-		, int
 	> {} ;
 
 	expr data;
@@ -159,10 +158,10 @@ struct query_graph {
 				- (gh::template lit<"and"> | gh::template lit<"in"> | gh::template lit<"or"> | gh::template lit<"true"> | gh::template lit<"false">);
 		return rv([&df](auto& v){ return df.mk_result(std::move(v)); }
 			, check<path>( gh::rv_lreq++ >> +(query_edge<factory>::template mk_parser<gh>() >> ++gh::rv_rreq(mk_fwd)) )
-			/*, ( cast<binary>( gh::rv_lreq++ >> th<'+'>::_char >> gh::rv_rreq(mk_fwd) )
+			, ( cast<binary>( gh::rv_lreq++ >> th<'+'>::_char >> gh::rv_rreq(mk_fwd) )
 			  | cast<binary>( gh::rv_lreq++ >> th<'-'>::_char >> gh::rv_rreq(mk_fwd) )
-			)*/,check<qvertex>(qvertex::template mk_parser<gh>(df))
-			, gh::int_
+			  )
+			, check<qvertex>(qvertex::template mk_parser<gh>(df))
 			, rv_result(th<'('>::_char >> gh::rv_req >> th<')'>::_char)
 		);
 	}
