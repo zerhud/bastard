@@ -6,7 +6,7 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
-#include "ast_graph/query2.hpp"
+#include "ast_graph/query.hpp"
 #include "factory.hpp"
 #include "ascip.hpp"
 
@@ -45,8 +45,6 @@ int main(int,char**) {
 		qgraph r1;
 		return parse(qgraph::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{1==2}->{}->({}+3{})"), r1.data);
 	}() == 20 );
-	static_assert( []{
-	}() == 3);
 
 	return 0;
 }

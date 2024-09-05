@@ -28,6 +28,7 @@ template<typename factory, typename source>
 struct query_executor {
 	using graph_type = decltype(mk_graph(std::declval<factory>(), std::declval<source>()));
 	using parser = typename factory::parser;
+	using qgraph = details::query_graph<factory>;
 
 	factory f;
 	const source& src;
@@ -41,37 +42,13 @@ struct query_executor {
 	, result(mk_empty_graph(f, src))
 	{}
 
-	template<typename pf>
-	constexpr bool is_node_matched(const details::query_vertex<pf>& parser, const auto& vertex) const {
-		return true;
+	constexpr auto exec(auto&& parsed) {
+		return 1;
 	}
-	template<typename pf>
-	constexpr void remove_unmatched_children(const details::query_edge<pf>* parser, auto& vertex) const {
-		vertex.children.clear();
-	}
-
-	constexpr void remove_unmatched_children(unsigned levels_count, auto& vertex) {
-		if(levels_count==0) return;
-		vertex.children.clear();
-	}
-
-	template<typename parser_factory>
-	constexpr auto next(const details::query<parser_factory>* next, auto& prev_vertex) {
-		;
-	}
-
-	template<typename parser_factory>
-	constexpr auto exec(const details::query<parser_factory>& parser) {
-		//TODO: fuck souciety
-		auto& vertex_query = get<0>(parser.data);
-		for(auto& v:graph) if(is_node_matched(vertex_query, *v.base)) remove_unmatched_children(parser.next ? &get<2>(parser.next->data) : nullptr, *result.emplace_back(v).base);
-		auto ret = mk_empty_graph(f, src);
-		swap(ret, result);
-		return ret;
-	}	
 	constexpr auto operator()(auto&& query) {
-		auto parsed = details::parse_query<parser>(f, query);
-		return exec(parsed);
+		qgraph r;
+		parse( qgraph::template mk_parser<parser>(f), +parser::space, parser::make_source(std::forward<decltype(query)>(query)), r.data );
+		return exec(std::move(r));
 	}
 };
 
