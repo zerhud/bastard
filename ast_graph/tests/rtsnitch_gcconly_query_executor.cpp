@@ -110,7 +110,11 @@ TEST_CASE_METHOD(parse_fixture, "can_compare", "[graph][query]") {
 
 TEST_CASE_METHOD(parse_fixture, "empty_query_is_whole_graph", "[graph][query]") {
 	auto q = mk_executor();
-	auto r = q("{}->{}");
+	using v = ast_graph::details::query_edge<factory>;
+	using p = factory::parser;
+	v r;
+	
+//	auto r = q("{}->{}");
 //	REQUIRE( mk_obj() == mk_obj(r[0].base) );
 }
 

@@ -43,7 +43,7 @@ struct query_edge {
 	template<typename gh, template<auto>class th=gh::template tmpl>
 	constexpr static auto mk_parser() {
 		constexpr auto query_edge_name_parser = lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_)) | gh::quoted_string;
-		return
+		return 
 		 ( as<-1>(th<'-'>::_char)++ >> as<1>(th<'['>::_char)++ >> query_edge_name_parser >> gh::template lit<"]->"> )
 		|( th<'-'>::_char >> th<'['>::_char >> -gh::int_ >> th<':'>::_char++ >> -gh::int_ >> th<':'>::_char++ >> query_edge_name_parser >> gh::template lit<"]->"> )
 		|( th<'-'>::_char++ >> as<1>(th<'>'>::_char) )
