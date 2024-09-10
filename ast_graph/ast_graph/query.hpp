@@ -55,6 +55,8 @@ struct query_edge {
 template<typename factory>
 struct query_vertex {
 	using string_t = factory::string_type;
+	using integer_t = factory::integer_type;
+	using float_point_t = factory::float_point_type;
 	template<typename type> using vec = decltype(mk_vec<type>(factory{}));
 	template<typename... list> using variant = factory::template variant<list...>;
 
@@ -84,8 +86,8 @@ struct query_vertex {
 		, _not
 		, ident
 		, string_t
-		, typename factory::integer_type
-		, typename factory::float_point_type
+		, integer_t
+		, float_point_t
 		, bool
 	> {};
 
@@ -115,7 +117,10 @@ struct query_vertex {
 				, (as<true>(gh::template lit<"true">)|as<false>(gh::template lit<"false">))
 				, rv_result(th<'('>::_char >> gh::rv_req >> th<')'>::_char)
 		);
-		return -gh::int_ >> ++th<'{'>::_char >> -expr_parser >> th<'}'>::_char;
+		return -gh::int_ >> ++th<'{'>::_char >> (
+				use_variant_result(th<'}'>::_char([](auto,auto& v){ v.template emplace<bool>(true);})) |
+				use_variant_result(expr_parser >> th<'}'>::_char)
+				);
 	}
 };
 

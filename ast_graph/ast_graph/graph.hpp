@@ -31,6 +31,7 @@ struct ast_vertex {
 	link_holder children ; //< all children. links will be added to children later
 	const ast_vertex* parent = nullptr ;
 
+	virtual string_view type_name() const =0 ;
 	virtual names_type fields() const =0 ;
 	virtual data_type field(string_view name) const =0 ;
 	virtual bool is_array() const =0 ;
@@ -51,10 +52,13 @@ struct ast_vertex_holder : ast_vertex<factory> {
 
 	factory f;
 	const source* src;
+
+	constexpr node_type create_node() const { return node_type{ f, src }; }
+	constexpr string_view type_name() const override { return create_node().name(); }
 	constexpr names_type fields() const override {
 		names_type ret = mk_vec<string_view>(f);
 		if constexpr(!tref::vector<source>)
-			for(auto&& i:node_type{f, src}.list_fields()) ret.emplace_back(i);
+			for(auto&& i:create_node().list_fields()) ret.emplace_back(i);
 		return ret;
 	}
 	constexpr data_type field(string_view name) const override {
@@ -62,7 +66,7 @@ struct ast_vertex_holder : ast_vertex<factory> {
 		else return visit([](const auto& v){
 			if constexpr (requires{ data_type{v}; }) return data_type{v};
 			else return data_type{};
-		}, node_type{f, src}.field_value(name));
+		}, create_node().field_value(name));
 	}
 	constexpr bool is_array() const override {
 		return tref::iterable<source>;
@@ -70,7 +74,7 @@ struct ast_vertex_holder : ast_vertex<factory> {
 	constexpr unsigned size() const override {
 		if constexpr (requires{ src->size(); }) return src->size();
 		else {
-			node_type n{f, src};
+			auto n = create_node();
 			return n.fields_count() + this->children.size();
 		}
 	}

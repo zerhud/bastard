@@ -45,6 +45,16 @@ int main(int,char**) {
 		qgraph r1;
 		return parse(qgraph::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{1==2}->{}->({}+3{})"), r1.data);
 	}() == 20 );
+	static_assert( []{
+		vertex r;
+		parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{}"), r);
+		return holds_alternative<bool>(r.data) + 2*(get<bool>(r.data)==true);
+	}() == 3, "empty braces is the bool value true in result" );
+	static_assert( []{
+		vertex r;
+		parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{false}"), r);
+		return holds_alternative<bool>(r.data) + 2*(get<bool>(r.data)==false);
+	}() == 3 );
 
 	return 0;
 }

@@ -110,21 +110,43 @@ TEST_CASE_METHOD(parse_fixture, "can_compare", "[graph][query]") {
 
 TEST_CASE_METHOD(parse_fixture, "empty_query_is_whole_graph", "[graph][query]") {
 	auto q = mk_executor();
-	using v = ast_graph::details::query_edge<factory>;
-	using p = factory::parser;
-	v r;
-	
-//	auto r = q("{}->{}");
-//	REQUIRE( mk_obj() == mk_obj(r[0].base) );
+	auto r = q("{}");
+	REQUIRE( r.size() > 0 );
+	REQUIRE( mk_obj() == mk_obj(r[0].base) );
 }
-
-/*
-TEST_CASE_METHOD(parse_fixture, "all_nodes_without_children", "[graph][query]") {
+TEST_CASE_METHOD(parse_fixture, "query_false_returns_nothing", "[graph][query]") {
+	auto empty =  mk_executor()("{false}");
+	CHECK(empty.size() == 0 );
+}
+TEST_CASE_METHOD(parse_fixture, "all_nodes_without_children", "[graph][query][useless?]") {
 	src_st.leafs.emplace_back();
-	update_graph();
 	auto q = mk_executor();
 	auto r = q("{}");
-	CHECK( mk_obj(r[0].base).keys().size() == 2 );
+	CHECK( mk_obj(r[0].base).keys().size() == 3 );
 	REQUIRE( mk_obj() != mk_obj(r[0].base) );
 }
-*/
+
+//STEP:
+//      заюзать в определители поля jiexpr
+//        текущие поле - node
+//        нужен решатель с контекстом, в который можно добавить поле node
+//        regexpr taken from jiexpr
+//      tests:
+//        node by field name
+//        node by field_name field_value pair
+//        node by field_value only
+//        node with path (filter)
+//          any children
+//          children by name
+//        node expressions
+TEST_CASE_METHOD(parse_fixture, "select_single_node", "[graph][query]") {
+	src_st.leafs.emplace_back();
+	auto e = mk_executor();
+	auto r = e("{:field_1}");
+	CHECK(r.size() == 1);
+	//auto r2 = e("{'test_data::test_fields':field_1}");
+	//REQUIRE( r2.size() > 0 );
+	//CHECK( mk_obj(r[0].base) == mk_obj(r2[0].base) );
+	//auto r_regexp = e("{:'field_[0-9]'}");
+	//REQUIRE( r_regexp.size() > 0 );
+}
