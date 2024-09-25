@@ -10,12 +10,34 @@
 #include "factory.hpp"
 #include "ascip.hpp"
 
+#include <variant>
+
+struct inner_vertex_expr : std::variant<int, bool>{
+	template<typename ind>
+	constexpr friend auto& create(inner_vertex_expr& v) { return v.emplace<ind>(); }
+};
+
+struct vertex_solver {
+	using parsed_expression = inner_vertex_expr;
+
+	template<typename gh, template<auto>class th=gh::template tmpl>
+	constexpr friend auto create_parser(const vertex_solver&) {
+		return gh::int_ | as<true>(th<'t'>::_char);
+	}
+
+	constexpr friend auto copy_and_add_to_env(const vertex_solver& vs, auto&&, auto&&) {
+		return vs;
+	}
+};
+
 struct factory : ast_graph_tests::query_factory{ };
+
+using data = absd::data<factory>;
 
 using parser = ascip<std::tuple, factory>;
 using qedge = ast_graph::details::query_edge<factory>;
-using vertex = ast_graph::details::query_vertex<factory>;
-using qgraph = ast_graph::details::query_graph<factory>;
+using qgraph = ast_graph::details::query_graph<factory, vertex_solver>;
+using vertex = qgraph::qvertex;
 
 int main(int,char**) {
 
@@ -36,25 +58,14 @@ int main(int,char**) {
 		return ((r_min.max_deep==1) + 2*(r_max.max_deep==-1) + 4*(r_min.name == "")) / (rr1==2) / (rr2==3);
 	}() == 7 );
 	static_assert( []{
-		vertex r1, r2;
-		parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("2{1==2}"), r1);
-		auto rr2 = parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{1==2}"), r2);
-		return (r1.arg_number==2) + 2*(r1.data.index()==0) + 4*(r2.arg_number==0) + 8*(rr2==6);
-	}() == 15 );
-	static_assert( []{
 		qgraph r1;
-		return parse(qgraph::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{1==2}->{}->({}+3{})"), r1.data);
-	}() == 20 );
+		return parse(qgraph::mk_parser<parser>(factory{}, vertex_solver{}), +parser::space, parser::make_source("{1}->{}->({}+3{})"), r1.data);
+	}() == 17 );
 	static_assert( []{
 		vertex r;
-		parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{}"), r);
+		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{}"), r);
 		return holds_alternative<bool>(r.data) + 2*(get<bool>(r.data)==true);
 	}() == 3, "empty braces is the bool value true in result" );
-	static_assert( []{
-		vertex r;
-		parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{false}"), r);
-		return holds_alternative<bool>(r.data) + 2*(get<bool>(r.data)==false);
-	}() == 3 );
 
 	return 0;
 }

@@ -12,6 +12,7 @@
 #include <cassert>
 #define CTRT(code) assert( code );
 #endif
+#include <cassert>
 #define RT(code)  assert( code );
 #include "ast_graph/node.hpp"
 

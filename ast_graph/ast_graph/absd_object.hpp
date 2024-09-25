@@ -15,6 +15,7 @@
 
 namespace ast_graph {
 
+//TODO: remove this class?
 template<typename factory, typename origin>
 struct absd_object {
 	using data_type = typename factory::data_type;

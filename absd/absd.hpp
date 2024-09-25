@@ -9,7 +9,6 @@
 #pragma once
 
 #include <utility>
-#include <cassert> //TODO: remove after gcc bug will be fixed
 #include "absd/callable.hpp"
 #include "absd/type_erasure.hpp"
 #include "absd/default_array.hpp"

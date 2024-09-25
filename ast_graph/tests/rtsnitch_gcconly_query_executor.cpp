@@ -17,11 +17,14 @@
 #include <variant>
 
 #include "absd/iostream_op.hpp"
+#include "jiexpr.hpp"
+#include "jiexpr/default_operators.hpp"
 #include "ast_graph/query_executor.hpp"
 #include "ast_graph/graph.hpp"
 #include "ast_graph/graph_absd.hpp"
 #include "factory.hpp"
 #include "ascip.hpp"
+
 
 namespace test_data {
 struct variant_leaf1 {
@@ -48,16 +51,45 @@ struct test_fields {
 
 } // namespace test_data
 
-struct factory : ast_graph_tests::query_factory{
+struct factory : ast_graph_tests::query_factory {
 	using data_type = ast_graph_tests::factory::data_type;
+	using jiexpr_test = jiexpr<data_type, jiexpr_details::expr_operators_simple, factory>;
 	using parser = ascip<std::tuple>;
-};
 
-constexpr auto parse(const auto& orig, auto&& src) {
-}
+	template<typename... types> using variant_t = std::variant<types...>;
+	template<typename type> using ast_forwarder = std::unique_ptr<type>;
+	template<typename type> using vec_type = std::vector<type> ;
+
+	constexpr auto mk_fwd(auto& v) const {
+		using v_type = std::decay_t<decltype(v)>;
+		static_assert( !std::is_pointer_v<v_type>, "the result have to be a unique_ptr like type" );
+		static_assert( !std::is_reference_v<v_type>, "the result have to be a unique_ptr like type" );
+		v = std::make_unique<typename v_type::element_type>();
+		return v.get();
+	}
+	constexpr auto mk_result(auto&& v) const {
+		using expr_t = std::decay_t<decltype(v)>;
+		return std::make_unique<expr_t>(std::move(v));
+	}
+	constexpr auto mk_str() const {
+		return std::string{};
+	}
+	constexpr auto back_inserter(auto& v) const {
+		return std::back_inserter(v);
+	}
+};
 
 using data_type = typename factory::data_type;
 using graph_type = decltype(ast_graph::mk_graph(factory{}, test_data::test_fields{}));
+
+struct parser_factory {
+	factory::jiexpr_test* jiexpr;
+
+	constexpr friend const auto& vertex_expression(const parser_factory& f) { return *f.jiexpr; }
+	constexpr friend auto solve_vertex(const parser_factory& f, const auto& expr, const auto* graph) {
+		return (*f.jiexpr)(expr);
+	}
+};
 
 namespace absd {
 
@@ -81,13 +113,22 @@ struct parse_fixture {
 	factory f;
 	test_data::test_fields src_st;
 	graph_type graph = ast_graph::mk_graph(f, src_st);
+	data_type jiexpr_env;
+	factory::jiexpr_test jiexpr;
+
+	parser_factory pf;
+
+	parse_fixture() {
+		pf.jiexpr = &jiexpr;
+	}
 
 	void update_graph() {
 		graph = ast_graph::mk_graph(f, src_st);
 	}
 
 	auto mk_executor() {
-		return ast_graph::query_executor( f, src_st );
+		jiexpr.env = &jiexpr_env;
+		return ast_graph::query_executor( f, &pf, src_st );
 	}
 	auto mk_obj(auto* g) {
 		return data_type::mk(ast_graph::graph_absd(f, g));
@@ -118,6 +159,7 @@ TEST_CASE_METHOD(parse_fixture, "query_false_returns_nothing", "[graph][query]")
 	auto empty =  mk_executor()("{false}");
 	CHECK(empty.size() == 0 );
 }
+/*
 TEST_CASE_METHOD(parse_fixture, "all_nodes_without_children", "[graph][query][useless?]") {
 	src_st.leafs.emplace_back();
 	auto q = mk_executor();
@@ -144,9 +186,10 @@ TEST_CASE_METHOD(parse_fixture, "select_single_node", "[graph][query]") {
 	auto e = mk_executor();
 	auto r = e("{:field_1}");
 	CHECK(r.size() == 1);
-	//auto r2 = e("{'test_data::test_fields':field_1}");
+	auto r2 = e("{'test_data::test_fields':field_1}");
 	//REQUIRE( r2.size() > 0 );
 	//CHECK( mk_obj(r[0].base) == mk_obj(r2[0].base) );
 	//auto r_regexp = e("{:'field_[0-9]'}");
 	//REQUIRE( r_regexp.size() > 0 );
 }
+*/

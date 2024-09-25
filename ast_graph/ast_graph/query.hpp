@@ -11,7 +11,6 @@
 #include <utility>
 #include <tref.hpp>
 #include "mk_children_types.hpp"
-#include "node.hpp"
 
 namespace ast_graph {
 
@@ -52,7 +51,7 @@ struct query_edge {
 	}
 };
 
-template<typename factory>
+template<typename factory, typename inner_expr>
 struct query_vertex {
 	using string_t = factory::string_type;
 	using integer_t = factory::integer_type;
@@ -60,71 +59,22 @@ struct query_vertex {
 	template<typename type> using vec = decltype(mk_vec<type>(factory{}));
 	template<typename... list> using variant = factory::template variant<list...>;
 
-	struct expr;
-	using fwd_ast = factory::template forward_ast<expr>;
-
-	struct ident { string_t val; };
-	struct unary { fwd_ast left; };
-	struct binary{ fwd_ast left; fwd_ast right; };
-	struct eq : binary {};
-	struct neq : binary {};
-	struct _and : binary {};
-	struct _or : binary {};
-	struct _not : unary {};
-	struct name_eq : unary {};
-	struct type_name_eq : binary {};
-	struct in {
-		fwd_ast name;
-		vec<fwd_ast> values;
-	};
-
-	struct expr : variant<
-		  variant< eq, neq, _and, _or >
-		, in
-		, type_name_eq
-		, name_eq
-		, _not
-		, ident
-		, string_t
-		, integer_t
-		, float_point_t
-		, bool
-	> {};
+	using expr = inner_expr::parsed_expression;
 
 	int arg_number=0;
 	expr data;
 
 	template<typename gh, template<auto>class th=gh::template tmpl>
-	constexpr static auto mk_parser(const auto& df) {
-		auto mk_fwd = [&df](auto& v){ return df.mk_fwd(v); };
-		constexpr auto ident =
-				lexeme(gh::alpha++ >> --(*(gh::alpha | gh::d10 | th<'_'>::char_)))
-				- (gh::template lit<"and"> | gh::template lit<"in"> | gh::template lit<"or"> | gh::template lit<"true"> | gh::template lit<"false">);
-		auto expr_parser = rv([&df](auto& v){ return df.mk_result(std::move(v)); }
-				,( cast<binary>( gh::rv_lreq >> gh::template lit<"=="> >> ++gh::rv_rreq(mk_fwd) )
-				|  cast<binary>( gh::rv_lreq >> gh::template lit<"!="> >> ++gh::rv_rreq(mk_fwd) )
-				|  cast<binary>( gh::rv_lreq >> gh::template lit<"&&"> >> ++gh::rv_rreq(mk_fwd) )
-				|  cast<binary>( gh::rv_lreq >> gh::template lit<"||"> >> ++gh::rv_rreq(mk_fwd) )
-				)
-				, cast<in>( gh::rv_lreq >> gh::template lit<"in"> >> ++th<'('>::_char >> (gh::rv_rreq(mk_fwd) % ',') >> th<')'>::_char )
-				, cast<binary>( gh::rv_lreq >> th<':'>::_char >> ++gh::rv_rreq(mk_fwd) )
-				, cast<unary>( th<':'>::_char++ >> --gh::rv_rreq(mk_fwd) )
-				, cast<unary>( th<'!'>::_char++ >> --gh::rv_rreq(mk_fwd) )
-				, ident
-				, gh::quoted_string
-				, gh::int_
-				, gh::fp
-				, (as<true>(gh::template lit<"true">)|as<false>(gh::template lit<"false">))
-				, rv_result(th<'('>::_char >> gh::rv_req >> th<')'>::_char)
-		);
+	constexpr static auto mk_parser(auto&& inner_expr_parser) {
+		auto ip = create_parser<gh>(inner_expr_parser); 
 		return -gh::int_ >> ++th<'{'>::_char >> (
-				use_variant_result(th<'}'>::_char([](auto,auto& v){ v.template emplace<bool>(true);})) |
-				use_variant_result(expr_parser >> th<'}'>::_char)
+				  use_variant_result(th<'}'>::_char([](auto,auto& v){ create<bool>(v) = true; }))
+				| use_variant_result( ip >> th<'}'>::_char)
 				);
 	}
 };
 
-template<typename factory>
+template<typename factory, typename vertex_expr>
 struct query_graph {
 	template<typename type> using vec = decltype(mk_vec<type>(factory{}));
 	template<typename... list> using variant = factory::template variant<list...>;
@@ -132,7 +82,7 @@ struct query_graph {
 	struct expr;
 	using fwd_ast = factory::template forward_ast<expr>;
 
-	using qvertex = query_vertex<factory>;
+	using qvertex = query_vertex<factory, vertex_expr>;
 
 	struct unary { fwd_ast left; };
 	struct binary{ fwd_ast left; fwd_ast right; };
@@ -156,7 +106,7 @@ struct query_graph {
 	expr data;
 
 	template<typename gh, template<auto>class th=gh::template tmpl>
-	constexpr static auto mk_parser(const auto& df) {
+	constexpr static auto mk_parser(const auto& df, const auto& vertex_solver) {
 		auto mk_fwd = [&df](auto& v){ return df.mk_fwd(v); };
 		constexpr auto ident =
 				lexeme(gh::alpha++ >> --(*(gh::alpha | gh::d10 | th<'_'>::char_)))
@@ -166,7 +116,7 @@ struct query_graph {
 			, ( cast<binary>( gh::rv_lreq++ >> th<'+'>::_char >> gh::rv_rreq(mk_fwd) )
 			  | cast<binary>( gh::rv_lreq++ >> th<'-'>::_char >> gh::rv_rreq(mk_fwd) )
 			  )
-			, check<qvertex>(qvertex::template mk_parser<gh>(df))
+			, check<qvertex>(qvertex::template mk_parser<gh>(vertex_solver))
 			, rv_result(th<'('>::_char >> gh::rv_req >> th<')'>::_char)
 		);
 	}

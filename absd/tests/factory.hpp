@@ -12,8 +12,9 @@
 
 #include <vector>
 #include <memory>
-#include <variant>
 #include <string>
+#include <variant>
+#include <cassert>
 #include <string_view>
 
 using namespace std::literals;
