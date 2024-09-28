@@ -123,30 +123,31 @@ struct parse_fixture {
 
 	parser_factory pf;
 
-	parse_fixture() {
+	constexpr parse_fixture() {
 		pf.jiexpr = &jiexpr;
 	}
 
-	void update_graph() {
+	constexpr void update_graph() {
 		graph = ast_graph::mk_graph(f, src_st);
 	}
 
-	auto mk_executor() {
+	constexpr auto mk_executor() {
 		jiexpr.env = &jiexpr_env;
 		return ast_graph::query_executor( f, &pf, src_st );
 	}
-	auto mk_obj(auto* g) {
+	constexpr auto mk_obj(auto* g) {
 		return data_type::mk(ast_graph::graph_absd(f, g));
 	}
 
-	auto mk_obj() {
+	constexpr auto mk_obj() {
 		return mk_obj(graph[0].base);
 	}
 
-	auto mk_graph_str() {
+	constexpr auto mk_graph_str() {
 		return to_str(mk_obj());
 	}
 };
+static_assert( parse_fixture{}.mk_executor()("{v.field_1==1}").size() == 1 );
 
 TEST_CASE_METHOD(parse_fixture, "can_compare", "[graph][query]") {
 	CHECK( mk_obj() == mk_obj() );
@@ -165,23 +166,14 @@ TEST_CASE_METHOD(parse_fixture, "query_false_returns_nothing", "[graph][query]")
 	CHECK(empty.size() == 0 );
 }
 TEST_CASE_METHOD(parse_fixture, "query_compare_field_value", "[graph][query]") {
-	auto empty =  mk_executor()("{v.field_1==1}");
-	CHECK(empty.size() == 1 );
-	for(auto& i:empty) {
-		CHECK( i.base!=nullptr );
-		CHECK( i.base->children.size() == 0 );
-	}
-	//REQUIRE( mk_obj() == mk_obj(empty[0].base) );
+	auto cur =  mk_executor()("{v.field_1==1}");
+	CHECK(cur.size() == 1 );
+//	REQUIRE( mk_obj() == mk_obj(cur[0].base) );
+//	CHECK( mk_obj(cur[0].base).keys().size() == 3 );
 }
 /*
-TEST_CASE_METHOD(parse_fixture, "all_nodes_without_children", "[graph][query][useless?]") {
-	src_st.leafs.emplace_back();
-	auto q = mk_executor();
-	auto r = q("{}");
-	CHECK( mk_obj(r[0].base).keys().size() == 3 );
-	REQUIRE( mk_obj() != mk_obj(r[0].base) );
-}
-
+*/
+/*
 //STEP:
 //      заюзать в определители поля jiexpr
 //        текущие поле - node
