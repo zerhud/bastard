@@ -91,6 +91,7 @@ constexpr absd_data eval(std::string_view src, absd_data& env) {
 
 constexpr absd_data eval(std::string_view src) {
 	absd_data env;
+	env.mk_empty_object();
 	return eval(src, env);
 }
 

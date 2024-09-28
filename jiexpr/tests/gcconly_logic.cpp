@@ -18,6 +18,8 @@ int main(int,char**) {
 	test( true, (bool)eval("3 > 2") )
 	test( true, (bool)eval("2 >= 2") )
 	test( true, (bool)eval("2 == 2") )
+	test( false, (bool)eval("nonexisting == 2") )
+	test( false, (bool)eval("2 == nonexisting") )
 	test( true, (bool)eval("3 >= 2") )
 	test( true, (bool)eval("1 <= 2") )
 	test( true, (bool)eval("'a' in 'bca'") )

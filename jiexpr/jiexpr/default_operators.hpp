@@ -97,10 +97,12 @@ struct expr_operators_simple {
 	}
 	template<typename data_type>
 	constexpr static auto do_ceq(data_type&& left, data_type&& right) {
+		if(left.is_none()||right.is_none()) return data_type{left.is_none() && right.is_none()};
 		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l==r;}{return l==r;});
 	}
 	template<typename data_type>
 	constexpr static auto do_neq(data_type&& left, data_type&& right) {
+		if(left.is_none()||right.is_none()) return data_type{!(left.is_none() && right.is_none())};
 		return exec_operation(left, right, [](const auto& l, const auto& r)requires requires{l!=r;}{return l!=r;});
 	}
 	template<typename data_type>
