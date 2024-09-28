@@ -26,7 +26,7 @@ struct push_back : interface_describer<push_back> {};
 struct at_ind : interface_describer<at_ind> {};
 struct at_key : interface_describer<at_key> {};
 struct call : interface_describer<call> {};
-struct exec_op : interface_describer<call> {};
+template<typename left, typename right> struct exec_op : interface_describer<exec_op<left, right>> {};
 } // namespace interfaces
 } // namespace details
 

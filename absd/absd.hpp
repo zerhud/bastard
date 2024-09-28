@@ -269,7 +269,8 @@ public:
 		return visit([&op](const auto& l, const auto& r) -> self_type {
 			if constexpr (requires{op(l,r);}) return self_type{op(l,r)};
 			else {
-				throw_wrong_interface_error<details::interfaces::exec_op>();
+				using err_type = details::interfaces::exec_op<decltype(l), decltype(r)>;
+				throw_wrong_interface_error<err_type>();
 				return self_type{};
 			}
 		}, left.holder, right.holder);
