@@ -83,11 +83,16 @@ using data_type = typename factory::data_type;
 using graph_type = decltype(ast_graph::mk_graph(factory{}, test_data::test_fields{}));
 
 struct parser_factory {
+	data_type env;
 	factory::jiexpr_test* jiexpr;
 
 	constexpr friend const auto& vertex_expression(const parser_factory& f) { return *f.jiexpr; }
-	constexpr friend auto solve_vertex(const parser_factory& f, const auto& expr, const auto* graph) {
-		return (*f.jiexpr)(expr);
+	constexpr friend auto solve_vertex(parser_factory& self, const auto& f, const auto& expr, const auto* graph) {
+		data_type env;
+		self.jiexpr->env = &env;
+		env.mk_empty_object();
+		env.put(data_type{"v"}, data_type::mk(ast_graph::graph_absd(f, graph)));
+		return (*self.jiexpr)(expr);
 	}
 };
 
@@ -158,6 +163,15 @@ TEST_CASE_METHOD(parse_fixture, "empty_query_is_whole_graph", "[graph][query]") 
 TEST_CASE_METHOD(parse_fixture, "query_false_returns_nothing", "[graph][query]") {
 	auto empty =  mk_executor()("{false}");
 	CHECK(empty.size() == 0 );
+}
+TEST_CASE_METHOD(parse_fixture, "query_compare_field_value", "[graph][query]") {
+	auto empty =  mk_executor()("{v.field_1==1}");
+	CHECK(empty.size() == 1 );
+	for(auto& i:empty) {
+		CHECK( i.base!=nullptr );
+		CHECK( i.base->children.size() == 0 );
+	}
+	//REQUIRE( mk_obj() == mk_obj(empty[0].base) );
 }
 /*
 TEST_CASE_METHOD(parse_fixture, "all_nodes_without_children", "[graph][query][useless?]") {

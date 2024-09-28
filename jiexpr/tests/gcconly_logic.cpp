@@ -17,6 +17,7 @@ int main(int,char**) {
 	test( false, (bool)eval("1 > 2") )
 	test( true, (bool)eval("3 > 2") )
 	test( true, (bool)eval("2 >= 2") )
+	test( true, (bool)eval("2 == 2") )
 	test( true, (bool)eval("3 >= 2") )
 	test( true, (bool)eval("1 <= 2") )
 	test( true, (bool)eval("'a' in 'bca'") )

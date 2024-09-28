@@ -37,12 +37,12 @@ struct query_executor {
 	using vertex_type = typename graph_type::value_type;
 
 	factory f;
-	const parser_factory* pf;
+	parser_factory* pf;
 	const source& src;
 	graph_type graph;
 	graph_type result;
 
-	constexpr query_executor(factory f, const parser_factory* pf, const source& src)
+	constexpr query_executor(factory f, parser_factory* pf, const source& src)
 	: f(f)
 	, pf(pf)
 	, src(src)
@@ -74,7 +74,7 @@ struct query_executor {
 	constexpr auto exec(auto&& parsed) {
 		graph_type ret;
 		for(auto& i:graph) {
-			if(solve_vertex(*pf, get<2>(parsed.data).data, i.base)) ret.emplace_back(i);
+			if(solve_vertex(*pf, f, get<2>(parsed.data).data, i.base)) ret.emplace_back(i);
 		}
 		return ret;
 	}
