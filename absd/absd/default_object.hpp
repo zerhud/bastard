@@ -17,8 +17,10 @@ namespace absd::details {
 
 //NOTE: no constexpr map in cpp for now
 //TODO: use https://github.com/karel-burda/constexpr-hash-map ?
+//NOTE: this class is only used inside absd, so the value is always absd::data
 template<typename factory, typename key, typename value>
 struct constexpr_kinda_map {
+	static constexpr int absd_map_replacer=0;
 	struct chunk {
 		key k;
 		value v;
@@ -119,7 +121,10 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 				else return true;
 			}
 			constexpr bool contains(const data_type& key) const override { return this->orig_val().contains(key); }
-			constexpr data_type at(const data_type& ind) override { return this->orig_val().at(ind); }
+			constexpr data_type at(const data_type& ind) override {
+				if constexpr (requires{ this->orig_val().absd_map_replacer; }) { if(!this->orig_val().contains(ind)) return data_type{}; }
+				return this->orig_val().at(ind);
+			}
 			constexpr data_type& put(data_type key, data_type value) override {
 				struct kv {
 					data_type k, v;
