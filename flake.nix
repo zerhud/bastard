@@ -52,7 +52,7 @@
       };
     in rec {
       devShell = der.overrideAttrs(finalAttrs: previousAttrs: {
-          nativeBuildInputs =  previousAttrs.nativeBuildInputs ;#++ [ pkgs.jetbrains.clion ];
+          nativeBuildInputs =  previousAttrs.nativeBuildInputs ++ [ pkgs.jetbrains.clion ];
         });
       packages.default = der;
       packages.jiexpr = der;
