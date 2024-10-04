@@ -17,55 +17,57 @@ struct graph_absd {
 	using data_type = typename factory::data_type;
 	using int_t = typename data_type::integer_t;
 	using str_t = typename data_type::string_t;
+	using vertex_type = typename graph::vertex_interface;
 
 	factory f;
-	const graph* g;
+	graph g;
+	const vertex_type* cur_root;
 
-	constexpr graph_absd(factory f, const graph* g)
+	constexpr graph_absd(factory f, graph g, const vertex_type* root)
 	: f(std::move(f))
-	, g(g)
+	, g(std::move(g))
+	, cur_root(root)
 	{}
 
 	constexpr bool is_eq(const graph_absd& other) const {
-		if(g==other.g) return true;
-		if(g->size() != other.g->size() || g->children.size() != other.g->children.size()) return false;
-		for(auto i=0;i<g->children.size();++i) {
-			if(g->children[i].name != other.g->children[i].name) return false;
-			graph_absd l(f, g->children[i].vertex);
-			graph_absd r(f, other.g->children[i].vertex);
-			if(!l.is_eq(r)) return false;
-		}
-		for(auto& name:g->fields()) if(g->field(name)!=other.g->field(name)) return false;
-		return true;
+		return g == other.g && cur_root == other.cur_root;
 	}
 	constexpr bool is_array() const {
-		return g->is_array();
+		return cur_root->is_array();
 	}
 	constexpr auto at(int_t k) {
-		if(!g->is_array() || k > g->children.size()) return data_type{};
-		return data_type::mk(graph_absd(f, g->children[k].vertex));
+		if(!cur_root->is_array()) return data_type{};
+		auto children = children_of(g, cur_root);
+		if(k > children.size()) return data_type{};
+		return data_type::mk(graph_absd(f, g, children[k]));
 	}
 	constexpr auto at(const data_type& k) {
 		if(k.is_string()) {
-			for(auto& i:g->children) if(i.name == (str_t) k) return data_type::mk(graph_absd(f, i.vertex));
-			if((str_t)k=="__parent") return g->parent ? data_type::mk(graph_absd(f, g->parent)) : data_type{};
-			return g->field((str_t)k);
+			auto children = ast_links_of(g, cur_root);
+			auto&& str_k = (str_t)k;
+			for(auto& i:children) if(i.name == str_k) return data_type::mk(graph_absd(f, g, i.child));
+			if(str_k=="__parent") return cur_root->parent ? data_type::mk(graph_absd(f, g, cur_root->parent)) : data_type{};
+			return cur_root->field(str_k);
 		}
 		if(k.is_int()) return at((int_t)k);
 		return data_type{};
 	}
 	constexpr auto size() const {
-		return g->size();
+		auto children = children_of(g, cur_root);
+		return children.size() + cur_root->fields_count();
 	}
 	constexpr bool contains(const data_type& k) const {
-		for(auto&& field:g->fields()) if((str_t)k==field) return true;
-		for(const auto& child:g->children) if((str_t)k == child.name) return true;
+		for(auto&& field:cur_root->fields()) if((str_t)k==field) return true;
+		auto children = ast_links_of(g, cur_root);
+		auto&& str_k = (str_t)k;
+		for(const auto& child:children) if(str_k == child.name) return true;
 		return false;
 	}
 	constexpr auto keys() const {
-		auto ret = f.template mk_vec<data_type>();
-		for(auto&& field:g->fields()) ret.emplace_back(mk_data(f, std::move(field)));
-		for(const auto& child:g->children) ret.emplace_back(mk_data(f, child.name));
+		auto ret = mk_vec<data_type>(f);
+		for(auto&& field:cur_root->fields()) ret.emplace_back(mk_data(f, std::move(field)));
+		auto children = ast_links_of(g, cur_root);
+		for(const auto& child:children) ret.emplace_back(mk_data(f, child.name));
 		return ret;
 	}
 };

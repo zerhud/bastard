@@ -35,7 +35,8 @@ struct ast_vertex {
 	virtual names_type fields() const =0 ;
 	virtual data_type field(string_view name) const =0 ;
 	virtual bool is_array() const =0 ;
-	virtual unsigned size() const =0 ;
+	virtual unsigned size() const =0 ; //TODO: do we really still need this method ?
+	virtual unsigned fields_count() const =0 ;
 	virtual const char* debug_info() const {return "";}
 };
 
@@ -70,6 +71,13 @@ struct ast_vertex_holder : ast_vertex<factory> {
 	}
 	constexpr bool is_array() const override {
 		return tref::iterable<source>;
+	}
+	constexpr unsigned fields_count() const override {
+		if constexpr (requires{ src->size(); }) return src->size();
+		else {
+			auto n = create_node();
+			return n.fields_count();
+		}
 	}
 	constexpr unsigned size() const override {
 		if constexpr (requires{ src->size(); }) return src->size();
@@ -164,15 +172,21 @@ struct graph_view {
 		return h.vertices.emplace_back(v);
 	}
 
-	constexpr friend auto ast_links_of(graph_view& view, const vertex_interface* root) {
+	constexpr friend auto ast_links_of(const graph_view& view, const vertex_interface* root) {
 		link_holder ret = mk_vec<link>(view.f);
 		for(auto& e:view.edges) if(e.parent == root) ret.emplace_back(e);
 		return ret;
 	}
-	constexpr friend auto children_of(graph_view& view, const vertex_interface* root) {
+	constexpr friend auto children_of(const graph_view& view, const vertex_interface* root) {
 		auto ret = mk_vec<const vertex_interface*>(view.f);
 		for(auto& e:view.edges) if(e.parent == root) ret.emplace_back(e.child);
 		return ret;
+	}
+
+	constexpr friend bool operator==(const graph_view& left, const graph_view& right) {
+		if(left.vertices.size()!=right.vertices.size()) return false;
+		for(auto i=0;i<left.vertices.size();++i) if(left.vertices[i]!=right.vertices[i]) return false;
+		return true;
 	}
 };
 

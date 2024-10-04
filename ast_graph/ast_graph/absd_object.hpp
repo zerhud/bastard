@@ -16,6 +16,7 @@
 namespace ast_graph {
 
 //TODO: remove this class?
+//      Or use the class to solve vertex expression as single vertex representation (without children, only fields)
 template<typename factory, typename origin>
 struct absd_object {
 	using data_type = typename factory::data_type;
