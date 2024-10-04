@@ -34,7 +34,7 @@ struct query_executor {
 	using vertex_expr = std::decay_t<decltype(vertex_expression(std::declval<parser_factory>()))>;
 	using qgraph = details::query_graph<factory, vertex_expr>;
 	using qvertex = qgraph::qvertex;
-	using vertex_type = typename graph_type::value_type;
+	using vertex_type = typename graph_type::vertex_type;
 
 	factory f;
 	parser_factory* pf;
@@ -72,9 +72,9 @@ struct query_executor {
 	}
 	*/
 	constexpr auto exec(auto&& parsed) {
-		graph_type ret;
-		for(auto& i:graph) {
-			if(solve_vertex(*pf, f, get<2>(parsed.data).data, i.base)) ret.emplace_back(i);
+		typename graph_type::view_type ret(f);
+		for(auto& i:graph.vertices) {
+			if(solve_vertex(*pf, f, get<2>(parsed.data).data, i.base)) create_vertex(ret, &i);
 		}
 		return ret;
 	}

@@ -140,7 +140,7 @@ struct parse_fixture {
 	}
 
 	constexpr auto mk_obj() {
-		return mk_obj(graph[0].base);
+		return mk_obj(graph.root().base);
 	}
 
 	constexpr auto mk_graph_str() {
@@ -152,14 +152,14 @@ static_assert( parse_fixture{}.mk_executor()("{v.field_1==1}").size() == 1 );
 TEST_CASE_METHOD(parse_fixture, "can_compare", "[graph][query]") {
 	CHECK( mk_obj() == mk_obj() );
 	graph_type graph2 = ast_graph::mk_graph(f, src_st);
-	REQUIRE( mk_obj() == mk_obj(graph2[0].base) );
+	REQUIRE( mk_obj() == mk_obj(graph2.root().base) );
 }
 
 TEST_CASE_METHOD(parse_fixture, "empty_query_is_whole_graph", "[graph][query]") {
 	auto q = mk_executor();
 	auto r = q("{}");
 	REQUIRE( r.size() > 0 );
-	REQUIRE( mk_obj() == mk_obj(r[0].base) );
+	REQUIRE( mk_obj() == mk_obj(r.root().base) );
 }
 TEST_CASE_METHOD(parse_fixture, "query_false_returns_nothing", "[graph][query]") {
 	auto empty =  mk_executor()("{false}");

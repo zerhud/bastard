@@ -37,7 +37,7 @@ using absd_data = factory::data_type;
 static_assert( []{
 	test_fields src{};
 	auto g = ast_graph::mk_graph(factory{}, src);
-	auto d = absd_data::mk(ast_graph::graph_absd(factory{}, g[0].base));
+	auto d = absd_data::mk(ast_graph::graph_absd(factory{}, g.root().base));
 	return (d.size()==3) + 2*(d[absd_data{"field_1"}]==absd_data{1}) + 4*(d[absd_data{"field_2"}]==absd_data{2});
 }() == 7 );
 
@@ -46,7 +46,7 @@ static_assert( []{
 	src.leafs.emplace_back().ff=5;
 	src.leafs.emplace_back().ff=7;
 	auto g = ast_graph::mk_graph(factory{}, src);
-	auto d = absd_data::mk(ast_graph::graph_absd(factory{}, g[0].base));
+	auto d = absd_data::mk(ast_graph::graph_absd(factory{}, g.root().base));
 	auto ff5 = d[absd_data{"leafs"}][absd_data{0}][absd_data{"ff"}];
 	auto ff7 = d[absd_data{"leafs"}][absd_data{1}][absd_data{"ff"}];
 	return
@@ -59,7 +59,7 @@ static_assert( []{
 	src.leafs.emplace_back().ff=5;
 	src.leafs.emplace_back().ff=7;
 	auto g = ast_graph::mk_graph(factory{}, src);
-	auto d = absd_data::mk(ast_graph::graph_absd(factory{}, g[0].base));
+	auto d = absd_data::mk(ast_graph::graph_absd(factory{}, g.root().base));
 	auto g_keys = d.keys();
 	return
 		  (g_keys.size()==3) +
@@ -72,7 +72,7 @@ static_assert( []{
 static_assert( []{
 	test_fields src{};
 	auto g = ast_graph::mk_graph(factory{}, src);
-	auto d = absd_data::mk(ast_graph::graph_absd(factory{}, g[0].base));
+	auto d = absd_data::mk(ast_graph::graph_absd(factory{}, g.root().base));
 	return
 		  ( d.contains(absd_data{"field_1"})) +
 		2*( d.contains(absd_data{"leafs"})) +
@@ -82,13 +82,13 @@ static_assert( []{
 static_assert( []{
 	test_fields src{};
 	auto g = ast_graph::mk_graph(factory{}, src);
-	auto d = absd_data::mk(ast_graph::graph_absd(factory{}, g[0].base));
+	auto d = absd_data::mk(ast_graph::graph_absd(factory{}, g.root().base));
 	return d[absd_data{"not_exists"}].is_none() + !d[absd_data{"field_1"}].is_none();
 }() == 2 );
 static_assert( []{
 	test_fields src{};
 	auto g = ast_graph::mk_graph(factory{}, src);
-	auto d = absd_data::mk(ast_graph::graph_absd(factory{}, g[0].base));
+	auto d = absd_data::mk(ast_graph::graph_absd(factory{}, g.root().base));
 	auto via_parent = (absd_data::integer_t)d[absd_data{"leafs"}][absd_data{"__parent"}][absd_data{"field_2"}];
 	return d[absd_data{"__parent"}].is_none() + 2*(via_parent==2);
 }() == 3 );
