@@ -10,6 +10,7 @@
     };
     cppbm.url = "github:zerhud/cppbm";
     cppbm.inputs.nixpkgs.follows = "nixpkgs";
+    nixpkgs_jetbrains.url = "github:nixos/nixpkgs/06cf0e1da4208d3766d898b7fdab6513366d45b9";
   };
   outputs = params@{ self, nixpkgs, ... }:
     params.flake-utils.lib.eachDefaultSystem (system:
@@ -18,6 +19,10 @@
       ascip = params.ascip.packages."${system}".default;
       tref = params.cppbm.packages."${system}".tref;
       pkgs = import nixpkgs {
+        inherit system;
+        config.allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [ "clion" ];
+      };
+      pkgs_jb = import params.nixpkgs_jetbrains {
         inherit system;
         config.allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [ "clion" ];
       };
