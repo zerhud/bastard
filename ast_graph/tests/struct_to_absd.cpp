@@ -64,9 +64,12 @@ struct simple_node {
 };
 
 struct with_subnode {
+	int f1 = 3;
+	std::optional<int> f2;
 	simple_node sub1;
 	std::vector<simple_node> sub2{ {}, {} };
 	std::unique_ptr<with_subnode> sub3;
+	constexpr static auto struct_fields_count() { return 5; }
 };
 
 static_assert( tref::smart_ptr<std::unique_ptr<simple_node>> );
@@ -105,44 +108,38 @@ constexpr void test_objects() {
 	CTRT( test<simple_node>([](auto obj){
 		return obj.contains(data_type{"f1"});
 	}) == true);
-
 	CTRT( test<with_subnode>([](auto obj){
-		return obj[data_type{"sub1"}].is_object() + (data_type::integer_t)obj[data_type{"sub1"}][data_type{"f1"}];
-	}) == 5 );
+		return obj.size();
+	}) == 2);
 }
 
-constexpr void test_arrays() {
-	CTRT( test<with_subnode>([](auto obj){
-		return obj[data_type{"sub2"}].is_array() + 2*obj[data_type{"sub3"}].is_none();
-	}) == 3 );
-	CTRT( test<with_subnode>([](auto obj){
-		return obj[data_type{"sub3"}][data_type{"sub1"}].is_object();
-	}, [](auto& o){o.sub3 = std::make_unique<with_subnode>();}) == true );
-	CTRT( test<with_subnode>([](auto obj) { return obj[data_type{"sub2"}].size(); }) == 2 );
-	CTRT( test<with_subnode>([](auto obj) {
-		return (data_type::integer_t)(obj[data_type{"sub2"}][1][data_type{"f1"}]);
-	}, [](auto& o){o.sub2[1].f1=70;}) == 70 );
-}
+struct opt_test {
+	int f1=3;
+	std::optional<int> f2=7;
+	constexpr static auto struct_fields_count() { return 2; }
+};
 
 int main(int,char**) {
-	/**
-	 * TODO: 1. fields - DONE
-	 *       5. optional
-	 */
 	test_objects();
-	test_arrays();
 
-	/*
-	simple_node obj;
-	ast_graph::node<graph_factory, simple_node> node{{}, &obj};
+	CTRT(( []{
+		opt_test obj;
+		ast_graph::node<graph_factory, opt_test> node{{}, &obj};
+		ast_graph::absd_object absd_obj{ node };
+		auto data = absd_data::mk(absd_obj);
+		return to_str( data );
+	}() == "{'f1':3,'f2':7}" ));
+
+	opt_test obj;
+
+	ast_graph::node<graph_factory, opt_test> node{{}, &obj};
 	std::cout << "node: ";
-	visit([](const auto& v){
-		if constexpr (!std::is_same_v<std::monostate,std::decay_t<decltype(v)>>) std::cout << v;
-		}, node.value("f1"));
+	visit([](const auto& v){ if constexpr(requires{ std::cout << v;}) std::cout << v; }, node.value("f1"));
 	std::cout << std::endl;
+
 	ast_graph::absd_object absd_obj{ node };
 	auto data = absd_data::mk(absd_obj);
 	std::cout << "we have ("sv << data.is_array() << ") "sv << to_str( data ) << std::endl;
-	*/
+
 	return 0;
 }

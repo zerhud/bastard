@@ -15,8 +15,6 @@
 
 namespace ast_graph {
 
-//TODO: remove this class?
-//      Or use the class to solve vertex expression as single vertex representation (without children, only fields)
 template<typename factory, typename origin>
 struct absd_object {
 	using data_type = typename factory::data_type;
@@ -28,21 +26,18 @@ struct absd_object {
 
 	struct node<factory, origin> node;
 	[[no_unique_address]] factory f;
-	data_type empty;
-	field_vec_type fields, subs;
+	field_vec_type fields;
 
 	constexpr explicit absd_object(ast_graph::node<factory, origin> n)
 			: node(std::move(n)) {
 		extract_fields();
-		extract_subs();
 	}
 
-	constexpr auto& at(const data_type& k) {
+	constexpr auto at(const data_type& k) {
 		for(auto& f:fields) if(k==f.name) return f.value;
-		for(auto& f:subs) if(k==f.name) return f.value;
-		return empty;
+		return data_type{};
 	}
-	constexpr auto size() const { return node.children_count() + node.fields_count(); }
+	constexpr auto size() const { return node.fields_count(); }
 	constexpr bool contains(const data_type& k) const {
 		for(auto& f:fields) if(f.name == k) return true;
 		return false;
@@ -54,38 +49,15 @@ struct absd_object {
 	}
 private:
 	constexpr void extract_fields() {
-		node.for_each_field_value([this](auto&& n, const auto& v){
-			fields.emplace_back(field_info{data_type{typename data_type::string_t{n}},data_type{v}});
+		node.for_each_field_value([this](auto&& n, const auto& v) {
+			constexpr bool is_optional = requires{ static_cast<bool>(v);*v; };
+			if constexpr (!is_optional)
+				fields.emplace_back(field_info{data_type{typename data_type::string_t{n}},data_type{v}});
+			else {
+				if(v) fields.emplace_back(field_info{data_type{typename data_type::string_t{n}},data_type{v.value()}});
+				else fields.emplace_back(field_info{data_type{typename data_type::string_t{n}},data_type{}});
+			}
 		});
-	}
-	constexpr void extract_subs() {
-		node.for_each_child_value([this]<typename vt>(auto&& n, const vt& v){
-			add_to_subs(n, create_absd_from_object(v));
-		});
-	}
-	template<tref::smart_ptr value_type>
-	constexpr auto create_absd_from_object(const value_type& v) const {
-		return v ? create_absd_from_object(*v) : empty;
-	}
-	template<tref::vector value_type>
-	constexpr auto create_absd_from_object(const value_type& v) const {
-		using val_t = typename value_type::value_type;
-		data_type val;
-		val.mk_empty_array();
-		for(const auto& i:v) {
-			absd_object<factory, val_t> obj{ ast_graph::node<factory, val_t>{f, &i} };
-			val.push_back(data_type::mk(std::move(obj)));
-		}
-		return val;
-	}
-	template<typename value_type>
-	constexpr auto create_absd_from_object(const value_type& v) const {
-		ast_graph::node<factory, value_type> node{f, &v};
-		absd_object<factory, value_type> obj{ std::move(node) };
-		return data_type::mk(std::move(obj));
-	}
-	constexpr void add_to_subs(auto&& n, auto&& v) {
-		subs.emplace_back(field_info{data_type{typename data_type::string_t{n}}, std::forward<decltype(v)>(v)});
 	}
 };
 
