@@ -98,11 +98,12 @@ template<typename factory, typename _vertex_type>
 struct graph_holder {
 	using view_type = graph_view<factory, _vertex_type>;
 	using vertex_type = _vertex_type;
+	using vertex_interface = ast_vertex<factory>;
 	using string_view = typename factory::string_view;
 	struct link {
 		string_view name{};
-		const vertex_type* parent = nullptr;
-		const vertex_type* child = nullptr;
+		const vertex_interface* parent = nullptr;
+		const vertex_interface* child = nullptr;
 	};
 
 	using link_holder = decltype(mk_vec<link>(factory{}));
@@ -110,22 +111,24 @@ struct graph_holder {
 	using data_type  = typename factory::data_type;
 
 	constexpr graph_holder(const factory& f)
-	: edges(mk_vec<link>(f))
-	, vertices(mk_vec<vertex_type>(f))
+	: f(f)
+	, edges(mk_vec<link>(this->f))
+	, vertices(mk_vec<vertex_type>(this->f))
 	{}
 
+	factory f;
 	link_holder edges;
 	vertex_holder vertices;
 
-	constexpr friend void reserve_vertex_count(graph_holder& h, auto sz) { h.vertices.reserve(sz); }
 	constexpr auto size() const { return vertices.size(); }
 	constexpr auto& root() { return vertices.front(); }
+	constexpr auto create_view() const { return view_type( *this ); }
+	constexpr friend void reserve_vertex_count(graph_holder& h, auto sz) { h.vertices.reserve(sz); }
 	constexpr friend auto& create_vertex(graph_holder& h, auto&&... args) {
 		return h.vertices.emplace_back(std::forward<decltype(args)>(args)...);
 	}
 
-	//STEP: create links with it
-	constexpr friend auto& create_link( graph_holder& h, auto&& name, const auto* parent, const auto* child) {
+	constexpr friend auto& create_ast_link( graph_holder& h, auto&& name, const auto* parent, const auto* child) {
 		return h.edges.emplace_back( std::forward<decltype(name)>(name), parent, child );
 	}
 };
@@ -136,21 +139,40 @@ struct graph_view {
 	using link = holder::link;
 	using link_holder = holder::link_holder;
 	using vertex_type = holder::vertex_type;
-	using vertex_holder = decltype(mk_vec<vertex_type*>(factory{}));
+	using vertex_interface = holder::vertex_interface;
+	using vertex_holder = decltype(mk_vec<const vertex_type*>(factory{}));
 
+	factory f;
 	link_holder edges;
 	vertex_holder vertices;
 
-	constexpr graph_view(const factory& f)
-			: edges(mk_vec<link>(f))
-			, vertices(mk_vec<vertex_type*>(f))
+	constexpr graph_view(const holder& h) : graph_view(h.f) {
+		for(auto& e:h.edges) edges.emplace_back(e);
+		for(auto& v:h.vertices) vertices.emplace_back(&v);
+	}
+
+	constexpr explicit graph_view(const factory& f)
+	: f(f)
+	, edges(mk_vec<link>(f))
+	, vertices(mk_vec<const vertex_type*>(f))
 	{}
 
 	constexpr auto size() const { return vertices.size(); }
-	constexpr auto& root() { return *vertices.front(); }
+	constexpr auto* root() { return vertices.front()->base; }
 
-	constexpr friend auto& create_vertex(graph_view& h, vertex_type* v) {
+	constexpr friend auto& create_vertex(graph_view& h, const vertex_type* v) {
 		return h.vertices.emplace_back(v);
+	}
+
+	constexpr friend auto ast_links_of(graph_view& view, const vertex_interface* root) {
+		link_holder ret = mk_vec<link>(view.f);
+		for(auto& e:view.edges) if(e.parent == root) ret.emplace_back(e);
+		return ret;
+	}
+	constexpr friend auto children_of(graph_view& view, const vertex_interface* root) {
+		auto ret = mk_vec<const vertex_interface*>(view.f);
+		for(auto& e:view.edges) if(e.parent == root) ret.emplace_back(e.child);
+		return ret;
 	}
 };
 
@@ -171,6 +193,7 @@ constexpr auto mk_graph(const factory& f, auto& storage, auto&& name, auto& pare
 template<typename factory, tref::vector source>
 constexpr auto mk_graph(const factory& f, auto& storage, auto&& name, auto& parent, const source& src) {
 	auto& cur_parent = *create_vertex(storage, f, src).base;
+	create_ast_link( storage, name, &parent, &cur_parent );
 	cur_parent.parent = &parent;
 	parent.children.emplace_back( typename ast_vertex<factory>::link{ std::forward<decltype(name)>(name), &cur_parent} );
 	parent.children.back().vertex = &cur_parent;
@@ -187,6 +210,7 @@ constexpr auto mk_graph(const factory& f, auto& storage, auto&& name, auto& pare
 template<typename factory, typename source>
 constexpr auto mk_graph(const factory& f, auto& storage, auto&& name, auto& parent, const source& src) {
 	auto& cur_parent = *create_vertex( storage, f, src ).base;
+	create_ast_link( storage, name, &parent, &cur_parent );
 	cur_parent.parent = &parent;
 	parent.children.emplace_back( typename ast_vertex<factory>::link{std::forward<decltype(name)>(name), &cur_parent} );
 	parent.children.back().vertex = &cur_parent;

@@ -38,43 +38,55 @@ constexpr auto mk_test_fields(int cnt) {
 	return ret;
 }
 
+constexpr auto mk_test_graph(auto&&... args) {
+	auto g =  ast_graph::mk_graph(factory{}, std::forward<decltype(args)>(args)...);
+	auto v = g.create_view();
+	return std::tuple( std::move(g), std::move(v) );
+}
+
 
 static_assert( ast_graph::mk_graph_calc_size( factory{}, test_fields{} ) == 2 );
 static_assert( ast_graph::mk_graph( factory{}, test_fields{} ).size() == 2 );
 static_assert( ast_graph::mk_graph( factory{}, mk_test_fields(2) ).size() == 6 );
-static_assert( ast_graph::mk_graph( factory{}, mk_test_fields(2) ).root().base->children.size() == 1 );
-static_assert( ast_graph::mk_graph( factory{}, mk_test_fields(2) ).root().base->is_array() == false );
-static_assert( ast_graph::mk_graph( factory{}, mk_test_fields(2) ).root().base->children[0].vertex->is_array() == true );
 static_assert( []{
-	auto g = ast_graph::mk_graph( factory{}, mk_test_fields(2) );
+	auto[ g, v ] = mk_test_graph(mk_test_fields(2));
+	return children_of(v, v.root()).size();
+}() == 1 );
+static_assert( ast_graph::mk_graph( factory{}, mk_test_fields(2) ).create_view().root()->is_array() == false );
+static_assert( []{
+	auto[ g, v ] = mk_test_graph(mk_test_fields(2));
+	return children_of(v, v.root())[0]->is_array();
+}() == true);
+static_assert( []{
+	auto[ g, v ] = mk_test_graph(mk_test_fields(2));
+	auto children = ast_links_of(v, v.root());
+	auto& c0 = children[0];
+	auto cn = ast_links_of(v, c0.child);
 	return
-	  (g.root().base->children[0].vertex->parent == g.root().base) +
-	2*(g.root().base->children[0].name == "leafs") +
-	4*(g.root().base->children[0].vertex->children.size() == 2) +
-	8*(g.root().base->children[0].vertex->children[0].name == "")
+	  (c0.parent == v.root()) +
+	2*(c0.name == "leafs") +
+	4*(cn.size() == 2) +
+	8*(cn[0].name == "")
 	;
-}() == 15 );
+}() == 15);
 static_assert( []{
 	auto src = mk_test_fields(2);
 	src.leafs[1].ff = 3;
 	src.leafs[0].ff = 2;
 	src.leafs[0].vl.emplace<1>().v2f = 7;
-	auto g = ast_graph::mk_graph( factory{}, src );
+
+	auto[ g, v ] = mk_test_graph(src);
+	auto children = ast_links_of(v, v.root());
+	auto& c0 = children[0];
+	auto cn = ast_links_of(v, c0.child);
+
 	return
-	  (g.root().base->children[0].vertex->size() == 2) +
-	2*(g.root().base->children[0].vertex->children[1].vertex->field("ff") == factory::data_type{3}) +
-	4*(g.root().base->children[0].vertex->children[0].vertex->children[0].name == "vl") +
-	8*(g.root().base->children[0].vertex->children[0].vertex->children[0].vertex->field("v2f") == factory::data_type{7})
+	  (cn.size() == 2) +
+	2*(cn[1].child->field("ff") == factory::data_type{3}) +
+	4*(ast_links_of(v, cn[0].child)[0].name == "vl") +
+	8*(ast_links_of(v, cn[0].child)[0].child->field("v2f") == factory::data_type{7})
 	;
-}() == 15 );
-static_assert( []{
-	auto src = mk_test_fields(2);
-	auto g = ast_graph::mk_graph(factory{}, src);
-	return
-	  (g.root().base->children[0].name == "leafs") +
-	2*(g.root().base->children[0].vertex->size()==2)
-	;
-}() == 3 );
+}() == 15);
 
 int main(int,char**) {
 	auto src = mk_test_fields(2);

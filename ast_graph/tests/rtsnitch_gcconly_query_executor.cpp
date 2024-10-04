@@ -159,7 +159,7 @@ TEST_CASE_METHOD(parse_fixture, "empty_query_is_whole_graph", "[graph][query]") 
 	auto q = mk_executor();
 	auto r = q("{}");
 	REQUIRE( r.size() > 0 );
-	REQUIRE( mk_obj() == mk_obj(r.root().base) );
+	REQUIRE( mk_obj() == mk_obj(r.root()) );
 }
 TEST_CASE_METHOD(parse_fixture, "query_false_returns_nothing", "[graph][query]") {
 	auto empty =  mk_executor()("{false}");
