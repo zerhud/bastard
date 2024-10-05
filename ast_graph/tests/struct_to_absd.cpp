@@ -45,12 +45,17 @@ struct absd_factory {
 		throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
 	}
 };
+using absd_data = absd::data<absd_factory>;
 
 struct graph_factory : ast_graph_tests::factory {
 	using data_type = absd::data<absd_factory>;
 };
 
-using absd_data = absd::data<absd_factory>;
+constexpr auto mk_data(const graph_factory& f, std::string_view d) {
+	using data_type = graph_factory::data_type;
+	return data_type{ data_type::string_t{d} };
+}
+
 
 constexpr auto to_str(const absd_data& d) {
 	std::string ret;
@@ -79,8 +84,9 @@ constexpr auto test(auto&& fnc, auto&& tune) {
 	type obj;
 	tune(obj);
 	graph_factory f;
+	ast_graph::ast_vertex_holder<graph_factory, type> v( f, obj );
 	ast_graph::node<graph_factory, type> node{{}, &obj};
-	return fnc(absd_data::mk(ast_graph::absd_object{ node }));
+	return fnc(absd_data::mk(ast_graph::absd_object{ f, &v }));
 }
 template<typename type>
 constexpr auto test(auto&& fnc) {
@@ -102,7 +108,7 @@ constexpr void test_objects() {
 	CTRT( test<simple_node>([](auto obj){
 		return obj[data_type{"not_exists"}].is_none();
 	}) == true);
-	RT( test<simple_node>([](auto obj){
+	CTRT( test<simple_node>([](auto obj){
 		return obj.keys().size();
 	}) == 2);
 	CTRT( test<simple_node>([](auto obj){
@@ -120,15 +126,17 @@ struct opt_test {
 };
 
 int main(int,char**) {
+	using namespace std::literals;
+
 	test_objects();
 
 	CTRT(( []{
 		opt_test obj;
-		ast_graph::node<graph_factory, opt_test> node{{}, &obj};
-		ast_graph::absd_object absd_obj{ node };
+		ast_graph::ast_vertex_holder v(graph_factory{}, obj);
+		ast_graph::absd_object absd_obj{ graph_factory{}, &v };
 		auto data = absd_data::mk(absd_obj);
 		return to_str( data );
-	}() == "{'f1':3,'f2':7}" ));
+	}() == "{'f1':3,'f2':7}"sv ));
 
 	opt_test obj;
 
@@ -137,7 +145,8 @@ int main(int,char**) {
 	visit([](const auto& v){ if constexpr(requires{ std::cout << v;}) std::cout << v; }, node.value("f1"));
 	std::cout << std::endl;
 
-	ast_graph::absd_object absd_obj{ node };
+	ast_graph::ast_vertex_holder v(graph_factory{}, obj);
+	ast_graph::absd_object absd_obj{ graph_factory{}, &v };
 	auto data = absd_data::mk(absd_obj);
 	std::cout << "we have ("sv << data.is_array() << ") "sv << to_str( data ) << std::endl;
 

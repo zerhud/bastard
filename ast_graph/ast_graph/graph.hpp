@@ -65,7 +65,9 @@ struct ast_vertex_holder : ast_vertex<factory> {
 	constexpr data_type field(string_view name) const override {
 		if constexpr(tref::vector<source>) return data_type{};
 		else return visit([](const auto& v){
-			if constexpr (requires{ data_type{v}; }) return data_type{v};
+			constexpr bool is_optional = requires{ static_cast<bool>(v);*v;v.value(); };
+			if constexpr (is_optional && requires{ data_type{*v}; }) return data_type{v.value()};
+			else if constexpr (requires{ data_type{v}; }) return data_type{v};
 			else return data_type{};
 		}, create_node().field_value(name));
 	}

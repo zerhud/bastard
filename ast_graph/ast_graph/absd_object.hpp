@@ -12,10 +12,11 @@
 #include <tref.hpp>
 
 #include "node.hpp"
+#include "graph.hpp"
 
 namespace ast_graph {
 
-template<typename factory, typename origin>
+template<typename factory>
 struct absd_object {
 	using data_type = typename factory::data_type;
 	struct field_info {
@@ -24,40 +25,29 @@ struct absd_object {
 	};
 	using field_vec_type = decltype(factory{}.template mk_vec<field_info>());
 
-	struct node<factory, origin> node;
-	[[no_unique_address]] factory f;
-	field_vec_type fields;
+	const ast_vertex<factory>* v;
+	factory f;
 
-	constexpr explicit absd_object(ast_graph::node<factory, origin> n)
-			: node(std::move(n)) {
-		extract_fields();
+	constexpr explicit absd_object(factory f, const ast_vertex<factory>* v)
+	: f(std::move(f))
+	, v(v)
+	{
 	}
 
 	constexpr auto at(const data_type& k) {
-		for(auto& f:fields) if(k==f.name) return f.value;
-		return data_type{};
+		auto str_k = (typename data_type::string_t)k;
+		return v->field(str_k);
 	}
-	constexpr auto size() const { return node.fields_count(); }
+	constexpr auto size() const { return v->size(); }
 	constexpr bool contains(const data_type& k) const {
-		for(auto& f:fields) if(f.name == k) return true;
+		auto str_k = (typename data_type::string_t)k;
+		for(auto& f:v->fields()) if(f == str_k) return true;
 		return false;
 	}
 	constexpr auto keys() const {
-		auto ret = f.template mk_vec<data_type>();
-		for(auto& f:fields) ret.emplace_back(f.name);
+		auto ret = mk_vec<data_type>(f);
+		for(auto& f:v->fields()) ret.emplace_back(mk_data(this->f, f));
 		return ret;
-	}
-private:
-	constexpr void extract_fields() {
-		node.for_each_field_value([this](auto&& n, const auto& v) {
-			constexpr bool is_optional = requires{ static_cast<bool>(v);*v; };
-			if constexpr (!is_optional)
-				fields.emplace_back(field_info{data_type{typename data_type::string_t{n}},data_type{v}});
-			else {
-				if(v) fields.emplace_back(field_info{data_type{typename data_type::string_t{n}},data_type{v.value()}});
-				else fields.emplace_back(field_info{data_type{typename data_type::string_t{n}},data_type{}});
-			}
-		});
 	}
 };
 
