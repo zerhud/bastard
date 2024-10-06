@@ -30,9 +30,9 @@ struct graph_absd {
 	{}
 
 	constexpr bool is_eq(const graph_absd& other) const {
-		return g == other.g && cur_root == other.cur_root;
+		return g == other.g && cur_root->origin() == other.cur_root->origin();
 	}
-	constexpr bool is_array() const {
+	[[nodiscard]] constexpr bool is_array() const {
 		return cur_root->is_array();
 	}
 	constexpr auto at(int_t k) {

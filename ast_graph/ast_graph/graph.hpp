@@ -38,6 +38,7 @@ struct ast_vertex {
 	virtual unsigned size() const =0 ; //TODO: do we really still need this method ?
 	virtual unsigned fields_count() const =0 ;
 	virtual const char* debug_info() const {return "";}
+	virtual const void* origin() const =0 ;
 };
 
 template<typename factory, typename source>
@@ -54,6 +55,7 @@ struct ast_vertex_holder : ast_vertex<factory> {
 	factory f;
 	const source* src;
 
+	constexpr const void* origin() const override { return src; }
 	constexpr node_type create_node() const { return node_type{ f, src }; }
 	constexpr string_view type_name() const override { return create_node().name(); }
 	constexpr names_type fields() const override {
@@ -187,7 +189,9 @@ struct graph_view {
 
 	constexpr friend bool operator==(const graph_view& left, const graph_view& right) {
 		if(left.vertices.size()!=right.vertices.size()) return false;
-		for(auto i=0;i<left.vertices.size();++i) if(left.vertices[i]!=right.vertices[i]) return false;
+		for(auto i=0;i<left.vertices.size();++i) {
+			if(left.vertices[i]->base->origin() != right.vertices[i]->base->origin()) return false;
+		}
 		return true;
 	}
 };

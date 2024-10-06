@@ -93,6 +93,12 @@ static_assert( []{
 	return v == v;
 }(), "can compare graph view with operator==" );
 static_assert( []{
+	auto src = mk_test_fields(2);
+	auto[ g1, v1 ] = mk_test_graph(src);
+	auto[ g2, v2 ] = mk_test_graph(src);
+	return v1 == v2;
+}(), "can compare graph view with operator== on same source" );
+static_assert( []{
 	auto[ g1, v1 ] = mk_test_graph(mk_test_fields(2));
 	auto[ g2, v2 ] = mk_test_graph(mk_test_fields(2));
 	return v1 != v2;

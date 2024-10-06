@@ -22,6 +22,7 @@
 #include "ast_graph/query_executor.hpp"
 #include "ast_graph/graph.hpp"
 #include "ast_graph/graph_absd.hpp"
+#include "ast_graph/absd_object.hpp"
 #include "factory.hpp"
 #include "ascip.hpp"
 
@@ -91,7 +92,7 @@ struct parser_factory {
 		data_type env;
 		self.jiexpr->env = &env;
 		env.mk_empty_object();
-		env.put(data_type{"v"}, data_type::mk(ast_graph::graph_absd(f, graph)));
+		env.put(data_type{"v"}, data_type::mk(ast_graph::absd_object(f, graph)));
 		return (*self.jiexpr)(expr);
 	}
 };
@@ -135,12 +136,11 @@ struct parse_fixture {
 		jiexpr.env = &jiexpr_env;
 		return ast_graph::query_executor( f, &pf, src_st );
 	}
-	constexpr auto mk_obj(auto* g) {
-		return data_type::mk(ast_graph::graph_absd(f, g));
+	constexpr auto mk_obj(auto view, auto* g) {
+		return data_type::mk(ast_graph::graph_absd(f, view, g));
 	}
-
 	constexpr auto mk_obj() {
-		return mk_obj(graph.root().base);
+		return mk_obj(graph.create_view(), graph.root().base);
 	}
 
 	constexpr auto mk_graph_str() {
@@ -152,14 +152,15 @@ static_assert( parse_fixture{}.mk_executor()("{v.field_1==1}").size() == 1 );
 TEST_CASE_METHOD(parse_fixture, "can_compare", "[graph][query]") {
 	CHECK( mk_obj() == mk_obj() );
 	graph_type graph2 = ast_graph::mk_graph(f, src_st);
-	REQUIRE( mk_obj() == mk_obj(graph2.root().base) );
+	CHECK( graph.root().base->origin() == graph2.root().base->origin() );
+	REQUIRE( mk_obj() == mk_obj(graph2.create_view(), graph2.root().base) );
 }
 
 TEST_CASE_METHOD(parse_fixture, "empty_query_is_whole_graph", "[graph][query]") {
 	auto q = mk_executor();
 	auto r = q("{}");
 	REQUIRE( r.size() > 0 );
-	REQUIRE( mk_obj() == mk_obj(r.root()) );
+	REQUIRE( mk_obj() == mk_obj(r, r.root()) );
 }
 TEST_CASE_METHOD(parse_fixture, "query_false_returns_nothing", "[graph][query]") {
 	auto empty =  mk_executor()("{false}");
@@ -168,7 +169,7 @@ TEST_CASE_METHOD(parse_fixture, "query_false_returns_nothing", "[graph][query]")
 TEST_CASE_METHOD(parse_fixture, "query_compare_field_value", "[graph][query]") {
 	auto cur =  mk_executor()("{v.field_1==1}");
 	CHECK(cur.size() == 1 );
-//	REQUIRE( mk_obj() == mk_obj(cur[0].base) );
+//	REQUIRE( mk_obj() == mk_obj(cur, cur.root()) );
 //	CHECK( mk_obj(cur[0].base).keys().size() == 3 );
 }
 /*
