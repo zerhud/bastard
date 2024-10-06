@@ -85,7 +85,6 @@ constexpr auto test(auto&& fnc, auto&& tune) {
 	tune(obj);
 	graph_factory f;
 	ast_graph::ast_vertex_holder<graph_factory, type> v( f, obj );
-	ast_graph::node<graph_factory, type> node{{}, &obj};
 	return fnc(absd_data::mk(ast_graph::absd_object{ f, &v }));
 }
 template<typename type>
@@ -117,6 +116,14 @@ constexpr void test_objects() {
 	CTRT( test<with_subnode>([](auto obj){
 		return obj.size();
 	}) == 2);
+	CTRT(( []{
+		simple_node obj;
+		graph_factory f;
+		ast_graph::ast_vertex_holder<graph_factory, simple_node> v( f, obj );
+		auto obj1 = absd_data::mk(ast_graph::absd_object{ f, &v }) ;
+		auto obj2 = absd_data::mk(ast_graph::absd_object{ f, &v }) ;
+		return obj1 == obj2;
+	}() == true ));
 }
 
 struct opt_test {

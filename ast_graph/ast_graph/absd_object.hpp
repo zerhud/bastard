@@ -34,6 +34,10 @@ struct absd_object {
 	{
 	}
 
+	constexpr bool is_eq(const absd_object& other) const {
+		return v==other.v || v->origin() == other.v->origin();
+	}
+
 	constexpr auto at(const data_type& k) {
 		auto str_k = (typename data_type::string_t)k;
 		return v->field(str_k);
