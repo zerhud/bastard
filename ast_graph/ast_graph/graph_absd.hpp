@@ -30,6 +30,8 @@ struct graph_absd {
 	{}
 
 	constexpr bool is_eq(const graph_absd& other) const {
+		//TODO: make view to subgraph and compare with subgraph from other
+		//      (subgraph is a graph started from current root)
 		return g == other.g && cur_root->origin() == other.cur_root->origin();
 	}
 	[[nodiscard]] constexpr bool is_array() const {
