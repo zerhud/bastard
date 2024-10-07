@@ -19,10 +19,10 @@ template<typename factory, typename data>
 struct array : inner_counter {
 	using vec_content = data;
 
-	std::decay_t<decltype(std::declval<factory>().template mk_vec<vec_content>())> holder;
+	std::decay_t<decltype(mk_vec<vec_content>(std::declval<factory>()))> holder;
 
 
-	constexpr array(factory f) requires (requires{ f.template mk_vec<vec_content>(); }) : holder(f.template mk_vec<vec_content>()) {}
+	constexpr array(factory f) requires (requires{ mk_vec<vec_content>(f); }) : holder(mk_vec<vec_content>(f)) {}
 
 	constexpr data& emplace_back(data d) { return holder.emplace_back(std::move(d)); }
 	constexpr data& at(std::integral auto ind) { return holder.at(ind); }

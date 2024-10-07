@@ -29,28 +29,18 @@ using namespace std::literals;
 
 namespace ast_graph_tests {
 
-namespace detail
-{
+namespace detail {
 template<uint8_t... digits> struct positive_to_chars { static const char value[]; };
 template<uint8_t... digits> const char positive_to_chars<digits...>::value[] = {('0' + digits)..., 0};
 
 template<uint8_t... digits> struct negative_to_chars { static const char value[]; };
 template<uint8_t... digits> const char negative_to_chars<digits...>::value[] = {'-', ('0' + digits)..., 0};
 
-template<bool neg, uint8_t... digits>
-struct to_chars : positive_to_chars<digits...> {};
-
-template<uint8_t... digits>
-struct to_chars<true, digits...> : negative_to_chars<digits...> {};
-
-template<bool neg, uintmax_t rem, uint8_t... digits>
-struct explode : explode<neg, rem / 10, rem % 10, digits...> {};
-
-template<bool neg, uint8_t... digits>
-struct explode<neg, 0, digits...> : to_chars<neg, digits...> {};
-
-template<typename T>
-constexpr uintmax_t cabs(T num) { return (num < 0) ? -num : num; }
+template<bool neg, uint8_t... digits> struct to_chars : positive_to_chars<digits...> {};
+template<uint8_t... digits> struct to_chars<true, digits...> : negative_to_chars<digits...> {};
+template<bool neg, uintmax_t rem, uint8_t... digits> struct explode : explode<neg, rem / 10, rem % 10, digits...> {};
+template<bool neg, uint8_t... digits> struct explode<neg, 0, digits...> : to_chars<neg, digits...> {};
+template<typename T> constexpr uintmax_t cabs(T num) { return (num < 0) ? -num : num; }
 }
 
 template<typename T, T num>
@@ -113,9 +103,6 @@ struct absd_factory {
 	using string_t = std::string;
 	using empty_t = std::monostate;
 
-	template<typename type> constexpr static auto mk_vec(){ return std::vector<type>{}; }
-//	template<typename key, typename value>
-//	constexpr static auto mk_map(){ return map_t<key,value>{}; }
 	constexpr static auto mk_ptr(auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
 	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
 	template<typename interface>
@@ -128,6 +115,8 @@ struct absd_factory {
 	}
 };
 
+template<typename type> constexpr auto mk_vec(const absd_factory&){ return std::vector<type>{}; }
+
 struct factory {
 	using string_view = std::string_view;
 	using source_location = std::source_location;
@@ -139,21 +128,6 @@ struct factory {
 	template<typename... types>
 	constexpr static auto mk_variant() {
 		return variant<types...>{};
-	}
-
-	constexpr auto alloc_smart(auto&& v) const -> clang_bug_74963_wa<std::decay_t<decltype(v)>> {
-		using vt = std::decay_t<decltype(v)>;
-		return clang_bug_74963_wa<vt>(new vt(std::forward<decltype(v)>(v)));
-		//return std::make_unique<std::decay_t<decltype(v)>>(std::forward<decltype(v)>(v));
-	}
-
-	constexpr auto mk_edge_name() const { return std::string(); }
-
-	template<typename type>
-	constexpr static auto mk_vec(auto&&... items) {
-		std::vector<std::decay_t<type>> ret;
-		(void)(ret.emplace_back(std::forward<decltype(items)>(items)), ...);
-		return ret;
 	}
 
 	template<template<typename...>typename list, typename... types>
@@ -169,10 +143,6 @@ struct factory {
 	constexpr static bool is_field_type() {
 		if constexpr(requires(const type& v){static_cast<bool>(v); *v; typename type::value_type;}) return is_field_type<typename type::value_type>();
 		else return std::is_integral_v<type> || std::is_same_v<type, std::string>;
-	}
-
-	[[noreturn]] static void throw_no_value_access() {
-		throw std::runtime_error("access to no_value");
 	}
 };
 
@@ -192,8 +162,11 @@ constexpr auto mk_list(const factory&) {
 }
 
 template<typename type>
-constexpr auto mk_vec(const factory&) {
-	return std::vector<type>{};
+constexpr auto mk_vec(const factory&, auto&&... items) {
+	std::vector<type> ret{};
+	if constexpr(sizeof...(items) > 0)
+		(void)(ret.emplace_back(std::forward<decltype(items)>(items)), ...);
+	return ret;
 }
 
 constexpr auto to_field_name(const factory&, auto val) {
@@ -202,10 +175,8 @@ constexpr auto to_field_name(const factory&, auto val) {
 }
 
 struct query_factory : factory {
-	using field_name_type = std::string_view;
-	using integer_type = int;
-	using float_point_type = double;
-	using data_type = int;
+	using integer_t = int;
+	using float_point_t = double;
 
 	//NOTE: c++23 standard bug and clang implement it. the dtor will be instantiated
 	//      inside class, where the sizeof is cannot to be called, and we cannot use
@@ -214,7 +185,6 @@ struct query_factory : factory {
 	template<typename type> using forward_ast = clang_bug_74963_wa<type>;
 	template<typename type> using optional = std::optional<type>;
 	using string_t = std::string;
-	using string_type = std::string;
 
 	constexpr auto mk_fwd(auto& v) const {
 		using v_type = std::decay_t<decltype(v)>;

@@ -47,12 +47,18 @@ struct node {
 	}
 
 	constexpr static auto list_fields() {
-		return keys_impl<0, struct_children_count()>([]<auto ind>{
+		return list_fields(factory{});
+	}
+	constexpr static auto list_fields(const auto& f) {
+		return keys_impl<0, struct_children_count()>(f, []<auto ind>{
 			return factory::template is_field_type<field_type<ind>>();
 		});
 	}
 	constexpr static auto list_children() {
-		return keys_impl<0, struct_children_count()>([]<auto ind>{
+		return list_children(factory{});
+	}
+	constexpr static auto list_children(const auto& f) {
+		return keys_impl<0, struct_children_count()>(f, []<auto ind>{
 			return !factory::template is_field_type<field_type<ind>>();
 		});
 	}
@@ -63,9 +69,6 @@ struct node {
 		else return tref::gs::field_name<factory, ind, origin>();
 	}
 
-	constexpr auto* value_ptr(auto&& name) const {
-		return value_ptr_impl<0, struct_children_count()>(name);
-	}
 	constexpr auto value(auto&& name) const {
 		return value_impl<0, struct_children_count()>(name);
 	}
@@ -124,16 +127,16 @@ private:
 	}
 
 	template<auto cur, auto size>
-	constexpr static auto keys_impl(auto&& check, auto&&... args) {
-		if constexpr (cur==size) return factory{}.template mk_vec
+	constexpr static auto keys_impl(const auto& f, auto&& check, auto&&... args) {
+		if constexpr (cur==size) return mk_vec
 		    <decltype(tref::lref<self_type>().template key<0>())>
-			(static_cast<decltype(args)&&>(args)...);
+			(f, static_cast<decltype(args)&&>(args)...);
 		else return check.template operator()<cur>()
-			? keys_impl<cur+1,size>(
+			? keys_impl<cur+1,size>(f,
 					static_cast<decltype(check)&&>(check),
 					static_cast<decltype(args)&&>(args)...,
 					key<cur>())
-			: keys_impl<cur+1,size>(
+			: keys_impl<cur+1,size>(f,
 					static_cast<decltype(check)&&>(check),
 					static_cast<decltype(args)&&>(args)...)
 			;
@@ -152,14 +155,6 @@ private:
 	template<auto ind>
 	constexpr auto& value() const {
 		return st_value<ind>(f, ptr);
-	}
-	template<auto cur, auto size>
-	constexpr auto* value_ptr_impl(auto&& request) const {
-		if constexpr (cur==size) return static_cast<void*>(nullptr);
-		else return request == key<cur>()
-		            ? &value<cur>()
-		            : value_ptr_impl<cur+1, size>(request)
-		;
 	}
 	template<auto cur, auto size>
 	constexpr auto value_impl(auto&& request) const {

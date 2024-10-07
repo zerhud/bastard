@@ -21,7 +21,7 @@ struct type_erasure_callable {
 		string_t name;
 		data default_value;
 	};
-	using params_t = decltype(std::declval<factory_t>().template mk_vec<parameter_descriptor>());
+	using params_t = decltype(mk_vec<parameter_descriptor>(std::declval<factory_t>()));
 
 	constexpr virtual ~type_erasure_callable() noexcept =default ;
 	constexpr virtual data call(data params) =0 ;

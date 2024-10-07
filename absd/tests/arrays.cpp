@@ -28,7 +28,7 @@ constexpr void main_test() {
 	CTRT([]{ data d; d.mk_empty_array(); d.push_back(data{(integer_t)10}); auto dd = std::move(d); return dd.size(); }() == 1 )
 
 	CTRT( []{
-		auto vec = factory{}.template mk_vec<data>();
+		auto vec = mk_vec<data>(factory{});
 		vec.emplace_back(data{(integer_t)1});
 		vec.emplace_back(data{(integer_t)3});
 		auto d = data::mk(std::move(vec));

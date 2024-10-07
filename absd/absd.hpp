@@ -186,6 +186,8 @@ private:
 	}
 public:
 
+	//TODO: add constructor with factory and use the factory in the absd
+	//      also current ctors have to create object via ctor with factory
 	constexpr data(auto* v) requires (is_listed_in_factory<std::decay_t<decltype(*v)>>()) : holder(v) {}
 	constexpr data() =default ;
 	constexpr explicit data(auto v) requires (
@@ -254,7 +256,7 @@ public:
 	[[nodiscard]] constexpr auto size() const;
 	[[nodiscard]] constexpr auto keys() const;
 
-	constexpr self_type& mk_empty_array() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, factory{}.template mk_vec<self_type>())); return *this; }
+	constexpr self_type& mk_empty_array() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, mk_vec<self_type>(factory{}))); return *this; }
 	constexpr self_type& mk_empty_object() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, details::mk_map_type<self_type, self_type>(factory{}))); return *this; }
 	constexpr self_type& push_back(self_type d);
 	constexpr self_type& put(self_type key, self_type value);

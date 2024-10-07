@@ -53,9 +53,9 @@ struct query_edge {
 
 template<typename factory, typename inner_expr>
 struct query_vertex {
-	using string_t = factory::string_type;
-	using integer_t = factory::integer_type;
-	using float_point_t = factory::float_point_type;
+	using string_t = factory::string_t;
+	using integer_t = factory::integer_t;
+	using float_point_t = factory::float_point_t;
 	template<typename type> using vec = decltype(mk_vec<type>(factory{}));
 	template<typename... list> using variant = factory::template variant<list...>;
 

@@ -29,7 +29,6 @@ struct absd_factory {
 	using string_t = std::string;
 	using empty_t = std::monostate;
 
-	template<typename type> constexpr static auto mk_vec(){ return std::vector<type>{}; }
 //	template<typename key, typename value>
 //	constexpr static auto mk_map(){ return map_t<key,value>{}; }
 	constexpr static auto mk_ptr(auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
@@ -43,6 +42,8 @@ struct absd_factory {
 		throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
 	}
 };
+
+template<typename type, typename fp> constexpr static auto mk_vec(const absd_factory<fp>&){ return std::vector<type>{}; }
 
 struct bastard_factory {
 	template<typename... types> using variant_t = std::variant<types...>;

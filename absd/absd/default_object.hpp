@@ -25,7 +25,7 @@ struct constexpr_kinda_map {
 		key k;
 		value v;
 	};
-	std::decay_t<decltype(std::declval<factory>().template mk_vec<chunk>())> store;
+	std::decay_t<decltype(mk_vec<chunk>(std::declval<factory>()))> store;
 
 	using key_type = key;
 	using value_type = chunk;
@@ -62,7 +62,7 @@ template<typename key, typename value, typename factory> constexpr auto mk_map_t
 	if constexpr(requires{ f.template mk_map<key,value>(); }) return f.template mk_map<key,value>();
 	else {
 		using map_t = constexpr_kinda_map<factory, key, value>;
-		return map_t{f.template mk_vec<typename map_t::chunk>()};
+		return map_t{mk_vec<typename map_t::chunk>(f)};
 	}
 }
 

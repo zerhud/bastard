@@ -23,7 +23,7 @@ struct absd_object {
 		data_type name;
 		data_type value;
 	};
-	using field_vec_type = decltype(factory{}.template mk_vec<field_info>());
+	using field_vec_type = decltype(mk_vec<field_info>(std::declval<factory>()));
 
 	const ast_vertex<factory>* v;
 	factory f;
