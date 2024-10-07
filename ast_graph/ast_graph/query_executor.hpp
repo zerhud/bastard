@@ -74,7 +74,7 @@ struct query_executor {
 	constexpr auto exec(auto&& parsed) {
 		typename graph_type::view_type ret(f);
 		for(auto& i:graph.vertices) {
-			if(solve_vertex(*pf, f, get<2>(parsed.data).data, i.base)) create_vertex(ret, &i);
+			if(solve_vertex(*pf, f, get<0>(get<2>(parsed.data).data), i.base)) create_vertex(ret, &i);
 		}
 		return ret;
 	}

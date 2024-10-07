@@ -59,12 +59,12 @@ int main(int,char**) {
 	}() == 7 );
 	static_assert( []{
 		qgraph r1;
-		return parse(qgraph::mk_parser<parser>(factory{}, vertex_solver{}), +parser::space, parser::make_source("{1}->{}->({}+3{})"), r1.data);
-	}() == 17 );
+		return parse(qgraph::mk_parser<parser>(factory{}, vertex_solver{}), +parser::space, parser::make_source("{{1}}->{{}}->({{}}+3{{}})"), r1.data);
+	}() == 25 );
 	static_assert( []{
 		vertex r;
-		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{}"), r);
-		return holds_alternative<bool>(r.data) + 2*(get<bool>(r.data)==true);
+		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{{}}"), r);
+		return holds_alternative<bool>(get<0>(r.data)) + 2*(get<bool>(get<0>(r.data))==true);
 	}() == 3, "empty braces is the bool value true in result" );
 
 	return 0;

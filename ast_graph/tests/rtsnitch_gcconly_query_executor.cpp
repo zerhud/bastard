@@ -147,7 +147,7 @@ struct parse_fixture {
 		return to_str(mk_obj());
 	}
 };
-static_assert( parse_fixture{}.mk_executor()("{v.field_1==1}").size() == 1 );
+static_assert( parse_fixture{}.mk_executor()("{{v.field_1==1}}").size() == 1 );
 
 TEST_CASE_METHOD(parse_fixture, "can_compare", "[graph][query]") {
 	CHECK( mk_obj() == mk_obj() );
@@ -158,16 +158,16 @@ TEST_CASE_METHOD(parse_fixture, "can_compare", "[graph][query]") {
 
 TEST_CASE_METHOD(parse_fixture, "empty_query_is_whole_graph", "[graph][query]") {
 	auto q = mk_executor();
-	auto r = q("{}");
+	auto r = q("{{}}");
 	REQUIRE( r.size() > 0 );
 	REQUIRE( mk_obj() == mk_obj(r, r.root()) );
 }
 TEST_CASE_METHOD(parse_fixture, "query_false_returns_nothing", "[graph][query]") {
-	auto empty =  mk_executor()("{false}");
+	auto empty =  mk_executor()("{{false}}");
 	CHECK(empty.size() == 0 );
 }
 TEST_CASE_METHOD(parse_fixture, "query_compare_field_value", "[graph][query]") {
-	auto cur =  mk_executor()("{v.field_1==1}");
+	auto cur =  mk_executor()("{{v.field_1==1}}");
 	CHECK(cur.size() == 1 );
 //	REQUIRE( mk_obj() == mk_obj(cur, cur.root()) );
 //	CHECK( mk_obj(cur[0].base).keys().size() == 3 );

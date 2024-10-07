@@ -59,18 +59,30 @@ struct query_vertex {
 	template<typename type> using vec = decltype(mk_vec<type>(factory{}));
 	template<typename... list> using variant = factory::template variant<list...>;
 
+	using own_literal = variant<integer_t, float_point_t, string_t, bool>;
+	struct by_name { string_t name; };
+	struct by_type_and_name { string_t type, name; };
+	struct by_field_value { string_t field; own_literal value; };
+	using own_expr = vec<variant<by_name, by_type_and_name, by_field_value>>;
+
 	using expr = inner_expr::parsed_expression;
 
 	int arg_number=0;
-	expr data;
+	variant<expr,own_expr> data;
 
 	template<typename gh, template<auto>class th=gh::template tmpl>
 	constexpr static auto mk_parser(auto&& inner_expr_parser) {
-		auto ip = create_parser<gh>(inner_expr_parser); 
-		return -gh::int_ >> ++th<'{'>::_char >> (
-				  use_variant_result(th<'}'>::_char([](auto,auto& v){ create<bool>(v) = true; }))
-				| use_variant_result( ip >> th<'}'>::_char)
+		auto ip = create_parser<gh>(inner_expr_parser);
+		constexpr auto own_expr_begin = th<'{'>::_char;
+		constexpr auto own_expr_end = th<'}'>::_char;
+		constexpr auto inner_expr_begin = gh::template lit<"{{">;
+		constexpr auto inner_expr_end = gh::template lit<"}}">;
+		auto braced_inner_expr = inner_expr_begin  >> (
+				  use_variant_result(inner_expr_end([](auto,auto& v){ create<bool>(v) = true; }))
+				| use_variant_result( ip >> inner_expr_end )
 				);
+		auto braced_own_expr = own_expr_begin >> own_expr_end;
+		return -gh::int_ >> ++(braced_inner_expr|braced_own_expr);
 	}
 };
 
