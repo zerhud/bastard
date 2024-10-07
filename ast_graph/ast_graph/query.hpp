@@ -63,7 +63,7 @@ struct query_vertex {
 	struct by_name { string_t name; };
 	struct by_type_and_name { string_t type, name; };
 	struct by_field_value { string_t field; own_literal value; };
-	using own_expr = vec<variant<by_name, by_type_and_name, by_field_value>>;
+	using own_expr = vec<variant<by_type_and_name, by_field_value, by_name>>;
 
 	using expr = inner_expr::parsed_expression;
 
@@ -72,7 +72,13 @@ struct query_vertex {
 
 	template<typename gh, template<auto>class th=gh::template tmpl>
 	constexpr static auto mk_parser(auto&& inner_expr_parser) {
+		constexpr auto bool_parser = as<true>(gh::template lit<"true">)|as<false>(gh::template lit<"false">);
 		auto ip = create_parser<gh>(inner_expr_parser);
+		auto op =
+				  (gh::quoted_string >> th<':'>::_char >> ++gh::quoted_string)
+				| (gh::quoted_string >> th<'='>::_char >> ++(gh::int_ | gh::fp | gh::quoted_string | bool_parser))
+				| ( gh::nop >> fnum<0>(gh::quoted_string) )
+				;
 		constexpr auto own_expr_begin = th<'{'>::_char;
 		constexpr auto own_expr_end = th<'}'>::_char;
 		constexpr auto inner_expr_begin = gh::template lit<"{{">;
@@ -81,7 +87,10 @@ struct query_vertex {
 				  use_variant_result(inner_expr_end([](auto,auto& v){ create<bool>(v) = true; }))
 				| use_variant_result( ip >> inner_expr_end )
 				);
-		auto braced_own_expr = own_expr_begin >> own_expr_end;
+		auto braced_own_expr = own_expr_begin >> (
+				  use_variant_result( own_expr_end )
+				| use_variant_result( op%',' >> own_expr_end )
+				);
 		return -gh::int_ >> ++(braced_inner_expr|braced_own_expr);
 	}
 };

@@ -63,9 +63,30 @@ int main(int,char**) {
 	}() == 25 );
 	static_assert( []{
 		vertex r;
+		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{}"), r);
+		return get<1>(r.data).size();
+	}() == 0, "empty braces is the empty vector in result" );
+	static_assert( []{
+		vertex r;
 		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{{}}"), r);
 		return holds_alternative<bool>(get<0>(r.data)) + 2*(get<bool>(get<0>(r.data))==true);
 	}() == 3, "empty braces is the bool value true in result" );
+
+	static_assert( []{
+		vertex r;
+		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{'name'}"), r);
+		return (get<1>(r.data).size()==1) + 2*(get<2>(get<1>(r.data)[0]).name == "name");
+	}() == 3, "empty braces is the bool value true in result" );
+	static_assert( []{
+		vertex r;
+		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{'type':'name'}"), r);
+		return (get<1>(r.data).size()==1) + 2*(get<0>(get<1>(r.data)[0]).name == "name") + 4*(get<0>(get<1>(r.data)[0]).type == "type");
+	}() == 7, "empty braces is the bool value true in result" );
+	static_assert( []{
+		vertex r;
+		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{'field'='value'}"), r);
+		return (get<1>(r.data).size()==1) + 2*(get<1>(get<1>(r.data)[0]).field == "field") + 4*(get<2>(get<1>(get<1>(r.data)[0]).value) == "value");
+	}() == 7, "empty braces is the bool value true in result" );
 
 	return 0;
 }
