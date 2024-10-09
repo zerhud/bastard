@@ -30,8 +30,8 @@ template<typename factory> constexpr auto mk_integer_type() {
 	else return typename factory::integer_t{};
 }
 template<typename factory> constexpr auto mk_float_point_type() {
-	if constexpr(!requires{ typename factory::float_pint_t; }) return double{};
-	else return typename factory::float_pint_t{};
+	if constexpr(!requires{ typename factory::float_point_t; }) return double{};
+	else return typename factory::float_point_t{};
 }
 template<typename factory, typename... types> constexpr auto mk_variant_type() {
 	return type_c<typename factory::template variant<types...>>;
@@ -77,7 +77,8 @@ struct data {
 		return desc{std::forward<decltype(_name)>(_name), std::move(_def_val)};
 	}
 	constexpr static auto mk_ca(auto&& fnc, auto&&... params) {
-		return callable2(std::forward<decltype(fnc)>(fnc), std::forward<decltype(params)>(params)...);
+		using fnc_t = std::decay_t<decltype(fnc)>;
+		return callable2<fnc_t>(std::forward<decltype(fnc)>(fnc), std::forward<decltype(params)>(params)...);
 	}
 	constexpr static self_type mk_map(auto&&... args) requires (sizeof...(args) % 2 == 0) {
 		self_type ret;

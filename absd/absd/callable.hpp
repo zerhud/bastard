@@ -19,7 +19,7 @@ struct callable2 {
 
 	constexpr explicit callable2(functor f, auto&&... params) : fnc(std::move(f)) {
 		params_info.mk_empty_array();
-		(create_param(std::forward<decltype(params)>(params)),..., 1);
+		(void)(create_param(std::forward<decltype(params)>(params)),..., 1);
 	}
 
 	constexpr auto operator()(auto&&... args) const {
