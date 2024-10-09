@@ -60,7 +60,8 @@ template<typename data_type, typename functor>
 constexpr void callable2<data_type, functor>::create_param(auto&& param) {
 	data_type desk;
 	constexpr bool  parameter_is_only_name = requires{data_type{param};};
-	if constexpr (parameter_is_only_name) desk.put(data_type{integer_t{1}}, data_type{param});
+	if constexpr (parameter_is_only_name)
+		desk.put(data_type{integer_t{1}}, data_type{std::forward<decltype(param)>(param)});
 	else {
 		//TODO: use std::forward_like<decltype(param)>(name) and same for def_val since gcc14
 		auto&& [name, def_val] = param;

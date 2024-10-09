@@ -21,11 +21,11 @@ constexpr void main_test() {
 	using data_type = absd::data<factory>;
 	using int_t = data_type::integer_t;
 
-	CTRT( !data_type::mk([]{}).is_array() );
-	CTRT( !data_type::mk([]{}).is_object() );
-	CTRT( data_type::mk([]{}).is_callable() );
-	CTRT( data_type::mk([]{}).call(data_type::mk_map()).is_none() );
-	CTRT( (int_t)data_type::mk([]{return 1;}).call(data_type::mk_map()) == 1);
+	static_assert( !data_type::mk([]{}).is_array() );
+	static_assert( !data_type::mk([]{}).is_object() );
+	static_assert( data_type::mk([]{}).is_callable() );
+	static_assert( data_type::mk([]{}).call(data_type::mk_map()).is_none() );
+	static_assert( (int_t)data_type::mk([]{return 1;}).call(data_type::mk_map()) == 1);
 	CTRT( (int_t)data_type::mk([](int a){return a-1;}, data_type::mk_param("a")).call(data_type::mk_map(data_type{0}, data_type{3})) == 2 );
 
 	CTRT( (int_t)data_type::mk([](int a, int b){return a-b;}, data_type::mk_param("a"), data_type::mk_param("b", data_type{1})).call(data_type::mk_map(0, 3)) == 2);
@@ -46,8 +46,8 @@ constexpr void main_test() {
 		//constexpr bool contains(const data_type&) const { return false; }
 	};
 
-	CTRT( data_type::mk(callable_obj_arr{}).is_array() );
-	CTRT( data_type::mk(callable_obj_arr{}).is_object() );
+	static_assert( data_type::mk(callable_obj_arr{}).is_array() );
+	static_assert( data_type::mk(callable_obj_arr{}).is_object() );
 	CTRT( data_type::mk(callable_obj_arr{}, data_type::mk_param("a"), data_type::mk_param("b")).is_callable() );
 }
 
