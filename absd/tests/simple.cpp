@@ -27,13 +27,13 @@ constexpr void main_test() {
 
 	static_assert( data{}.is_none() );
 	static_assert( data{ (integer_t)10 }.is_none() == false );
-	CTRT( data{ (integer_t)10 }.assign().is_none() );
-	CTRT( data{ (integer_t)10 }.assign().is_none() );
+	static_assert( data{ (integer_t)10 }.assign().is_none() );
+	static_assert( data{ (integer_t)10 }.assign().is_none() );
 	static_assert( data{ (float_point_t).5 }.is_int() == false );
-	CTRT( data{ (float_point_t).5 }.assign( (integer_t)3 ).is_int() );
+	static_assert( data{ (float_point_t).5 }.assign( (integer_t)3 ).is_int() );
 	CTRT( data{ string_t{} }.is_string() == true );
 	CTRT( data{ string_t{} }.is_array() == false );
-	CTRT( []{ data d; d=10; return (integer_t)d; }() == 10 );
+	static_assert( []{ data d; d=10; return (integer_t)d; }() == 10 );
 	CTRT( []{ data d; d="hel"; auto ret = ((string_t)d)[2]; return ret; }() == 'l' );
 	static_assert( data{ integer_t{} }.size() == sizeof(integer_t) );
 	CTRT( data{ string_t{"hello"} }.size() == 5 );
@@ -53,15 +53,15 @@ constexpr std::string test_format(auto&& d) {
 template<typename data_type>
 constexpr void test_format() {
 	using namespace std::literals;
-	CTRT( "1"sv == test_format(data_type{1}) );
+	static_assert( "1"sv == test_format(data_type{1}) );
 	CTRT( "test"sv == test_format(data_type{"test"}) );
-	CTRT( "[]"sv == test_format(data_type{}.mk_empty_array()) );
-	CTRT( "[1]"sv == []{
+	static_assert( "[]"sv == test_format(data_type{}.mk_empty_array()) );
+	static_assert( "[1]"sv == []{
 		data_type src;
 		src.push_back(data_type{1});
 		return test_format(src);
 	}() );
-	CTRT( "[1,2]"sv == []{
+	static_assert( "[1,2]"sv == []{
 		data_type src;
 		src.push_back(data_type{1});
 		src.push_back(data_type{2});
