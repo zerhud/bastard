@@ -6,7 +6,9 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
-#include "factory.hpp"
+#include "tests/factory.hpp"
+
+#include "absd.hpp"
 
 #ifndef __clang__
 #define CTRT(code) static_assert( code );
@@ -57,6 +59,8 @@ constexpr void main_test() {
 		return l == r;
 	}() == true) )
 }
+
+template<typename fp> struct absd_factory : tests::factory {};
 
 int main(int,char**) {
 	main_test<absd_factory<float>>();

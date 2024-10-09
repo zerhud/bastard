@@ -32,7 +32,7 @@ constexpr auto data<factory>::inner_mk(const factory& f, auto&& _v, auto&& ... a
 
 template<typename factory>
 constexpr void data<factory>::mk_ptr_and_assign(data::self_type& ret, const auto& f, auto&& v) {
-	auto tmp = f.mk_ptr(std::forward<decltype(v)>(v));
+	auto tmp = mk_ptr(f, std::forward<decltype(v)>(v));
 	auto* ptr = tmp.get();
 	ret.assign(std::move(tmp));
 	if constexpr (requires{ret.multi_callable = ptr;}) ret.multi_callable = ptr;

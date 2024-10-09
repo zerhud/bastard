@@ -6,7 +6,8 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
-#include "factory.hpp"
+#include "tests/factory.hpp"
+#include "absd.hpp"
 
 #include <iostream>
 
@@ -33,8 +34,7 @@ constexpr void main_test() {
 	CTRT( data{ string_t{} }.is_string() == true );
 	CTRT( data{ string_t{} }.is_array() == false );
 	CTRT( []{ data d; d=10; return (integer_t)d; }() == 10 );
-	//always in rt due we have a bug in gcc and clang
-	assert( []{ data d; d="hel"; auto ret = ((string_t)d)[2]; return ret; }() == 'l' );
+	CTRT( []{ data d; d="hel"; auto ret = ((string_t)d)[2]; return ret; }() == 'l' );
 	static_assert( data{ integer_t{} }.size() == sizeof(integer_t) );
 	CTRT( data{ string_t{"hello"} }.size() == 5 );
 	static_assert( data{3} == data{3} );
@@ -98,7 +98,12 @@ constexpr void test_format_rt_due_gcc_bug(auto&& test_fnc) {
 	}
 }
 
+template<typename fp> struct absd_factory : tests::factory {
+	using float_point_t = fp;
+};
+
 int main(int,char**) {
+	using absd_data = absd::data<absd_factory<double>>;
 	main_test<absd_factory<float>>();
 	main_test<absd_factory<double>>();
 

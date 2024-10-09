@@ -46,11 +46,6 @@ template<typename type, typename fp> constexpr auto mk_vec(const absd_factory<fp
 
 using absd_data = absd::data<absd_factory<double>>;
 
-constexpr auto mk_str(const absd_data& d) {
-	std::string ret;
-	absd::back_insert_format(std::back_inserter(ret), d);
-	return ret;
-}
 constexpr auto mk_state_str(const absd_data& d) {
 	return
 		  "none:"s + std::to_string(d.is_none())

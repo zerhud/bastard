@@ -6,7 +6,8 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
-#include "factory.hpp"
+#include "tests/factory.hpp"
+#include "absd.hpp"
 
 #include <cassert>
 #include <iostream>
@@ -16,6 +17,8 @@
 #else
 #define CTRT(code) assert( code );
 #endif
+
+using absd_data = absd::data<tests::factory>;
 
 
 static_assert( absd_data::mk(1).is_int() );

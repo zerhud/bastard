@@ -31,7 +31,6 @@ struct absd_factory {
 
 //	template<typename key, typename value>
 //	constexpr static auto mk_map(){ return map_t<key,value>{}; }
-	constexpr static auto mk_ptr(auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
 	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
 	template<typename interface>
 	constexpr static void throw_wrong_interface_error() {
@@ -43,6 +42,7 @@ struct absd_factory {
 	}
 };
 
+template<typename fp> constexpr auto mk_ptr(const absd_factory<fp>&, auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
 template<typename type, typename fp> constexpr static auto mk_vec(const absd_factory<fp>&){ return std::vector<type>{}; }
 
 struct bastard_factory {

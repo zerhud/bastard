@@ -7,7 +7,8 @@
  *************************************************************************/
 
 
-#include "factory.hpp"
+#include "tests/factory.hpp"
+#include "absd.hpp"
 
 namespace pointers_test {
 
@@ -21,7 +22,9 @@ struct empty_object {
 	}
 };
 
-struct factory : absd_factory<double> {
+template<typename... types> struct type_list{};
+
+struct factory : tests::factory {
 	using extra_types = type_list<empty_object<absd::data<factory>>>;
 };
 
@@ -29,6 +32,7 @@ struct factory : absd_factory<double> {
 
 template<typename data>
 void main_test() {
+	using namespace std::literals;
 	static_assert( []{
 		typename data::string_t str;
 		data d{&str};

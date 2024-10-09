@@ -103,7 +103,6 @@ struct absd_factory {
 	using string_t = std::string;
 	using empty_t = std::monostate;
 
-	constexpr static auto mk_ptr(auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
 	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
 	template<typename interface>
 	[[noreturn]] constexpr static void throw_wrong_interface_error() {
@@ -115,6 +114,7 @@ struct absd_factory {
 	}
 };
 
+constexpr auto mk_ptr(const absd_factory&, auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
 template<typename type> constexpr auto mk_vec(const absd_factory&){ return std::vector<type>{}; }
 
 struct factory {
