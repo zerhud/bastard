@@ -35,5 +35,4 @@
 /ninja_build/
 /clion_build/
 /jb_build/
-/tests/*
 *.swp
