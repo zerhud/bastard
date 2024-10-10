@@ -19,7 +19,7 @@ constexpr ret_val_t data<factory>::throw_wrong_interface_error(ret_val_t ret_val
 }
 
 template<typename factory>
-constexpr auto data<factory>::inner_mk(const factory& f, auto&& _v, auto&& ... args) {
+constexpr auto data<factory>::inner_mk(const factory_t& f, auto&& _v, auto&& ... args) {
 	auto v = mk_ca_val(std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...);
 	using val_type = std::decay_t<decltype(v)>;
 
@@ -74,8 +74,8 @@ constexpr bool data<factory>::contains(const auto& val) const {
 	}, holder);
 }
 
-template<typename factory>
-constexpr auto data<factory>::size() const {
+template<typename _factory>
+constexpr auto data<_factory>::size() const {
 	return visit( [this](const auto& v){
 		if(is_multiptr_obj(v)) return multi_object->size();
 		else if(is_multiptr_arr(v)) return multi_array->size();
@@ -84,16 +84,16 @@ constexpr auto data<factory>::size() const {
 		else return sizeof(v); }, holder);
 }
 
-template<typename factory>
-constexpr auto data<factory>::keys() const {
+template<typename _factory>
+constexpr auto data<_factory>::keys() const {
 	return visit( [this](const auto& v){
-		if(is_multiptr_obj(v)) return multi_object->keys(factory{});
+		if(is_multiptr_obj(v)) return multi_object->keys(factory_t{});
 		else return throw_wrong_interface_error<details::interfaces::keys>();
 	}, holder);
 }
 
-template<typename factory>
-constexpr data<factory>::self_type& data<factory>::push_back(data::self_type d) {
+template<typename _factory>
+constexpr data<_factory>::self_type& data<_factory>::push_back(data::self_type d) {
 	if(is_none()) mk_empty_array();
 	return visit([this,&d](auto& v) -> self_type& {
 		if(is_multiptr_arr(v)) return multi_array->emplace_back(std::move(d));

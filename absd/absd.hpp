@@ -53,18 +53,18 @@ template<typename factory, typename data_type> constexpr auto mk_holder_type() {
 
 } // namespace details
 
-template<typename factory>
+template<typename _factory>
 struct data {
-	static_assert( noexcept( std::declval<factory>().deallocate((int*)nullptr) ), "for safety delete allocated objects the deallocate method must to be noexcept" );
+	static_assert( noexcept( std::declval<_factory>().deallocate((int*)nullptr) ), "for safety delete allocated objects the deallocate method must to be noexcept" );
 
-	using factory_t = factory;
-	using self_type = data<factory>;
+	using factory_t = _factory;
+	using self_type = data<factory_t>;
 	template<typename functor> using callable2 = details::callable2<self_type, functor>;
-	using string_t = typename factory::string_t;
-	using integer_t = decltype(details::mk_integer_type<factory>());
-	using float_point_t = decltype(details::mk_float_point_type<factory>());
+	using string_t = typename factory_t::string_t;
+	using integer_t = decltype(details::mk_integer_type<factory_t>());
+	using float_point_t = decltype(details::mk_float_point_type<factory_t>());
 
-	using holder_t = typename decltype(details::mk_holder_type<factory, self_type>())::type;
+	using holder_t = typename decltype(details::mk_holder_type<factory_t, self_type>())::type;
 
 	constexpr static auto mk_param(auto&& name) {
 		return name;
@@ -89,8 +89,8 @@ struct data {
 	constexpr static self_type mk(auto&& v, auto&&... args) requires (!std::is_same_v<std::decay_t<decltype(v)>, factory_t>) {
 		return mk(factory_t{}, std::forward<decltype(v)>(v), std::forward<decltype(args)>(args)...);
 	}
-	constexpr static self_type mk(const factory& f, auto&& _v, auto&&... args) {
-		self_type ret;
+	constexpr static self_type mk(const factory_t& f, auto&& _v, auto&&... args) {
+		self_type ret{f};
 		auto inner = inner_mk(f, std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...);
 
 		constexpr bool is_counter_maker = details::is_specialization_of<decltype(inner), counter_maker>;
@@ -108,9 +108,12 @@ private:
 	details::type_erasure_callable<factory_t, self_type>* multi_callable=nullptr;
 	details::type_erasure_array<self_type>* multi_array=nullptr;
 	details::type_erasure_object<factory_t, self_type>* multi_object=nullptr;
+public:
+	[[no_unique_address]] factory_t factory;
+private:
 
 	constexpr auto suppress_clang_warning() const {}
-	constexpr static auto inner_mk(const factory& f, auto&& _v, auto&&... args);
+	constexpr static auto inner_mk(const factory_t& f, auto&& _v, auto&&... args);
 	constexpr static void mk_ptr_and_assign(self_type& ret, const auto& f, auto&& v);
 	constexpr static void mk_map_impl(const auto& f, self_type& result, auto&& key, auto&& val, auto&&... tail);
 
@@ -132,8 +135,8 @@ private:
 
 	constexpr void deallocate(auto* v) {
 		if(v->decrease_counter()==0) {
-			factory::deallocate(v);
-			holder = typename factory::empty_t{};
+			factory_t::deallocate(v);
+			holder = typename factory_t::empty_t{};
 		}
 	}
 
@@ -176,8 +179,9 @@ private:
 		if constexpr (sizeof...(types)==0) return false;
 		else return (std::is_same_v<type, types> || ... );
 	}
-	template<typename type>
+	template<typename _type>
 	constexpr static bool is_listed_in_factory() {
+		using type = std::decay_t<_type>;
 		if constexpr( requires{ is_listed_in_factory<std::decay_t<type>>(typename factory_t::extra_types{}); })
 			return is_listed_in_factory<std::decay_t<type>>(typename factory_t::extra_types{});
 		else return false;
@@ -186,29 +190,46 @@ public:
 
 	//TODO: add constructor with factory and use the factory in the absd
 	//      also current ctors have to create object via ctor with factory
-	constexpr data(auto* v) requires (is_listed_in_factory<std::decay_t<decltype(*v)>>()) : holder(v) {}
 	constexpr data() =default ;
+
+	constexpr explicit data(factory_t f) : factory(std::move(f)) {}
+
+	constexpr data(auto* v) requires (is_listed_in_factory<decltype(*v)>()) : data(factory_t{}, v) {}
+	constexpr data(factory_t f, auto* v) requires (is_listed_in_factory<decltype(*v)>())
+	: holder(v), factory(std::move(f)) {}
+
 	constexpr explicit data(auto v) requires (
 		   std::is_same_v<decltype(v), bool>
 		|| std::is_same_v<decltype(v), string_t>
 		|| std::is_same_v<decltype(v), integer_t>
 		|| std::is_same_v<decltype(v), float_point_t>
 	) : holder(std::move(v)) {}
+	constexpr explicit data(factory_t f, auto v) requires (
+	std::is_same_v<decltype(v), bool>
+	|| std::is_same_v<decltype(v), string_t>
+	|| std::is_same_v<decltype(v), integer_t>
+	|| std::is_same_v<decltype(v), float_point_t>
+	) : holder(std::move(v)), factory(std::move(f)) {}
 
 	constexpr explicit data(const string_t* str) : holder(str) {}
+	constexpr explicit data(factory_t f, const string_t* str) : holder(str), factory(std::move(f)) {}
 	constexpr explicit data(const typename string_t::value_type* v) : holder(string_t(v)) {}
+	constexpr explicit data(factory_t f, const typename string_t::value_type* v) : holder(string_t(v)), factory(std::move(f)) {}
 
-	constexpr data(const data& v) : holder(v.holder) { allocate(); copy_multi_pointers(v); }
-	constexpr data(data&& v) noexcept : holder(std::move(v.holder)) {
+	constexpr data(const data& v) : holder(v.holder), factory(v.factory) {
+		allocate();
+		copy_multi_pointers(v);
+	}
+	constexpr data(data&& v) noexcept : holder(std::move(v.holder)), factory(std::move(v.factory)) {
 		//NOTE: clang bug with emplace: https://github.com/llvm/llvm-project/issues/57669
-		v.holder.template emplace<typename factory::empty_t>();
+		v.holder.template emplace<typename factory_t::empty_t>();
 		copy_multi_pointers(v);
 	}
 	constexpr ~data() { deallocate(); }
 
 	constexpr self_type& assign() {
 		deallocate();
-		holder = typename factory::empty_t{};
+		holder = typename factory_t::empty_t{};
 		return static_cast<self_type&>(*this);
 	}
 	constexpr self_type& assign(auto&& v) {
@@ -254,8 +275,8 @@ public:
 	[[nodiscard]] constexpr auto size() const;
 	[[nodiscard]] constexpr auto keys() const;
 
-	constexpr self_type& mk_empty_array() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, mk_vec<self_type>(factory{}))); return *this; }
-	constexpr self_type& mk_empty_object() { mk_ptr_and_assign(*this, factory{}, inner_mk(factory{}, details::mk_map_type<self_type, self_type>(factory{}))); return *this; }
+	constexpr self_type& mk_empty_array() { mk_ptr_and_assign(*this, factory, inner_mk(factory, mk_vec<self_type>(factory))); return *this; }
+	constexpr self_type& mk_empty_object() { mk_ptr_and_assign(*this, factory, inner_mk(factory, details::mk_map_type<self_type, self_type>(factory))); return *this; }
 	constexpr self_type& push_back(self_type d);
 	constexpr self_type& put(self_type key, self_type value);
 	[[nodiscard]] constexpr const self_type operator[](integer_t ind) const {return const_cast<self_type&>(*this)[ind];}

@@ -19,8 +19,9 @@ struct callable2 {
 	functor fnc;
 	data_type params_info;
 
-	constexpr explicit callable2(const factory_t& f, functor fnc, auto&&... params)
+	constexpr explicit callable2(factory_t f, functor fnc, auto&&... params)
 	: fnc(std::move(fnc))
+	, params_info(std::move(f))
 	{
 		params_info.mk_empty_array();
 		(void)(create_param(std::forward<decltype(params)>(params)),..., 1);
