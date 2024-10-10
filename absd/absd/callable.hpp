@@ -14,13 +14,20 @@ namespace absd::details {
 
 template<typename data_type, typename functor>
 struct callable2 {
+	using factory_t = data_type::factory_t;
+
 	functor fnc;
 	data_type params_info;
 
-	constexpr explicit callable2(functor f, auto&&... params) : fnc(std::move(f)) {
+	constexpr explicit callable2(const factory_t& f, functor fnc, auto&&... params)
+	: fnc(std::move(fnc))
+	{
 		params_info.mk_empty_array();
 		(void)(create_param(std::forward<decltype(params)>(params)),..., 1);
 	}
+
+	constexpr explicit callable2(functor f, auto&&... params)
+	: callable2(factory_t{}, std::move(f), std::forward<decltype(params)>(params)...) { }
 
 	constexpr auto operator()(auto&&... args) const {
 		return call_with_params<sizeof...(args)>(std::forward<decltype(args)>(args)...);
@@ -50,7 +57,7 @@ constexpr auto callable2<data_type, functor>::call_with_combined_params(const au
 	if constexpr (requires{fnc(std::forward<decltype(params)>(params)...);}) return fnc(std::forward<decltype(params)>(params)...);
 	else {
 		data_type next_param = find_next_param<ind>(user_params);
-		if(next_param.is_none()) data_type::factory_t::template throw_wrong_parameters_count<ind>();
+		if(next_param.is_none()) factory_t::template throw_wrong_parameters_count<ind>();
 		return call_with_combined_params<ind+1>(
 				user_params,
 				std::forward<decltype(params)>(params)...,
@@ -92,7 +99,7 @@ constexpr auto callable2<data_type, functor>::call_with_params(auto&&... params)
 		if(is_name_and_value_param)
 			return call_with_params<initial_count>(std::forward<decltype(params)>(params)..., desk[data_type{param_sign_value}]);
 		else {
-			data_type::factory_t::template throw_wrong_parameters_count<initial_count>();
+			factory_t::template throw_wrong_parameters_count<initial_count>();
 			return call_with_params<initial_count>(std::forward<decltype(params)>(params)..., data_type{});
 		}
 	}
