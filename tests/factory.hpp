@@ -8,26 +8,11 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
-#include <string>
-#include <variant>
-#include <stdexcept>
-
+#include "absd_factory.hpp"
 #include "common_factory.hpp"
 
 namespace tests {
 
-struct factory : common_factory {
-	using empty_t = std::monostate;
-	using string_t = std::string;
-	template<typename... types> using variant = std::variant<types...>;
-
-	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
-
-	template<typename interface>
-	[[noreturn]] constexpr static void throw_wrong_interface_error() {
-		using namespace std::literals;
-		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
-	}
-};
+struct factory : common_factory, absd_factory { };
 
 } // namespace tests
