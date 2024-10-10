@@ -216,6 +216,10 @@ public:
 	constexpr explicit data(const typename string_t::value_type* v) : holder(string_t(v)) {}
 	constexpr explicit data(factory_t f, const typename string_t::value_type* v) : holder(string_t(v)), factory(std::move(f)) {}
 
+	constexpr data(factory_t f, const data& v) : holder(v.holder), factory(std::move(f)) {
+		allocate();
+		copy_multi_pointers(v);
+	}
 	constexpr data(const data& v) : holder(v.holder), factory(v.factory) {
 		allocate();
 		copy_multi_pointers(v);

@@ -26,6 +26,7 @@ constexpr void main_test() {
 	using string_t = data::string_t;
 
 	static_assert( data{}.is_none() );
+	static_assert( data{factory{}}.is_none() );
 	static_assert( data{ (integer_t)10 }.is_none() == false );
 	static_assert( data{ (integer_t)10 }.assign().is_none() );
 	static_assert( data{ (integer_t)10 }.assign().is_none() );
