@@ -17,9 +17,8 @@
 #include "absd/exceptions.hpp"
 #include "absd/formatter.hpp"
 
-namespace absd {
 
-namespace details {
+namespace absd::details {
 
 template<typename...> struct type_list {};
 template<typename t> struct _type_c{ using type=t; };
@@ -52,6 +51,8 @@ template<typename factory, typename data_type> constexpr auto mk_holder_type() {
 }
 
 } // namespace details
+
+namespace absd {
 
 template<typename _factory>
 struct data {
@@ -141,10 +142,11 @@ private:
 	}
 
 	template<typename type>
-	struct counter_maker : details::inner_counter, type {
+	struct counter_maker : type {
+		details::inner_counter counter;
 		constexpr explicit counter_maker(auto&&... args) : type(std::forward<decltype(args)>(args)...) {}
-		constexpr decltype(inner_counter::ref_counter) increase_counter() override { return inner_counter::increase_counter(); }
-		constexpr decltype(inner_counter::ref_counter) decrease_counter() override { return inner_counter::decrease_counter(); }
+		constexpr decltype(details::inner_counter::ref_counter) increase_counter() override { return counter.increase_counter(); }
+		constexpr decltype(details::inner_counter::ref_counter) decrease_counter() override { return counter.decrease_counter(); }
 	};
 
 	constexpr void copy_multi_pointers(const auto& other) noexcept {
@@ -188,10 +190,7 @@ private:
 	}
 public:
 
-	//TODO: add constructor with factory and use the factory in the absd
-	//      also current ctors have to create object via ctor with factory
 	constexpr data() =default ;
-
 	constexpr explicit data(factory_t f) : factory(std::move(f)) {}
 
 	constexpr data(auto* v) requires (is_listed_in_factory<decltype(*v)>()) : data(factory_t{}, v) {}
