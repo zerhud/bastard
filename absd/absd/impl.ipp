@@ -136,9 +136,9 @@ constexpr data<factory>::self_type data<factory>::operator[](const data::self_ty
 }
 
 template<typename factory>
-constexpr data<factory>::self_type data<factory>::call(auto &&params) {
+constexpr data<factory>::self_type data<factory>::call(auto&& params) {
 	return visit([this,&params](auto& v) -> self_type {
-		if(is_multiptr_cll(v)) return multi_callable->call(params);
+		if(is_multiptr_cll(v)) return multi_callable->call(std::forward<decltype(params)>(params));
 		else return throw_wrong_interface_error<details::interfaces::call>(*this);
 	}, holder);
 }

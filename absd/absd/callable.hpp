@@ -27,7 +27,6 @@ struct callable2 {
 	}
 
 	constexpr auto call(data_type params) const {
-		//TODO: протестировать обе ветки - тип возврата void и какой-либо другой
 		using ret_type = decltype(call_with_combined_params<0>(params));
 		if constexpr(!std::is_same_v<ret_type, void>) return call_with_combined_params<0>(params);
 		else {
@@ -61,7 +60,7 @@ constexpr void callable2<data_type, functor>::create_param(auto&& param) {
 	data_type desk;
 	constexpr bool  parameter_is_only_name = requires{data_type{param};};
 	if constexpr (parameter_is_only_name)
-		desk.put(data_type{integer_t{1}}, data_type{std::forward<decltype(param)>(param)});
+		desk.put(data_type{param_sign_name}, data_type{std::forward<decltype(param)>(param)});
 	else {
 		//TODO: use std::forward_like<decltype(param)>(name) and same for def_val since gcc14
 		auto&& [name, def_val] = param;
@@ -77,7 +76,9 @@ constexpr auto callable2<data_type, functor>::call_with_params(auto&&... params)
 		return fnc(std::forward<decltype(params)>(params)...);
 	else {
 		auto& desk = params_info[(integer_t) sizeof...(params)];
-		if(desk.size() == 2) return call_with_params<initial_count>(std::forward<decltype(params)>(params)..., desk[data_type{param_sign_value}]);
+		const bool is_name_and_value_param = desk.size() == 2;
+		if(is_name_and_value_param)
+			return call_with_params<initial_count>(std::forward<decltype(params)>(params)..., desk[data_type{param_sign_value}]);
 		else {
 			data_type::factory_t::template throw_wrong_parameters_count<initial_count>();
 			return call_with_params<initial_count>(std::forward<decltype(params)>(params)..., data_type{});

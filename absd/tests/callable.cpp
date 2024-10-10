@@ -9,10 +9,11 @@
 #include "tests/factory.hpp"
 #include "absd.hpp"
 
+#include <cassert>
+
 #ifndef __clang__
 #define CTRT(code) static_assert( code );
 #else
-#include <cassert>
 #define CTRT(code) assert( code );
 #endif
 
@@ -55,8 +56,39 @@ template<typename fp> struct absd_factory : tests::factory {
 	using float_point_t = fp;
 };
 
+template<typename data_type>
+constexpr auto mk_callable(auto&& fnc, auto&&... args) {
+	return absd::details::callable2<data_type, std::decay_t<decltype(fnc)>>{
+		std::forward<decltype(fnc)>(fnc),
+		std::forward<decltype(args)>(args)...
+	};
+}
+struct bad_param {int cnt;};
+struct bad_param_factory : tests::factory {
+	template<auto cnt>
+	[[noreturn]] static void throw_wrong_parameters_count() { throw bad_param{cnt}; }
+};
+void wrong_parameter_count_test() {
+	using data_type = absd::data<bad_param_factory>;
+	constexpr auto amb = []{return mk_callable<data_type>(
+			[](int a, int b){return a-b;},
+			data_type::mk_param("a", data_type{3}),
+			data_type::mk_param("b")); };
+	constexpr auto amb_d = [=]{return data_type::mk(amb());};
+	auto ex_count = 0;
+
+	try { amb()(3); }
+	catch(const bad_param& ex) { ++ex_count; assert( ex.cnt == 1 ); }
+	assert( ex_count == 1 );
+
+	try { (void)amb_d().call(data_type::mk_map("a", 3)); }
+	catch(const bad_param& ex) { ++ex_count; assert( ex.cnt == 0 ); }
+	assert( ex_count == 2 );
+}
+
 int main(int,char**) {
 	main_test<absd_factory<float>>();
 	main_test<absd_factory<double>>();
+	wrong_parameter_count_test();
 	return 0;
 }

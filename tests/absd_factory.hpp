@@ -26,6 +26,10 @@ struct absd_factory {
 		using namespace std::literals;
 		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
 	}
+	template<auto cnt>
+	[[noreturn]] constexpr static void throw_wrong_parameters_count() {
+		throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
+	}
 };
 
 } // namespace tests
