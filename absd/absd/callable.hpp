@@ -51,7 +51,14 @@ constexpr auto callable2<data_type, functor>::call_with_combined_params(const au
 		if(user_params.contains(data_type{ind})) return call_with_combined_params<ind+1>(user_params, std::forward<decltype(params)>(params)..., user_params[data_type{ind}]);
 		else if(user_params.contains(params_info[ind][data_type{param_sign_name}]))
 			return call_with_combined_params<ind+1>(user_params, std::forward<decltype(params)>(params)..., user_params[params_info[ind][data_type{param_sign_name}]]);
-		else return call_with_combined_params<ind+1>(user_params, std::forward<decltype(params)>(params)..., params_info[ind][data_type{param_sign_value}]);
+		else {
+			auto next_param = params_info[ind][data_type{param_sign_value}];
+			if(next_param.is_none()) data_type::factory_t::template throw_wrong_parameters_count<ind>();
+			return call_with_combined_params<ind+1>(
+					user_params,
+					std::forward<decltype(params)>(params)...,
+					std::move(next_param));
+		}
 	}
 }
 

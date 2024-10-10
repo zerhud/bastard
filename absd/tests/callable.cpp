@@ -70,19 +70,24 @@ struct bad_param_factory : tests::factory {
 };
 void wrong_parameter_count_test() {
 	using data_type = absd::data<bad_param_factory>;
-	constexpr auto amb = []{return mk_callable<data_type>(
-			[](int a, int b){return a-b;},
-			data_type::mk_param("a", data_type{3}),
-			data_type::mk_param("b")); };
-	constexpr auto amb_d = [=]{return data_type::mk(amb());};
+	constexpr auto amb = [](const auto& mk) {return mk(
+		[](int a, int b){return a-b;},
+		data_type::mk_param("a", data_type{3}),
+		data_type::mk_param("b"));};
+	constexpr auto amb_c = [=]{
+		return amb([](auto&&...a){ return mk_callable<data_type>(std::forward<decltype(a)>(a)...);});
+	};
+	constexpr auto amb_d = [=]{
+		return amb([](auto&&...a){return data_type::mk(std::forward<decltype(a)>(a)...);});
+	};
 	auto ex_count = 0;
 
-	try { amb()(3); }
+	try { (void)amb_c()(3); }
 	catch(const bad_param& ex) { ++ex_count; assert( ex.cnt == 1 ); }
 	assert( ex_count == 1 );
 
 	try { (void)amb_d().call(data_type::mk_map("a", 3)); }
-	catch(const bad_param& ex) { ++ex_count; assert( ex.cnt == 0 ); }
+	catch(const bad_param& ex) { ++ex_count; assert( ex.cnt == 1 ); }
 	assert( ex_count == 2 );
 }
 
