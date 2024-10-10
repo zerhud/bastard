@@ -58,7 +58,7 @@ constexpr auto callable2<data_type, functor>::call_with_combined_params(const au
 	if constexpr (requires{fnc(std::forward<decltype(params)>(params)...);}) return fnc(std::forward<decltype(params)>(params)...);
 	else {
 		data_type next_param = find_next_param<ind>(user_params);
-		if(next_param.is_none()) factory_t::template throw_wrong_parameters_count<ind>();
+		if(next_param.is_none()) throw_wrong_parameters_count<ind>(params_info.factory);
 		return call_with_combined_params<ind+1>(
 				user_params,
 				std::forward<decltype(params)>(params)...,
@@ -100,7 +100,7 @@ constexpr auto callable2<data_type, functor>::call_with_params(auto&&... params)
 		if(is_name_and_value_param)
 			return call_with_params<initial_count>(std::forward<decltype(params)>(params)..., desk[data_type{param_sign_value}]);
 		else {
-			factory_t::template throw_wrong_parameters_count<initial_count>();
+			throw_wrong_parameters_count<initial_count>(params_info.factory);
 			return call_with_params<initial_count>(std::forward<decltype(params)>(params)..., data_type{params_info.factory});
 		}
 	}

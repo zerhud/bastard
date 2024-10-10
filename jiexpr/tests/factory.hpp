@@ -36,11 +36,11 @@ struct absd_factory {
 	constexpr static void throw_wrong_interface_error() {
 		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
 	}
-	template<auto cnt>
-	constexpr static void throw_wrong_parameters_count() {
-		throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
-	}
 };
+template<auto cnt, typename fp>
+constexpr void throw_wrong_parameters_count(const absd_factory<fp>&) {
+	throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
+}
 
 template<typename fp> constexpr auto mk_ptr(const absd_factory<fp>&, auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
 template<typename type, typename fp> constexpr static auto mk_vec(const absd_factory<fp>&){ return std::vector<type>{}; }

@@ -64,10 +64,9 @@ constexpr auto mk_callable(auto&& fnc, auto&&... args) {
 	};
 }
 struct bad_param {int cnt;};
-struct bad_param_factory : tests::factory {
-	template<auto cnt>
-	[[noreturn]] static void throw_wrong_parameters_count() { throw bad_param{cnt}; }
-};
+struct bad_param_factory : tests::factory { };
+template<auto cnt> void throw_wrong_parameters_count(const bad_param_factory&) { throw bad_param{cnt}; }
+
 void wrong_parameter_count_test() {
 	using data_type = absd::data<bad_param_factory>;
 	constexpr auto amb = [](const auto& mk) {return mk(
