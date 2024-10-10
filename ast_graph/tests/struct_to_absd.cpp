@@ -13,7 +13,7 @@
 
 #include "absd.hpp"
 
-#include "factory.hpp"
+#include "inner_factory.hpp"
 
 #include <vector>
 #include <memory>
@@ -27,7 +27,7 @@ using namespace std::literals;
 struct absd_factory : ast_graph_tests::absd_factory { };
 using absd_data = absd::data<absd_factory>;
 
-struct graph_factory : ast_graph_tests::factory {
+struct graph_factory : ast_graph_tests::inner_factory {
 	using data_type = absd::data<absd_factory>;
 };
 

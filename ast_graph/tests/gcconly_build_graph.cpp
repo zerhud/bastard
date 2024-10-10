@@ -8,12 +8,12 @@
 
 #include <iostream>
 
-#include "factory.hpp"
+#include "inner_factory.hpp"
 #include "ast_graph/graph.hpp"
 
 #include <memory>
 
-using ast_graph_tests::factory;
+using ast_graph_tests::inner_factory;
 
 struct variant_leaf1 { int v1f = 0; };
 struct variant_leaf2 { int v2f = 1; };
@@ -39,20 +39,20 @@ constexpr auto mk_test_fields(int cnt) {
 }
 
 constexpr auto mk_test_graph(auto&&... args) {
-	auto g =  ast_graph::mk_graph(factory{}, std::forward<decltype(args)>(args)...);
+	auto g =  ast_graph::mk_graph(inner_factory{}, std::forward<decltype(args)>(args)...);
 	auto v = g.create_view();
 	return std::tuple( std::move(g), std::move(v) );
 }
 
 
-static_assert( ast_graph::mk_graph_calc_size( factory{}, test_fields{} ) == 2 );
-static_assert( ast_graph::mk_graph( factory{}, test_fields{} ).size() == 2 );
-static_assert( ast_graph::mk_graph( factory{}, mk_test_fields(2) ).size() == 6 );
+static_assert(ast_graph::mk_graph_calc_size(inner_factory{}, test_fields{} ) == 2 );
+static_assert(ast_graph::mk_graph(inner_factory{}, test_fields{} ).size() == 2 );
+static_assert(ast_graph::mk_graph(inner_factory{}, mk_test_fields(2) ).size() == 6 );
 static_assert( []{
 	auto[ g, v ] = mk_test_graph(mk_test_fields(2));
 	return children_of(v, v.root()).size();
 }() == 1 );
-static_assert( ast_graph::mk_graph( factory{}, mk_test_fields(2) ).create_view().root()->is_array() == false );
+static_assert(ast_graph::mk_graph(inner_factory{}, mk_test_fields(2) ).create_view().root()->is_array() == false );
 static_assert( []{
 	auto[ g, v ] = mk_test_graph(mk_test_fields(2));
 	return children_of(v, v.root())[0]->is_array();
@@ -82,9 +82,9 @@ static_assert( []{
 
 	return
 	  (cn.size() == 2) +
-	2*(cn[1].child->field("ff") == factory::data_type{3}) +
+	2*(cn[1].child->field("ff") == inner_factory::data_type{3}) +
 	4*(ast_links_of(v, cn[0].child)[0].name == "vl") +
-	8*(ast_links_of(v, cn[0].child)[0].child->field("v2f") == factory::data_type{7})
+	8*(ast_links_of(v, cn[0].child)[0].child->field("v2f") == inner_factory::data_type{7})
 	;
 }() == 15);
 
@@ -106,7 +106,7 @@ static_assert( []{
 
 int main(int,char**) {
 	auto src = mk_test_fields(2);
-	auto g = ast_graph::mk_graph(factory{}, src);
+	auto g = ast_graph::mk_graph(inner_factory{}, src);
 	std::cout << "debug: " << g.root().base->children[0].name << std::endl;
 	std::cout << "debug: " << g.root().base->children[0].vertex->debug_info() << std::endl;
 	return 0;

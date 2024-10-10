@@ -7,13 +7,13 @@
  *************************************************************************/
 
 #include "ast_graph/mk_children_types.hpp"
-#include "factory.hpp"
+#include "inner_factory.hpp"
 
 #include <memory>
 #include <vector>
 
-struct factory : ast_graph_tests::factory {};
-struct factory_without_vec : ast_graph_tests::factory {};
+struct factory : ast_graph_tests::inner_factory {};
+struct factory_without_vec : ast_graph_tests::inner_factory {};
 
 struct single_entity2 {
 	int f0 = 0;
@@ -55,7 +55,7 @@ struct file {
 static_assert( tref::vector<std::vector<sub_entity>> );
 
 static_assert(
-		ast_graph::mk_children_types(ast_graph_tests::factory{}, file{}) ==
+		ast_graph::mk_children_types(ast_graph_tests::inner_factory{}, file{}) ==
 		tref::type_list<
 				file,
 				std::vector<sub_entity>,

@@ -1,3 +1,5 @@
+#pragma once
+
 /*************************************************************************
  * Copyright © 2024 Hudyaev Alexy <hudyaev.alexy@gmail.com>
  * This file is part of cogen.
@@ -117,7 +119,7 @@ struct absd_factory {
 constexpr auto mk_ptr(const absd_factory&, auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
 template<typename type> constexpr auto mk_vec(const absd_factory&){ return std::vector<type>{}; }
 
-struct factory {
+struct inner_factory {
 	using string_view = std::string_view;
 	using source_location = std::source_location;
 	using data_type = absd::data<absd_factory>;
@@ -146,15 +148,15 @@ struct factory {
 	}
 };
 
-constexpr auto mk_data(const factory&, std::string_view src) {
-	return factory::data_type{ factory::data_type::string_t{src} };
+constexpr auto mk_data(const inner_factory&, std::string_view src) {
+	return inner_factory::data_type{inner_factory::data_type::string_t{src} };
 }
-constexpr auto mk_data(const factory&, auto&& src) {
-	return factory::data_type{ std::forward<decltype(src)>(src) };
+constexpr auto mk_data(const inner_factory&, auto&& src) {
+	return inner_factory::data_type{std::forward<decltype(src)>(src) };
 }
 
 template<typename type>
-constexpr auto mk_list(const factory&) {
+constexpr auto mk_list(const inner_factory&) {
 	//return std::list<type>{};
 	std::vector<type> ret;
 	ret.reserve(1024);
@@ -162,19 +164,19 @@ constexpr auto mk_list(const factory&) {
 }
 
 template<typename type>
-constexpr auto mk_vec(const factory&, auto&&... items) {
+constexpr auto mk_vec(const inner_factory&, auto&&... items) {
 	std::vector<type> ret{};
 	if constexpr(sizeof...(items) > 0)
 		(void)(ret.emplace_back(std::forward<decltype(items)>(items)), ...);
 	return ret;
 }
 
-constexpr auto to_field_name(const factory&, auto val) {
+constexpr auto to_field_name(const inner_factory&, auto val) {
 	using namespace std::literals;
 	return ""sv;
 }
 
-struct query_factory : factory {
+struct query_factory : inner_factory {
 	using integer_t = int;
 	using float_point_t = double;
 

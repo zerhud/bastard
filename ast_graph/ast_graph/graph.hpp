@@ -118,8 +118,8 @@ struct graph_holder {
 		const vertex_interface* child = nullptr;
 	};
 
-	using link_holder = decltype(mk_vec<link>(factory{}));
-	using vertex_holder = decltype(mk_vec<vertex_type>(factory{}));
+	using link_holder = decltype(mk_vec<link>(std::declval<factory>()));
+	using vertex_holder = decltype(mk_vec<vertex_type>(std::declval<factory>()));
 	using data_type  = typename factory::data_type;
 
 	constexpr graph_holder(const factory& f)

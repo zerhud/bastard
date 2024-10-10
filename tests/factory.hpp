@@ -8,15 +8,15 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
-#include <vector>
 #include <string>
-#include <memory>
 #include <variant>
 #include <stdexcept>
 
+#include "common_factory.hpp"
+
 namespace tests {
 
-struct factory {
+struct factory : common_factory {
 	using empty_t = std::monostate;
 	using string_t = std::string;
 	template<typename... types> using variant = std::variant<types...>;
@@ -29,13 +29,5 @@ struct factory {
 		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
 	}
 };
-
-constexpr auto mk_ptr(const factory&, auto d) {
-	return std::make_unique<decltype(d)>( std::move(d) );
-}
-
-template<typename type> constexpr auto mk_vec(const factory& f) {
-	return std::vector<type>{};
-}
 
 } // namespace tests

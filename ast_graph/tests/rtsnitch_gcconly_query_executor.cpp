@@ -23,7 +23,7 @@
 #include "ast_graph/graph.hpp"
 #include "ast_graph/graph_absd.hpp"
 #include "ast_graph/absd_object.hpp"
-#include "factory.hpp"
+#include "inner_factory.hpp"
 #include "ascip.hpp"
 
 
@@ -33,6 +33,7 @@ struct variant_leaf1 {
 };
 struct variant_leaf2 {
 	int v2f = 1;
+	std::string name;
 };
 struct pointer_leaf {
 	int pf = 3;
@@ -53,7 +54,7 @@ struct test_fields {
 } // namespace test_data
 
 struct factory : ast_graph_tests::query_factory {
-	using data_type = ast_graph_tests::factory::data_type;
+	using data_type = ast_graph_tests::inner_factory::data_type;
 	using jiexpr_test = jiexpr<data_type, jiexpr_details::expr_operators_simple, factory>;
 	using parser = ascip<std::tuple>;
 
@@ -166,6 +167,13 @@ TEST_CASE_METHOD(parse_fixture, "query_false_returns_nothing", "[graph][query]")
 	auto empty =  mk_executor()("{{false}}");
 	CHECK(empty.size() == 0 );
 }
+/*
+TEST_CASE_METHOD(parse_fixture, "query_by_name", "[graph][query]") {
+	src_st.leafs.emplace_back().vl.emplace<test_data::variant_leaf2>().name="foo";
+	auto view =  mk_executor()("{'foo'}");
+	CHECK(view.size() == 1 );
+}
+*/
 TEST_CASE_METHOD(parse_fixture, "query_compare_field_value", "[graph][query]") {
 	auto cur =  mk_executor()("{{v.field_1==1}}");
 	CHECK(cur.size() == 1 );
@@ -177,7 +185,7 @@ TEST_CASE_METHOD(parse_fixture, "query_compare_field_value", "[graph][query]") {
 /*
 //STEP:
 //      заюзать в определители поля jiexpr
-//        текущие поле - node
+//        текущие поле – node
 //        нужен решатель с контекстом, в который можно добавить поле node
 //        regexpr taken from jiexpr
 //      tests:

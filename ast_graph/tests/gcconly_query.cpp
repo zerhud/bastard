@@ -7,7 +7,7 @@
  *************************************************************************/
 
 #include "ast_graph/query.hpp"
-#include "factory.hpp"
+#include "inner_factory.hpp"
 #include "ascip.hpp"
 
 #include <variant>
