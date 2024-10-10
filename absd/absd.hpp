@@ -196,7 +196,7 @@ public:
 		|| std::is_same_v<decltype(v), string_t>
 		|| std::is_same_v<decltype(v), integer_t>
 		|| std::is_same_v<decltype(v), float_point_t>
-	) : holder(v) {} //NOTE: cannot move here due bug in gcc https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111284 (bug are closed, bug clang bug is still is)
+	) : holder(std::move(v)) {}
 
 	constexpr explicit data(const string_t* str) : holder(str) {}
 	constexpr explicit data(const typename string_t::value_type* v) : holder(string_t(v)) {}
