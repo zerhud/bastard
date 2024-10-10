@@ -41,6 +41,7 @@ private:
 	constexpr void create_param(auto&& param) ;
 	template<auto initial_count> constexpr auto call_with_params(auto&&... params) const ;
 	template<auto ind> constexpr auto call_with_combined_params(const auto& user_params, auto&&... params) const ;
+	template<auto ind> constexpr auto find_next_param(const auto& user_params) const ;
 };
 
 template<typename data_type, typename functor> template<auto ind>
@@ -48,18 +49,22 @@ constexpr auto callable2<data_type, functor>::call_with_combined_params(const au
 	static_assert( sizeof...(params) < 501, "too many parameters :)" );
 	if constexpr (requires{fnc(std::forward<decltype(params)>(params)...);}) return fnc(std::forward<decltype(params)>(params)...);
 	else {
-		if(user_params.contains(data_type{ind})) return call_with_combined_params<ind+1>(user_params, std::forward<decltype(params)>(params)..., user_params[data_type{ind}]);
-		else if(user_params.contains(params_info[ind][data_type{param_sign_name}]))
-			return call_with_combined_params<ind+1>(user_params, std::forward<decltype(params)>(params)..., user_params[params_info[ind][data_type{param_sign_name}]]);
-		else {
-			auto next_param = params_info[ind][data_type{param_sign_value}];
-			if(next_param.is_none()) data_type::factory_t::template throw_wrong_parameters_count<ind>();
-			return call_with_combined_params<ind+1>(
-					user_params,
-					std::forward<decltype(params)>(params)...,
-					std::move(next_param));
-		}
+		data_type next_param = find_next_param<ind>(user_params);
+		if(next_param.is_none()) data_type::factory_t::template throw_wrong_parameters_count<ind>();
+		return call_with_combined_params<ind+1>(
+				user_params,
+				std::forward<decltype(params)>(params)...,
+				std::move(next_param));
 	}
+}
+
+template<typename data_type, typename functor> template<auto ind>
+constexpr auto callable2<data_type, functor>::find_next_param(const auto& user_params) const {
+	if(user_params.contains(data_type{ind}))
+		return user_params[data_type{ind}];
+	if(user_params.contains(params_info[ind][data_type{param_sign_name}]))
+		return user_params[params_info[ind][data_type{param_sign_name}]];
+	return params_info[ind][data_type{param_sign_value}];
 }
 
 template<typename data_type, typename functor>
