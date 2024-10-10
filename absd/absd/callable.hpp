@@ -82,7 +82,7 @@ constexpr void callable2<data_type, functor>::create_param(auto&& param) {
 	if constexpr (parameter_is_only_name)
 		desk.put(data_type{param_sign_name}, data_type{params_info.factory, std::forward<decltype(param)>(param)});
 	else {
-		//TODO: use std::forward_like<decltype(param)>(name) and same for def_val since gcc14
+		//TODO: use std::forward_like<decltype(param)>(name) and same for def_val since clang can support
 		auto&& [name, def_val] = param;
 		desk.put(data_type{param_sign_name}, data_type{params_info.factory, name});
 		desk.put(data_type{param_sign_value}, data_type{params_info.factory, def_val});
