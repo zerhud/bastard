@@ -116,9 +116,6 @@ private:
 
 	constexpr static auto mk_ca_val(auto&& v, auto&&... args);
 
-	template<auto args_sz>
-	constexpr static bool mk_check_callable(const auto& v){ return requires{ v(); } || args_sz > 0; }
-
 	constexpr void allocate() noexcept {
 		visit([](auto& v){
 			if constexpr(is_inner_counter_exists<decltype(v)>) {
