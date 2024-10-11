@@ -77,7 +77,7 @@ constexpr auto callable2<data_type, functor>::find_next_param(const auto& user_p
 
 template<typename data_type, typename functor>
 constexpr void callable2<data_type, functor>::create_param(auto&& param) {
-	data_type desk;
+	data_type desk{params_info.factory};
 	constexpr bool  parameter_is_only_name = requires{data_type{param};};
 	if constexpr (parameter_is_only_name)
 		desk.put(data_type{param_sign_name}, data_type{params_info.factory, std::forward<decltype(param)>(param)});
