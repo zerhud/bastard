@@ -48,7 +48,7 @@ struct counter_maker : inner_counter, type {
 };
 template<typename data_type, typename from, typename type>
 constexpr static data_type mk_coutner_and_assign(const auto& f, auto&& v) {
-	data_type ret;
+	data_type ret{f};
 	auto tmp = f.mk_ptr(counter_maker<type>(std::forward<decltype(v)>(v)));
 	ret.assign(static_cast<from*>(tmp.get()));
 	tmp.release();
