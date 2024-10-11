@@ -21,13 +21,13 @@ struct absd_factory {
 
 	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
 
-	template<typename interface>
-	[[noreturn]] constexpr static void throw_wrong_interface_error() {
-		using namespace std::literals;
-		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
-	}
 };
 
+template<typename interface>
+[[noreturn]] constexpr void throw_wrong_interface_error(const absd_factory&) {
+	using namespace std::literals;
+	throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
+}
 [[noreturn]] void throw_key_not_found(const absd_factory&, const auto&) {
 	using namespace std::literals;
 	throw std::runtime_error("attempt to get value by nonexistent key: [cannot convert to string here]"s);

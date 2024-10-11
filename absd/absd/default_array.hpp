@@ -41,7 +41,7 @@ constexpr auto mk_te_array(const auto&, auto&& src) {
 			constexpr data_type& emplace_back(data_type d) override {
 				if constexpr (requires{this->orig_val().emplace_back(std::move(d));})
 					return this->orig_val().emplace_back(std::move(d));
-				else data_type::factory_t::template throw_wrong_interface_error<interfaces::push_back>();
+				else throw_wrong_interface_error<interfaces::push_back>(d.factory);
 			}
 			constexpr data_type at(typename data_type::integer_t ind) override { return this->orig_val().at(ind); }
 			constexpr decltype(sizeof(data_type)) size() const override { return this->orig_val().size(); }

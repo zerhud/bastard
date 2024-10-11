@@ -106,15 +106,16 @@ struct absd_factory {
 	using empty_t = std::monostate;
 
 	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
-	template<typename interface>
-	[[noreturn]] constexpr static void throw_wrong_interface_error() {
-		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
-	}
 	template<auto cnt>
 	[[noreturn]] constexpr static void throw_wrong_parameters_count() {
 		throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
 	}
 };
+template<typename interface>
+[[noreturn]] constexpr void throw_wrong_interface_error(const absd_factory&) {
+	using namespace std::literals;
+	throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
+}
 [[noreturn]] void throw_key_not_found(const absd_factory&, const auto&) {
 	using namespace std::literals;
 	throw std::runtime_error("attempt to get value by nonexistent key: "s);

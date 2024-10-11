@@ -19,12 +19,11 @@
 #endif
 
 struct test_exception {};
-struct ex_factory : tests::factory {
-	template<typename>
-	[[noreturn]] static void throw_wrong_interface_error() {
-		throw test_exception{};
-	}
-};
+struct ex_factory : tests::factory { };
+template<typename>
+[[noreturn]] void throw_wrong_interface_error(const ex_factory&) {
+	throw test_exception{};
+}
 using absd_data = absd::data<tests::factory>;
 
 

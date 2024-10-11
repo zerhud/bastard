@@ -174,7 +174,7 @@ private:
 	}
 
 	template<typename interface, typename ret_val_t=self_type>
-	constexpr static ret_val_t throw_wrong_interface_error(ret_val_t ret_val = self_type{});
+	constexpr ret_val_t throw_wrong_interface_error(ret_val_t ret_val = self_type{}) const ;
 
 	template<typename type, template<typename...>class list, typename... types>
 	constexpr static bool is_listed_in_factory(list<types...>) {
@@ -290,11 +290,11 @@ public:
 	[[nodiscard]] constexpr self_type call(auto&& params);
 
 	[[nodiscard]] friend constexpr auto exec_operation(const self_type& left, const self_type& right, auto&& op) {
-		return visit([&op](const auto& l, const auto& r) -> self_type {
-			if constexpr (requires{op(l,r);}) return self_type{op(l,r)};
+		return visit([&left,&op](const auto& l, const auto& r) -> self_type {
+			if constexpr (requires{op(l,r);}) return self_type{left.factory,op(l,r)};
 			else {
 				using err_type = details::interfaces::exec_op<decltype(l), decltype(r)>;
-				throw_wrong_interface_error<err_type>();
+				left.throw_wrong_interface_error<err_type>();
 				return self_type{};
 			}
 		}, left.holder, right.holder);

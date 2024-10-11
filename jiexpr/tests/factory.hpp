@@ -32,11 +32,11 @@ struct absd_factory {
 //	template<typename key, typename value>
 //	constexpr static auto mk_map(){ return map_t<key,value>{}; }
 	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
-	template<typename interface>
-	constexpr static void throw_wrong_interface_error() {
-		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
-	}
 };
+template<typename interface, typename fp>
+constexpr static void throw_wrong_interface_error(const absd_factory<fp>&) {
+	throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
+}
 template<typename fp>
 [[noreturn]] void throw_key_not_found(const absd_factory<fp>&, const auto&) {
 	using namespace std::literals;

@@ -10,10 +10,10 @@
 
 namespace absd {
 
-template<typename factory>
+template<typename _factory>
 template<typename interface, typename ret_val_t>
-constexpr ret_val_t data<factory>::throw_wrong_interface_error(ret_val_t ret_val) {
-	factory::template throw_wrong_interface_error<interface>();
+constexpr ret_val_t data<_factory>::throw_wrong_interface_error(ret_val_t ret_val) const {
+	throw_wrong_interface_error<interface>(factory);
 	std::unreachable();
 	return ret_val;
 }
@@ -65,7 +65,7 @@ constexpr bool data<factory>::contains(const auto& val) const {
 		else if constexpr(requires{v->contains(val);}) return v->contains(val);
 		else if constexpr(requires{v==val;}) return v==val;
 		else if constexpr(requires{visit([](auto&&){}, val.holder);}) {
-			return visit([&v](const auto& right){
+			return visit([this,&v](const auto& right){
 				if constexpr (requires{v.contains(right);}) return v.contains(right);
 				else return throw_wrong_interface_error<details::interfaces::contains>(false);
 			}, val.holder);

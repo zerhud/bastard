@@ -133,7 +133,7 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 					this->orig_val().insert(kv{key, value});
 					return this->orig_val().at(key);
 				}
-				else data_type::factory_t::template throw_wrong_interface_error<interfaces::put>();
+				else throw_wrong_interface_error<interfaces::put>(key.factory);
 			}
 
 			constexpr data_type keys(const typename data_type::factory_t& f) const override {
