@@ -59,7 +59,7 @@ struct constexpr_kinda_map {
 	}
 };
 template<typename key, typename value, typename factory> constexpr auto mk_map_type(const factory& f) {
-	if constexpr(requires{ f.template mk_map<key,value>(); }) return f.template mk_map<key,value>();
+	if constexpr(requires{ mk_map<key,value>(f); }) return mk_map<key,value>(f);
 	else {
 		using map_t = constexpr_kinda_map<factory, key, value>;
 		return map_t{mk_vec<typename map_t::chunk>(f)};
@@ -91,7 +91,7 @@ struct object : inner_counter {
 		return map.at(key);
 	}
 	constexpr data keys(const auto& f) const {
-		data ret;
+		data ret{f};
 		ret.mk_empty_array();
 		for(const auto& [k,v]:map) ret.push_back(k);
 		return ret;
@@ -99,7 +99,7 @@ struct object : inner_counter {
 	constexpr auto size() const { return map.size(); }
 };
 template<typename data, typename factory> constexpr auto mk_object_type(const factory& f) {
-	if constexpr(requires{ typename factory::object_t; }) return typename factory::object_t{};
+	if constexpr(requires{ mk_object(f); }) return mk_object(f);
 	else {
 		using map_t = decltype(mk_map_type<data,data>(std::declval<factory>()));
 		return object<data,map_t>(mk_map_type<data,data>(factory{}));
@@ -136,12 +136,12 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 				else data_type::factory_t::template throw_wrong_interface_error<interfaces::put>();
 			}
 
-			constexpr data_type keys(const typename data_type::factory_t &f) const override {
-				data_type ret;
+			constexpr data_type keys(const typename data_type::factory_t& f) const override {
+				data_type ret{f};
 				ret.mk_empty_array();
 				if constexpr (iteratable<decltype(src.orig_val())>)
 					for (const auto&[k,v]:this->orig_val()) ret.push_back(k);
-				else for(auto& v:this->orig_val().keys()) ret.push_back(data_type{std::move(v)});
+				else for(auto& v:this->orig_val().keys()) ret.push_back(data_type{f, std::move(v)});
 				return ret;
 			}
 		};

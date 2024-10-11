@@ -26,7 +26,7 @@ struct type_erasure_callable {
 	constexpr virtual ~type_erasure_callable() noexcept =default ;
 	constexpr virtual data call(data params) =0 ;
 	//TODO: params never used
-	constexpr virtual params_t params(const factory_t& f) const {return {};}
+	constexpr virtual params_t params(const factory_t& f) const {return mk_vec<parameter_descriptor>(f);}
 };
 template<bool is_callable, typename data_type, typename factory>
 constexpr auto mk_te_callable(const factory& f, auto&& src, auto&&... args) {
