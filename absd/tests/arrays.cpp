@@ -23,6 +23,7 @@ constexpr void main_test() {
 		d.push_back(data{(integer_t)10});
 		return d;
 	};
+	static_assert( push_back_10() == push_back_10(), "can compare" );
 	static_assert( (integer_t)(push_back_10()[0]) == 10 );
 	static_assert( (integer_t)(push_back_10()[data{0}]) == 10 );
 	static_assert( [=]{ data d = push_back_10(); return (integer_t)d[0]; }() == 10 );

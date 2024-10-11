@@ -35,9 +35,11 @@ struct array : inner_counter {
 		return true;
 	}
 };
+constexpr auto begin(auto&& a) requires is_specialization_of<std::decay_t<decltype(a)>, array> { return a.holder.begin(); }
+constexpr auto end(auto&& a) requires is_specialization_of<std::decay_t<decltype(a)>, array> { return a.holder.end(); }
 template<typename data, typename factory> constexpr auto mk_array_type(const factory& f) {
-	if constexpr(!requires{ typename factory::array_t; }) return array<factory, data>(f);
-	else return typename factory::array_t{};
+	if constexpr(requires{ mk_array(f); }) return mk_array(f);
+	else return array<factory, data>(f);
 }
 
 template<typename data>
