@@ -65,7 +65,7 @@ struct origin : details::multiobject_tag {
 		else return val;
 	}
 	constexpr const auto& orig_val() const {
-		//TODO: use deducing this when gcc14
+		//TODO: use deducing this when clang support
 		return const_cast<origin&>(*this).orig_val();
 	}
 
