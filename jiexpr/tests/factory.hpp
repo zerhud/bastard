@@ -37,6 +37,11 @@ struct absd_factory {
 		throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
 	}
 };
+template<typename fp>
+[[noreturn]] void throw_key_not_found(const absd_factory<fp>&, const auto&) {
+	using namespace std::literals;
+	throw std::runtime_error("attempt to get value by nonexistent key: "s);
+}
 template<auto cnt, typename fp>
 constexpr void throw_wrong_parameters_count(const absd_factory<fp>&) {
 	throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));

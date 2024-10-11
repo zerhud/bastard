@@ -115,6 +115,10 @@ struct absd_factory {
 		throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
 	}
 };
+[[noreturn]] void throw_key_not_found(const absd_factory&, const auto&) {
+	using namespace std::literals;
+	throw std::runtime_error("attempt to get value by nonexistent key: "s);
+}
 
 constexpr auto mk_ptr(const absd_factory&, auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
 template<typename type> constexpr auto mk_vec(const absd_factory&){ return std::vector<type>{}; }

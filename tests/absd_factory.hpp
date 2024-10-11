@@ -28,6 +28,10 @@ struct absd_factory {
 	}
 };
 
+[[noreturn]] void throw_key_not_found(const absd_factory&, const auto&) {
+	using namespace std::literals;
+	throw std::runtime_error("attempt to get value by nonexistent key: [cannot convert to string here]"s);
+}
 template<auto cnt> [[noreturn]] void throw_wrong_parameters_count(const absd_factory&) {
 	throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
 }
