@@ -15,33 +15,6 @@
 
 namespace absd::details {
 
-template<typename factory, typename data>
-struct array : inner_counter {
-	using vec_content = data;
-
-	std::decay_t<decltype(mk_vec<vec_content>(std::declval<factory>()))> holder;
-
-
-	constexpr array(factory f) requires (requires{ mk_vec<vec_content>(f); }) : holder(mk_vec<vec_content>(f)) {}
-
-	constexpr data& emplace_back(data d) { return holder.emplace_back(std::move(d)); }
-	constexpr data& at(std::integral auto ind) { return holder.at(ind); }
-	constexpr auto size() const { return holder.size(); }
-
-	constexpr bool is_eq(const array& other) const {
-		if(holder.size() != other.holder.size()) return false;
-		for(auto i=0;i<holder.size();++i)
-			if(holder[i]!=other.holder[i]) return false;
-		return true;
-	}
-};
-constexpr auto begin(auto&& a) requires is_specialization_of<std::decay_t<decltype(a)>, array> { return a.holder.begin(); }
-constexpr auto end(auto&& a) requires is_specialization_of<std::decay_t<decltype(a)>, array> { return a.holder.end(); }
-template<typename data, typename factory> constexpr auto mk_array_type(const factory& f) {
-	if constexpr(requires{ mk_array(f); }) return mk_array(f);
-	else return array<factory, data>(f);
-}
-
 template<typename data>
 struct type_erasure_array {
 	constexpr virtual ~type_erasure_array() noexcept =default ;
@@ -52,15 +25,14 @@ struct type_erasure_array {
 	constexpr virtual bool contains(const data& val) const =0 ;
 };
 template<typename data_type>
-constexpr auto mk_te_array(const auto& f, auto&& src) {
-	using int_t = data_type::integer_t;
+constexpr auto mk_te_array(const auto&, auto&& src) {
 	using src_type = std::decay_t<decltype(src)>;
 	using te_array = type_erasure_array<data_type>;
-	if constexpr (!as_array<decltype(src.orig_val()), data_type>) return std::move(src);
+	if constexpr (!as_array<decltype(src.orig_val()), data_type>) return std::forward<decltype(src)>(src);
 	else {
 		struct te_ar2 : src_type, te_array {
-			constexpr te_ar2(src_type v) : src_type(std::move(v)) {}
-			constexpr ~te_ar2() noexcept override {}
+			constexpr explicit te_ar2(src_type v) : src_type(std::move(v)) {}
+			constexpr ~te_ar2() noexcept override =default ;
 
 			constexpr bool is_arr() const override {
 				if constexpr (requires{this->orig_val().is_array();}) return this->orig_val().is_array();
@@ -82,7 +54,7 @@ constexpr auto mk_te_array(const auto& f, auto&& src) {
 				}
 			}
 		};
-		return te_ar2{std::move(src)};
+		return te_ar2{std::forward<decltype(src)>(src)};
 	}
 }
 
