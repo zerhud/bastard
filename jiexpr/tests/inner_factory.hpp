@@ -66,13 +66,14 @@ struct bastard_factory {
 		using expr_t = std::decay_t<decltype(v)>;
 		return std::make_unique<expr_t>(std::move(v));
 	}
-	constexpr auto mk_str() const {
-		return std::string{};
-	}
 	constexpr auto back_inserter(auto& v) const {
 		return std::back_inserter(v);
 	}
 };
+
+constexpr auto mk_str(const bastard_factory&) {
+	return std::string{};
+}
 
 template<typename type> constexpr auto mk_vec(const bastard_factory&) {
 	return std::vector<type>{};

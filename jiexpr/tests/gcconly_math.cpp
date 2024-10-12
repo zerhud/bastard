@@ -1,4 +1,4 @@
-#include "factory.hpp"
+#include "inner_factory.hpp"
 
 int main(int,char**) {
 	test( 2, (absd_data::integer_t)eval("2") )

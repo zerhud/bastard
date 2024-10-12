@@ -1,4 +1,4 @@
-#include "factory.hpp"
+#include "inner_factory.hpp"
 
 int main(int,char**) {
 	test( true, eval("[]").is_array() )
