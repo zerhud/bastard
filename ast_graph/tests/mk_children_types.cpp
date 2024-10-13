@@ -6,14 +6,14 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
+#include "tests/factory.hpp"
+
 #include "ast_graph/mk_children_types.hpp"
-#include "inner_factory.hpp"
 
 #include <memory>
 #include <vector>
 
-struct factory : ast_graph_tests::inner_factory {};
-struct factory_without_vec : ast_graph_tests::inner_factory {};
+struct factory : tests::factory {};
 
 struct single_entity2 {
 	int f0 = 0;
@@ -55,7 +55,7 @@ struct file {
 static_assert( tref::vector<std::vector<sub_entity>> );
 
 static_assert(
-		ast_graph::mk_children_types(ast_graph_tests::inner_factory{}, file{}) ==
+		ast_graph::mk_children_types(factory{}, file{}) ==
 		tref::type_list<
 				file,
 				std::vector<sub_entity>,

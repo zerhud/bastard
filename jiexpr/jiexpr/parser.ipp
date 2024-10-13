@@ -19,10 +19,10 @@ constexpr auto jiexpr<data_type,operators_factory,data_factory>::create_parser()
 	constexpr auto ident =
 			lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))([](auto& v){return &create<string_t>(v);})
 			- (gh::template lit<"and"> | gh::template lit<"is"> | gh::template lit<"in"> | gh::template lit<"or">);
-	auto var_expr_mk_result = [this](auto& v){result_t r; return v.path.emplace_back(mk_result(df, r)).get();};
+	auto var_expr_mk_result = [this](auto& v){result_t r; return v.path.emplace_back(mk_result(df, std::move(r))).get();};
 	auto var_expr_parser = cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)));
 	auto fnc_call = cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_rreq(fwd) % ',') >> th<')'>::_char);
-	return rv([this](auto& v){ return mk_result(df, v); }
+	return rv([this](auto& v){ return mk_result(df, std::move(v)); }
 			,    ++gh::rv_lreq
 			  >> lexeme(omit(gh::template lit<"if"> >> +gh::space)) >> fnum<0>(gh::rv_rreq(fwd))
 			  >> fnum<2>(-(lexeme(omit(gh::template lit<"else"> >> +gh::space)) >> gh::rv_rreq(fwd)))

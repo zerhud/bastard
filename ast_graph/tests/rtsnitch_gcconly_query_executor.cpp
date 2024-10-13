@@ -16,6 +16,8 @@
 #include <vector>
 #include <variant>
 
+#include "tests/factory.hpp"
+
 #include "absd/iostream_op.hpp"
 #include "jiexpr.hpp"
 #include "jiexpr/default_operators.hpp"
@@ -23,7 +25,6 @@
 #include "ast_graph/graph.hpp"
 #include "ast_graph/graph_absd.hpp"
 #include "ast_graph/absd_object.hpp"
-#include "inner_factory.hpp"
 #include "ascip.hpp"
 
 
@@ -53,15 +54,10 @@ struct test_fields {
 
 } // namespace test_data
 
-struct factory : ast_graph_tests::query_factory {
-	using data_type = ast_graph_tests::inner_factory::data_type;
-	using jiexpr_test = jiexpr<data_type, jiexpr_details::expr_operators_simple, factory>;
+struct factory : tests::factory {
+	using data_type = absd::data<factory>;
 	using parser = ascip<std::tuple>;
-
-	template<typename... types> using variant_t = std::variant<types...>;
-	template<typename type> using ast_forwarder = std::unique_ptr<type>;
-	template<typename type> using vec_type = std::vector<type> ;
-
+	using jiexpr_test = jiexpr<data_type, jiexpr_details::expr_operators_simple, factory>;
 };
 constexpr auto mk_str(const factory&) {
 	return std::string{};

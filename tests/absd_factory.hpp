@@ -17,6 +17,8 @@ namespace tests {
 struct absd_factory {
 	using empty_t = std::monostate;
 	using string_t = std::string;
+	using integer_t = int;
+	using float_point_t = double;
 	template<typename... types> using variant = std::variant<types...>;
 
 	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }

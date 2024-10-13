@@ -6,9 +6,11 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
+#include "tests/factory.hpp"
+
 #include "ast_graph/query.hpp"
-#include "inner_factory.hpp"
 #include "ascip.hpp"
+#include "absd.hpp"
 
 #include <variant>
 
@@ -30,7 +32,7 @@ struct vertex_solver {
 	}
 };
 
-struct factory : ast_graph_tests::query_factory{ };
+struct factory : tests::factory{ };
 
 using data = absd::data<factory>;
 

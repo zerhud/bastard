@@ -8,12 +8,14 @@
 
 #include <iostream>
 
-#include "inner_factory.hpp"
+#include "tests/factory.hpp"
+
 #include "ast_graph/graph.hpp"
 
 #include <memory>
 
-using ast_graph_tests::inner_factory;
+using namespace std::literals;
+struct inner_factory : tests::factory {};
 
 struct test_leaf{ int ff=3; };
 

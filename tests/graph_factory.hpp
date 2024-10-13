@@ -10,6 +10,7 @@
 
 #include <string>
 #include <utility>
+#include <string_view>
 #include <source_location>
 
 namespace tests {
@@ -25,5 +26,24 @@ struct graph_factory {
 		else return std::is_integral_v<type> || std::is_same_v<type, std::string>;
 	}
 };
+
+template<template<typename...>typename list, typename... types, typename factory>
+constexpr auto mk_graph_node_field_value(const factory&, const list<types...>&, auto&& val) {
+	return typename factory::template variant<typename factory::empty_t, types...>{val};
+}
+template<template<typename...>typename list, typename... types, typename factory>
+constexpr auto mk_graph_node_field_value(const factory&, const list<types...>&) {
+	return typename factory::template variant<typename factory::empty_t, types...>{};
+}
+
+template<typename factory>
+constexpr auto mk_data(const factory&, std::string_view src) {
+	using dt = factory::data_type;
+	return dt{ typename dt::string_t{src} };
+}
+template<typename factory>
+constexpr auto mk_data(const factory&, auto&& src) {
+	return typename factory::data_type{ std::forward<decltype(src)>(src) };
+}
 
 } // namespace tests

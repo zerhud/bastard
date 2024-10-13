@@ -23,4 +23,11 @@ template<typename type> constexpr auto mk_vec(const common_factory&) {
 	return std::vector<type>{};
 }
 
+template<typename type> constexpr auto mk_vec(const common_factory&, auto&&... items) {
+	std::vector<type> ret{};
+	if constexpr(sizeof...(items) > 0)
+		(void)(ret.emplace_back(std::forward<decltype(items)>(items)), ...);
+	return ret;
+}
+
 } // namespace tests

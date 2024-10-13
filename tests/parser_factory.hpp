@@ -24,9 +24,9 @@ constexpr auto mk_fwd(const parser_factory&, auto& v) {
 	v = std::make_unique<typename v_type::element_type>();
 	return v.get();
 }
-constexpr auto mk_result(const parser_factory&, auto& v) {
+constexpr auto mk_result(const parser_factory&, auto&& v) {
 	using expr_t = std::decay_t<decltype(v)>;
-	return std::make_unique<expr_t>(std::move(v));
+	return std::make_unique<expr_t>(std::forward<decltype(v)>(v));
 }
 
 } // namespace tests

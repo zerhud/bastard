@@ -101,7 +101,7 @@ struct query_graph {
 	template<typename... list> using variant = factory::template variant<list...>;
 
 	struct expr;
-	using fwd_ast = factory::template forward_ast<expr>;
+	using fwd_ast = factory::template ast_forwarder<expr>;
 
 	using qvertex = query_vertex<factory, vertex_expr>;
 
@@ -128,14 +128,14 @@ struct query_graph {
 
 	template<typename gh, template<auto>class th=gh::template tmpl>
 	constexpr static auto mk_parser(const auto& df, const auto& vertex_solver) {
-		auto mk_fwd = [&df](auto& v){ return df.mk_fwd(v); };
+		auto fwd = [&df](auto& v){ return mk_fwd(df, v); };
 		constexpr auto ident =
 				lexeme(gh::alpha++ >> --(*(gh::alpha | gh::d10 | th<'_'>::char_)))
 				- (gh::template lit<"and"> | gh::template lit<"in"> | gh::template lit<"or"> | gh::template lit<"true"> | gh::template lit<"false">);
-		return rv([&df](auto& v){ return df.mk_result(std::move(v)); }
-			, check<path>( gh::rv_lreq++ >> +(query_edge<factory>::template mk_parser<gh>() >> ++gh::rv_rreq(mk_fwd)) )
-			, ( cast<binary>( gh::rv_lreq++ >> th<'+'>::_char >> gh::rv_rreq(mk_fwd) )
-			  | cast<binary>( gh::rv_lreq++ >> th<'-'>::_char >> gh::rv_rreq(mk_fwd) )
+		return rv([&df](auto& v){ return mk_result(df, std::move(v)); }
+			, check<path>( gh::rv_lreq++ >> +(query_edge<factory>::template mk_parser<gh>() >> ++gh::rv_rreq(fwd)) )
+			, ( cast<binary>( gh::rv_lreq++ >> th<'+'>::_char >> gh::rv_rreq(fwd) )
+			  | cast<binary>( gh::rv_lreq++ >> th<'-'>::_char >> gh::rv_rreq(fwd) )
 			  )
 			, check<qvertex>(qvertex::template mk_parser<gh>(vertex_solver))
 			, rv_result(th<'('>::_char >> gh::rv_req >> th<')'>::_char)

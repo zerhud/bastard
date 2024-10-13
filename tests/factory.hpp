@@ -12,9 +12,16 @@
 #include "common_factory.hpp"
 #include "jiexpr_factory.hpp"
 #include "parser_factory.hpp"
+#include "graph_factory.hpp"
 
 namespace tests {
 
-struct factory : common_factory, absd_factory, jiexpr_factory, parser_factory { };
+struct factory
+		: common_factory
+		, absd_factory
+		, jiexpr_factory
+		, parser_factory
+		, graph_factory
+{ };
 
 } // namespace tests

@@ -13,23 +13,29 @@
 
 #include "absd.hpp"
 
-#include "inner_factory.hpp"
+#include "tests/factory.hpp"
 
 #include <vector>
 #include <memory>
 #include <string>
 #include <variant>
 #include <string_view>
-#include <source_location>
+#include <optional>
+
+#ifndef __clang__
+#define CTRT(code) static_assert( code );
+#else
+#include <cassert>
+#define CTRT(code) assert( code );
+#endif
 
 using namespace std::literals;
 
-struct absd_factory : ast_graph_tests::absd_factory { };
-using absd_data = absd::data<absd_factory>;
-
-struct graph_factory : ast_graph_tests::inner_factory {
-	using data_type = absd::data<absd_factory>;
+struct graph_factory : tests::factory {
+	using data_type = absd::data<graph_factory>;
 };
+
+using absd_data = graph_factory::data_type;
 
 constexpr auto mk_data(const graph_factory& f, std::string_view d) {
 	using data_type = graph_factory::data_type;

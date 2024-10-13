@@ -161,24 +161,11 @@ constexpr auto mk_data(const inner_factory&, auto&& src) {
 }
 
 template<typename type>
-constexpr auto mk_list(const inner_factory&) {
-	//return std::list<type>{};
-	std::vector<type> ret;
-	ret.reserve(1024);
-	return ret;
-}
-
-template<typename type>
 constexpr auto mk_vec(const inner_factory&, auto&&... items) {
 	std::vector<type> ret{};
 	if constexpr(sizeof...(items) > 0)
 		(void)(ret.emplace_back(std::forward<decltype(items)>(items)), ...);
 	return ret;
-}
-
-constexpr auto to_field_name(const inner_factory&, auto val) {
-	using namespace std::literals;
-	return ""sv;
 }
 
 struct query_factory : inner_factory {

@@ -8,12 +8,14 @@
 
 #include <iostream>
 
-#include "inner_factory.hpp"
+#include "tests/factory.hpp"
+
+#include "absd.hpp"
 #include "ast_graph/graph.hpp"
 
-#include <memory>
-
-using ast_graph_tests::inner_factory;
+struct inner_factory : tests::factory {
+	using data_type = absd::data<inner_factory>;
+};
 
 struct variant_leaf1 { int v1f = 0; };
 struct variant_leaf2 { int v2f = 1; };

@@ -158,18 +158,18 @@ private:
 	}
 	template<auto cur, auto size>
 	constexpr auto value_impl(auto&& request) const {
-		if constexpr (cur==size) return f.mk_val(value_types());
+		if constexpr (cur==size) return mk_graph_node_field_value(f, value_types());
 		else return request == key<cur>()
-		    ? f.mk_val(value_types(), value<cur>())
+		    ? mk_graph_node_field_value(f, value_types(), value<cur>())
 		    : value_impl<cur+1, size>(request)
 		    ;
 	}
 	template<auto cur, auto size>
 	constexpr auto field_value_impl(auto&& request) const {
-		if constexpr (cur==size) return f.mk_val(field_value_types());
+		if constexpr (cur==size) return mk_graph_node_field_value(f, field_value_types());
 		else if constexpr (!contains<field_type<cur>>(field_value_types())) return field_value_impl<cur+1, size>(request);
 		else return request == key<cur>()
-		            ? f.mk_val(field_value_types(), value<cur>())
+		            ? mk_graph_node_field_value(f, field_value_types(), value<cur>())
 		            : field_value_impl<cur+1, size>(request)
 					;
 	}
