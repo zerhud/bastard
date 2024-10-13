@@ -1,93 +1,27 @@
+#pragma once
+
+/*************************************************************************
+ * Copyright © 2024 Hudyaev Alexy <hudyaev.alexy@gmail.com>
+ * This file is part of cogen.
+ * Distributed under the GNU Affero General Public License.
+ * See accompanying file copying (at the root of this repository)
+ * or <http://www.gnu.org/licenses/> for details
+ *************************************************************************/
+
+#include "tests/factory.hpp"
+
 #include "absd.hpp"
 #include "jiexpr.hpp"
 #include "jiexpr/default_operators.hpp"
+#include "ascip.hpp"
 
-#include <ascip.hpp>
-//#include "../ascip_all.hpp"
-#include <vector>
-#include <memory>
-#include <variant>
-#include <string_view>
-#include <source_location>
-
-#include <iostream>
-
-#define test(result, expr) \
-	static_assert( expr == result ); \
-	test_fnc_rt( result, expr );
-
-#define test_rt(result, expr) \
-	test_fnc_rt( result, expr );
-
-using namespace std::literals;
-
-template<typename float_point>
-struct absd_factory {
-	template<typename... types> using variant = std::variant<types...>;
-	template<typename type> using vector = std::vector<type>;
-	using float_point_t = float_point;
-	using string_t = std::string;
-	using empty_t = std::monostate;
-
-//	template<typename key, typename value>
-//	constexpr static auto mk_map(){ return map_t<key,value>{}; }
-	constexpr static void deallocate(auto* ptr) noexcept { delete ptr; }
+struct factory : tests::factory {
+	using data_type = absd::data<factory>;
 };
-template<typename interface, typename fp>
-constexpr static void throw_wrong_interface_error(const absd_factory<fp>&) {
-	throw std::runtime_error("cannot perform operation "s + interface::describe_with_chars());
-}
-template<typename fp>
-[[noreturn]] void throw_key_not_found(const absd_factory<fp>&, const auto&) {
-	using namespace std::literals;
-	throw std::runtime_error("attempt to get value by nonexistent key: "s);
-}
-template<auto cnt, typename fp>
-constexpr void throw_wrong_parameters_count(const absd_factory<fp>&) {
-	throw std::runtime_error("wrong arguments count: " + std::to_string(cnt));
-}
-
-template<typename fp> constexpr auto mk_ptr(const absd_factory<fp>&, auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
-template<typename type, typename fp> constexpr static auto mk_vec(const absd_factory<fp>&){ return std::vector<type>{}; }
-
-struct bastard_factory {
-	template<typename... types> using variant_t = std::variant<types...>;
-	template<typename type> using ast_forwarder = std::unique_ptr<type>;
-	template<typename type> using vec_type = std::vector<type> ;
-
-	constexpr auto mk_fwd(auto& v) const {
-		using v_type = std::decay_t<decltype(v)>;
-		static_assert( !std::is_pointer_v<v_type>, "the result have to be a unique_ptr like type" );
-		static_assert( !std::is_reference_v<v_type>, "the result have to be a unique_ptr like type" );
-		v = std::make_unique<typename v_type::element_type>();
-		return v.get();
-	}
-	constexpr auto mk_result(auto& v) const {
-		using expr_t = std::decay_t<decltype(v)>;
-		return std::make_unique<expr_t>(std::move(v));
-	}
-	constexpr auto back_inserter(auto& v) const {
-		return std::back_inserter(v);
-	}
-};
-
-constexpr auto mk_str(const bastard_factory&) {
-	return std::string{};
-}
-
-template<typename type> constexpr auto mk_vec(const bastard_factory&) {
-	return std::vector<type>{};
-}
 
 using parser = ascip<std::tuple>;
-using absd_data = absd::data<absd_factory<double>>;
-using jiexpr_test = jiexpr<absd_data, jiexpr_details::expr_operators_simple, bastard_factory>;
-
-bool test_fnc_rt(auto&& result, auto&& testing, const std::source_location loc = std::source_location::current()) {
-	const bool correct = result == testing;
-	if(!correct) std::cout << "ERROR [" << loc.file_name() << ':' << loc.line() << ", " << loc.function_name() << "]: " << result << " != " << testing << std::endl;
-	return correct;
-}
+using absd_data = absd::data<factory>;
+using jiexpr_test = jiexpr<absd_data, jiexpr_details::expr_operators_simple, factory>;
 
 constexpr absd_data eval(std::string_view src, absd_data& env) {
 	jiexpr_test::operators_executer ops;
@@ -101,4 +35,3 @@ constexpr absd_data eval(std::string_view src) {
 	env.mk_empty_object();
 	return eval(src, env);
 }
-
