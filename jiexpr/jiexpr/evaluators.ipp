@@ -22,8 +22,8 @@ constexpr void jiexpr<data_type,operators_factory,data_factory>::mk_params(auto&
 
 template< typename data_type, typename operators_factory, typename data_factory > template<typename... types>
 constexpr data_type jiexpr<data_type,operators_factory,data_factory>::operator()(const op_concat<types...>& op) const {
-	auto left_str = df.mk_str();
-	auto right_str = df.mk_str();
+	auto left_str = mk_str(df);
+	auto right_str = mk_str(df);
 	back_insert_format(df.back_inserter(left_str), op.left->ptr->cvt(*this));
 	back_insert_format(df.back_inserter(right_str), op.right->ptr->cvt(*this));
 	return data_type{ ops.template do_concat( std::move(left_str), std::move(right_str) ) };

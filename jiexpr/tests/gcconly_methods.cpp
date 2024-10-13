@@ -1,4 +1,24 @@
-#include "inner_factory.hpp"
+#include "tests/factory.hpp"
+
+#include "absd.hpp"
+#include "jiexpr.hpp"
+#include "jiexpr/default_operators.hpp"
+#include "ascip.hpp"
+
+struct factory : tests::factory {
+	using data_type = absd::data<factory>;
+};
+
+using parser = ascip<std::tuple>;
+using absd_data = absd::data<factory>;
+using jiexpr_test = jiexpr<absd_data, jiexpr_details::expr_operators_simple, factory>;
+
+constexpr absd_data eval(std::string_view src, absd_data& env) {
+	jiexpr_test::operators_executer ops;
+	jiexpr_test ev{&env, ops};
+	auto parsed = ev.parse_str<parser>(src);
+	return ev(parsed);
+}
 
 constexpr auto test_with_env(auto src) {
 	absd_data env;
@@ -36,27 +56,27 @@ constexpr auto test_with_env(auto src) {
 
 int main(int,char**) {
 
-	test( 1, (absd_data::integer_t)test_with_env("a") )
-	test( 2, (absd_data::integer_t)test_with_env("b") )
-	test( 3, (absd_data::integer_t)test_with_env("obj.b") )
-	test( 3, (absd_data::integer_t)test_with_env("obj['b']") )
-	test( 4, (absd_data::integer_t)test_with_env("obj.arr[3-3]") )
-	test( 5, (absd_data::integer_t)test_with_env("obj.arr[3-2].a") )
+	static_assert( 1 == (absd_data::integer_t)test_with_env("a") );
+	static_assert( 2 == (absd_data::integer_t)test_with_env("b") );
+	static_assert( 3 == (absd_data::integer_t)test_with_env("obj.b") );
+	static_assert( 3 == (absd_data::integer_t)test_with_env("obj['b']") );
+	static_assert( 4 == (absd_data::integer_t)test_with_env("obj.arr[3-3]") );
+	static_assert( 5 == (absd_data::integer_t)test_with_env("obj.arr[3-2].a") );
+;
+	static_assert( 1 == (absd_data::integer_t)test_with_env("fnc1()") );
+	static_assert( 2 == (absd_data::integer_t)test_with_env("fnc2(1)") );
+	static_assert( 2 == (absd_data::integer_t)test_with_env("fnc3()") );
+	static_assert( 5 == (absd_data::integer_t)test_with_env("fnc3(a=10)") );
+	static_assert( 7 == (absd_data::integer_t)test_with_env("fnc3(b=3, a=10)") );
+	static_assert( 4 == (absd_data::integer_t)test_with_env("obj.arr[4-(8*1-6)]()") );
 
-	test( 1, (absd_data::integer_t)test_with_env("fnc1()") )
-	test( 2, (absd_data::integer_t)test_with_env("fnc2(1)") )
-	test( 2, (absd_data::integer_t)test_with_env("fnc3()") )
-	test( 5, (absd_data::integer_t)test_with_env("fnc3(a=10)") )
-	test( 7, (absd_data::integer_t)test_with_env("fnc3(b=3, a=10)") )
-	test( 4, (absd_data::integer_t)test_with_env("obj.arr[4-(8*1-6)]()") )
+	static_assert( 8 == (absd_data::integer_t)test_with_env("1+7") );
+	static_assert( 4 == (absd_data::integer_t)test_with_env("1+7|to_4") );
+	static_assert( 4 == (absd_data::integer_t)test_with_env("1+7|add_filter ") );
+	static_assert( -4 == (absd_data::integer_t)test_with_env("1+7|add_filter(12) ") );
 
-	test( 8, (absd_data::integer_t)test_with_env("1+7") )
-	test( 4, (absd_data::integer_t)test_with_env("1+7|to_4") )
-	test( 4, (absd_data::integer_t)test_with_env("1+7|add_filter ") )
-	test( -4, (absd_data::integer_t)test_with_env("1+7|add_filter(12) ") )
-
-	test( true, (bool)test_with_env("1+7 is add_filter") )
-	test( false, (bool)test_with_env("1+7 is add_filter(8) ") )
+	static_assert( true == (bool)test_with_env("1+7 is add_filter") );
+	static_assert( false == (bool)test_with_env("1+7 is add_filter(8) ") );
 	return 0;
 }
 

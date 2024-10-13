@@ -10,9 +10,10 @@
 
 #include "absd_factory.hpp"
 #include "common_factory.hpp"
+#include "jiexpr_factory.hpp"
 
 namespace tests {
 
-struct factory : common_factory, absd_factory { };
+struct factory : common_factory, absd_factory, jiexpr_factory { };
 
 } // namespace tests
