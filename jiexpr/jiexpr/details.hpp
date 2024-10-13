@@ -8,7 +8,7 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
-#pragma once
+#include <utility>
 
 namespace jiexpr_details {
 
