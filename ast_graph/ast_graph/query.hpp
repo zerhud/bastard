@@ -105,7 +105,6 @@ struct query_graph {
 
 	using qvertex = query_vertex<factory, vertex_expr>;
 
-	struct unary { fwd_ast left; };
 	struct binary{ fwd_ast left; fwd_ast right; };
 	struct path_end {
 		query_edge<factory> edge;
@@ -129,9 +128,6 @@ struct query_graph {
 	template<typename gh, template<auto>class th=gh::template tmpl>
 	constexpr static auto mk_parser(const auto& df, const auto& vertex_solver) {
 		auto fwd = [&df](auto& v){ return mk_fwd(df, v); };
-		constexpr auto ident =
-				lexeme(gh::alpha++ >> --(*(gh::alpha | gh::d10 | th<'_'>::char_)))
-				- (gh::template lit<"and"> | gh::template lit<"in"> | gh::template lit<"or"> | gh::template lit<"true"> | gh::template lit<"false">);
 		return rv([&df](auto& v){ return mk_result(df, std::move(v)); }
 			, check<path>( gh::rv_lreq++ >> +(query_edge<factory>::template mk_parser<gh>() >> ++gh::rv_rreq(fwd)) )
 			, ( cast<binary>( gh::rv_lreq++ >> th<'+'>::_char >> gh::rv_rreq(fwd) )

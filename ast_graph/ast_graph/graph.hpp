@@ -134,6 +134,7 @@ struct graph_holder {
 
 	constexpr auto size() const { return vertices.size(); }
 	constexpr auto& root() { return vertices.front(); }
+	constexpr const auto& root() const { return vertices.front(); }
 	constexpr auto create_view() const { return view_type( *this ); }
 	constexpr friend void reserve_vertex_count(graph_holder& h, auto sz) { h.vertices.reserve(sz); }
 	constexpr friend auto& create_vertex(graph_holder& h, auto&&... args) {
