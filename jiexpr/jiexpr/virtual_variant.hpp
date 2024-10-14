@@ -70,9 +70,9 @@ struct virtual_variant : base_type {
 		else return ret.item;
 	}
 
-	template<auto type>
+	template<auto ind>
 	friend constexpr auto& create(virtual_variant& v) {
-		return create<__type_pack_element<type, types...>>(v);
+		return create<__type_pack_element<ind, types...>>(v);
 	}
 
 	constexpr virtual_variant() : virtual_variant(factory{}) {}
