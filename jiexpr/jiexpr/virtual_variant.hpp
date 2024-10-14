@@ -35,18 +35,19 @@ struct expression_item_wrapper : expression_base<factory, solve_info> {
 	}
 };
 
-template<template<typename...>class variant, typename base_type, typename... types>
+template<
+        template<typename...>class variant,
+		typename base_type, template<typename>class item_wrapper,
+		typename... types>
 struct virtual_variant : base_type {
 	template<typename...> struct type_list {};
 	template<typename t> struct type_c{using type=t;};
 
-	using data_type = base_type::data_type;
-	using solve_info = base_type::solve_info;
 	using factory = base_type::factory;
 
 	template<typename type> constexpr static auto mk_content_type() {
 		if constexpr (std::is_base_of_v<base_type, type>) return type_c<type>{};
-		else return type_c<expression_item_wrapper<factory, solve_info, type>>{};
+		else return type_c<item_wrapper<type>>{};
 	}
 
 	template<typename... result, typename first, typename... tail>
@@ -89,9 +90,9 @@ struct virtual_variant : base_type {
 		return *this;
 	}
 
-	constexpr data_type solve(const solve_info& i) const { return pointer->solve(i); }
-private:
+protected:
 	base_type* pointer=nullptr;
+private:
 	template<auto ind=0>
 	constexpr void exec(auto&& fnc) {
 		if constexpr (ind==sizeof...(types)) return ;
@@ -100,6 +101,22 @@ private:
 			else exec<ind+1>(std::forward<decltype(fnc)>(fnc));
 		}
 	}
+};
+
+template<
+		template<typename...>class variant,
+		typename base_type, template<typename>class item_wrapper,
+		typename... types>
+struct jiexpr_virtual_variant : virtual_variant<variant,base_type,item_wrapper,types...> {
+	using factory = base_type::factory;
+	using base = virtual_variant<variant,base_type,item_wrapper,types...>;
+
+	constexpr jiexpr_virtual_variant() =default ;
+	constexpr explicit jiexpr_virtual_variant(factory f) : base(std::move(f)) {}
+
+	using data_type = base_type::data_type;
+	using solve_info = base_type::solve_info;
+	constexpr data_type solve(const solve_info& i) const { return this->pointer->solve(i); }
 };
 
 } // namespace jiexpr_details

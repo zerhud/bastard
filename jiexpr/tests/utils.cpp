@@ -37,6 +37,7 @@ using data_type = factory::data_type;
 struct solve_info {};
 
 using virtbase = jiexpr_details::expression_base<factory, solve_info>;
+template<typename type> using virt_item_wrapper = jiexpr_details::expression_item_wrapper<factory, solve_info, type>;
 
 struct expr_1 : virtbase {
 	constexpr expr_1() =default ;
@@ -49,7 +50,9 @@ struct expr_2 : virtbase {
 	constexpr data_type solve(const solve_info&) const override {return data_type{102};}
 };
 
-using virtvar = jiexpr_details::virtual_variant< factory::variant_t, virtbase, expr_1, expr_2, int>;
+using virtvar = jiexpr_details::jiexpr_virtual_variant<
+        factory::variant_t, virtbase, virt_item_wrapper,
+        expr_1, expr_2, int>;
 
 static_assert( []{virtvar v;return create<2>(v);}() == 0 );
 static_assert( []{virtvar v;return create<int>(v);}() == 0 );
