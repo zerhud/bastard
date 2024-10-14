@@ -26,9 +26,12 @@ template<typename factory, typename solve_info, typename item_type>
 struct expression_item_wrapper : expression_base<factory, solve_info> {
 	using base_type = expression_base<factory, solve_info>;
 	using data_type = base_type::data_type;
+	factory f;
 	item_type item{};
+	constexpr expression_item_wrapper() =default ;
+	constexpr explicit expression_item_wrapper(factory f) : f(std::move(f)) {}
 	constexpr data_type solve(const solve_info&) const override {
-		return data_type{item};
+		return data_type{f, item};
 	}
 };
 
@@ -56,13 +59,12 @@ struct virtual_variant : base_type {
 	using holder_type = decltype(mk_holder<>(type_list<types...>{}));
 
 	factory f;
-	base_type* pointer=nullptr;
 	holder_type holder;
 
 	template<typename type>
 	friend constexpr type& create(virtual_variant& v) {
 		using cur_type = decltype(mk_content_type<type>())::type;
-		auto& ret = v.holder.template emplace<cur_type>();
+		auto& ret = v.holder.template emplace<cur_type>(v.f);
 		v.pointer = &ret;
 		if constexpr (std::is_base_of_v<base_type, type>) return ret;
 		else return ret.item;
@@ -73,11 +75,31 @@ struct virtual_variant : base_type {
 		return create<__type_pack_element<type, types...>>(v);
 	}
 
-	constexpr virtual_variant() {
+	constexpr virtual_variant() : virtual_variant(factory{}) {}
+	constexpr explicit virtual_variant(factory f) : f(std::move(f)) {
 		create<__type_pack_element<0, types...>>(*this);
+	}
+	constexpr virtual_variant(virtual_variant&& other) noexcept(noexcept(holder_type{std::move(other.holder)}))
+	: holder(std::move(other.holder)) {
+		exec([this](auto& v){pointer = &v;});
+	}
+	constexpr virtual_variant& operator=(virtual_variant&& other) noexcept(noexcept(holder = std::move(other.holder))) {
+		holder = std::move(other.holder);
+		exec([this](auto& v){pointer = &v;});
+		return *this;
 	}
 
 	constexpr data_type solve(const solve_info& i) const { return pointer->solve(i); }
+private:
+	base_type* pointer=nullptr;
+	template<auto ind=0>
+	constexpr void exec(auto&& fnc) {
+		if constexpr (ind==sizeof...(types)) return ;
+		else {
+			if(holder.index()==ind) fnc(get<ind>(holder));
+			else exec<ind+1>(std::forward<decltype(fnc)>(fnc));
+		}
+	}
 };
 
 } // namespace jiexpr_details
