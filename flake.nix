@@ -56,6 +56,7 @@
         ];
       };
     in rec {
+      #TODO: unset SOURCE_DATE_EPOCH for devShell (for provide random value in compile time)
       devShell = der.overrideAttrs(finalAttrs: previousAttrs: {
           nativeBuildInputs =  previousAttrs.nativeBuildInputs ++ [ pkgs.jetbrains.clion ];
         });
