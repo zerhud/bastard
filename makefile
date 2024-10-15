@@ -1,6 +1,7 @@
 builddir := make_build
 GCC := g++ -MMD -pipe -std=gnu++23 -fwhole-program -march=native -fdiagnostics-color=always -fdiagnostics-all-candidates 
 CLANG := clang++ -MMD -pipe -std=gnu++23 -march=native -fdiagnostics-color=always -ftemplate-backtrace-limit=0
+INCLUDES := -I. -I./absd -Ijiexpr -Iast_graph -Ivirtual_variant
 
 tests_src := $(shell find . -ipath '*/tests/*.cpp' | sed 's/^..//g')
 
@@ -24,12 +25,12 @@ define create_test_template
 
 -include $(builddir)/$(call base,$(1))_gcc.d
 $(builddir)/$(call base,$(1))_gcc: makefile $(1) | $(builddir)/$(dir $(call base,$(1)))
-	$(GCC) $(call extra_flags,$(1)) -I. -I./absd -Ijiexpr -Iast_graph $(1) -o $$@
+	$(GCC) $(call extra_flags,$(1)) $(INCLUDES) $(1) -o $$@
 -include $(builddir)/$(call base,$(1))_clang.d
 ifeq (,$(findstring gcconly_,$(1)))
 $(builddir)/$(call base,$(1))_clang: makefile $(1) | $(builddir)/$(dir $(call base,$(1)))
 	@echo build for $(call base,$(1))
-	$(CLANG) $(call extra_flags,$(1)) -I. -I./absd -Ijiexpr -Iast_graph $(1) -o $$@
+	$(CLANG) $(call extra_flags,$(1)) $(INCLUDES) $(1) -o $$@
 $(builddir)/$(call base,$(1))_force_clang: makefile $(1)
 	@echo -e "\033[0;31mskiping \033[1;36m$(1)\033[0;31m for FORCE clang\033[0m"
 else 
@@ -37,7 +38,7 @@ $(builddir)/$(call base,$(1))_clang: makefile $(1)
 	@echo -e "\033[0;31mskiping for \033[1;36m$(1)\033[0;31m for clang\033[0m"
 $(builddir)/$(call base,$(1))_force_clang: makefile $(1) | $(builddir)/$(dir $(call base,$(1)))
 	@echo build for $(call base,$(1))
-	$(CLANG) $(call extra_flags,$(1)) -I. -I./absd -Ijiexpr -Iast_graph $(1) -o $$@
+	$(CLANG) $(call extra_flags,$(1)) $(INCLUDES) $(1) -o $$@
 
 endif
 .PHONY: $(call base,$(1)) $(call base,$(1))_force_clang
