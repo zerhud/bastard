@@ -114,6 +114,21 @@ static_assert( []{
 }() == random_number, "can use move operator=" );
 
 // copy
+static_assert( []{
+	test_variant v;
+	create<int>(v) = random_number;
+	test_variant v2(v);
+	create<expr1>(v);
+	return v2.solve(info{});
+}() == random_number, "can use copy ctor" );
+static_assert( []{
+	test_variant v;
+	create<int>(v) = random_number;
+	test_variant v2;
+	v2 = v;
+	create<expr1>(v);
+	return v2.solve(info{});
+}() == random_number, "can use copy operator=" );
 
 int main(int,char**) {
 	return 0;

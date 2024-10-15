@@ -55,6 +55,19 @@ struct virtual_variant : base_type {
 	constexpr explicit virtual_variant(factory f) : f(std::move(f)) {
 		create<__type_pack_element<0, types...>>(*this);
 	}
+	constexpr virtual_variant(const virtual_variant& other)
+	//noexcept(noexcept(holder_type(other.holder))) //TODO: won't compile if no copy ctor
+	requires requires{holder_type(other.holder);}
+	: holder(other.holder) {
+		exec([this](auto& v){pointer = &v;});
+	}
+	constexpr virtual_variant& operator=(const virtual_variant& other)
+	//noexcept(noexcept(holder = other.holder)) //TODO: won't compile if no copy operator=
+	requires requires{holder = other.holder;} {
+		holder = other.holder;
+		exec([this](auto& v){pointer = &v;});
+		return *this;
+	}
 	constexpr virtual_variant(virtual_variant&& other) noexcept(noexcept(holder_type{std::move(other.holder)}))
 			: holder(std::move(other.holder)) {
 		exec([this](auto& v){pointer = &v;});
