@@ -193,6 +193,7 @@ public:
 	constexpr data() =default ;
 	constexpr explicit data(factory_t f) : factory(std::move(f)) {}
 
+	//TODO: add ctor for string_t*
 	constexpr data(auto* v) requires (is_listed_in_factory<decltype(*v)>()) : data(factory_t{}, v) {}
 	constexpr data(factory_t f, auto* v) requires (is_listed_in_factory<decltype(*v)>())
 	: holder(v), factory(std::move(f)) {}

@@ -24,4 +24,3 @@ constexpr auto mk_str(const jiexpr_factory&) {
 }
 
 } // namespace tests
-

@@ -7,9 +7,6 @@
  *************************************************************************/
 
 #include "tests/factory.hpp"
-#ifdef __clang__
-#include "tests/variant_clang_bug_workaround.hpp"
-#endif
 
 #include "absd.hpp"
 #include "jiexpr/virtual_variant.hpp"
@@ -23,14 +20,9 @@ constexpr long int random_number =
 		+ 1*(__TIME__[0])
 		;
 
-struct factory : tests::factory {
+struct factory : tests::variant_workaround_factory {
 	mutable int* test_field = nullptr;
 	using data_type = absd::data<factory>;
-#ifndef __clang__
-	template<typename... types> using variant_t = std::variant<types...>;
-#else
-	template<typename... types> using variant_t = tests::variant_clang_bug_workaround<types...>;
-#endif
 };
 using data_type = factory::data_type;
 
@@ -50,9 +42,9 @@ struct expr_2 : virtbase {
 	constexpr data_type solve(const solve_info&) const override {return data_type{102};}
 };
 
-using virtvar = jiexpr_details::jiexpr_virtual_variant<
-        factory::variant_t, virtbase, virt_item_wrapper,
-        expr_1, expr_2, int>;
+using virtvar = jiexpr_details::expression_variant<factory::virtual_variant_t<
+        virtbase, virt_item_wrapper,
+        expr_1, expr_2, int>>;
 
 static_assert( []{virtvar v;return create<2>(v);}() == 0 );
 static_assert( []{virtvar v;return create<int>(v);}() == 0 );
