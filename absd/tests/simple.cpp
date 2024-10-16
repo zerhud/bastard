@@ -43,6 +43,11 @@ constexpr void main_test() {
 	static_assert( (bool)exec_operation(data{3}, data{3}, [](auto& l, auto& r)requires requires{l<r;}{ return l<r;}) == false );
 	CTRT( data{string_t{"abcd"}}.contains(data{string_t{"d"}}) );
 	CTRT( !data{string_t{"abcd"}}.contains(data{string_t{"e"}}) );
+	CTRT( []{
+		string_t str = "test";
+		data d{&str};
+		return (d.size() == 4) + 2*(d == data{"test"}) + 4*(d == data{&str});
+	}() == 7 );
 }
 
 constexpr std::string test_format(auto&& d) {

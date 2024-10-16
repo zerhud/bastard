@@ -193,7 +193,6 @@ public:
 	constexpr data() =default ;
 	constexpr explicit data(factory_t f) : factory(std::move(f)) {}
 
-	//TODO: add ctor for string_t*
 	constexpr data(auto* v) requires (is_listed_in_factory<decltype(*v)>()) : data(factory_t{}, v) {}
 	constexpr data(factory_t f, auto* v) requires (is_listed_in_factory<decltype(*v)>())
 	: holder(v), factory(std::move(f)) {}
@@ -302,9 +301,12 @@ public:
 	}
 
 	[[nodiscard]] friend constexpr bool operator==(const self_type& left, const self_type& right) {
-		return left.holder.index() == right.holder.index() && visit([](const auto& l, const auto& r){
+		return visit([](const auto& l, const auto& r){
 			if constexpr(requires{ l->is_eq(*r); }) return l->is_eq(*r);
 			else if constexpr(requires{ l==r; }) return l==r;
+			else if constexpr(requires{ *l==r; }) return *l==r;
+			else if constexpr(requires{ *l==*r; }) return *l==*r;
+			else if constexpr(requires{ l==*r; }) return l==*r;
 			else return false;
 			}, left.holder, right.holder);
 	}
