@@ -130,6 +130,18 @@ static_assert( []{
 	return v2.solve(info{});
 }() == random_number, "can use copy operator=" );
 
+static_assert( []{
+	test_variant v;
+	create<int>(v) = random_number;
+	return get<int>(v).item + get<2>(v).item;
+}() == random_number + random_number );
+
+static_assert( []{
+	test_variant v;
+	create<int>(v) = random_number;
+	return holds_alternative<int>(v) + holds_alternative<2>(v);
+}() == 2 );
+
 int main(int,char**) {
 	return 0;
 }

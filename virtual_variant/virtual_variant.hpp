@@ -15,6 +15,8 @@ template<
 		typename base_type, template<typename>class item_wrapper,
 		typename... types>
 struct virtual_variant : base_type {
+	using self_type = virtual_variant<variant, base_type, item_wrapper, types...>;
+
 	template<typename...> struct type_list {};
 	template<typename t> struct type_c{using type=t;};
 
@@ -52,9 +54,12 @@ struct virtual_variant : base_type {
 	}
 
 	constexpr virtual_variant() : virtual_variant(factory{}) {}
-	constexpr explicit virtual_variant(factory f) : f(std::move(f)) {
-		create<__type_pack_element<0, types...>>(*this);
+	constexpr explicit virtual_variant(factory f)
+	: f(std::move(f))
+	, pointer(&get<0>(holder))
+	{
 	}
+
 	constexpr virtual_variant(const virtual_variant& other)
 	//noexcept(noexcept(holder_type(other.holder))) //TODO: won't compile if no copy ctor
 	requires requires{holder_type(other.holder);}
@@ -76,6 +81,26 @@ struct virtual_variant : base_type {
 		holder = std::move(other.holder);
 		exec([this](auto& v){pointer = &v;});
 		return *this;
+	}
+
+	template<typename type, typename cur_self_type>
+	friend constexpr auto&& get(cur_self_type&& v) requires std::is_base_of_v<self_type, std::decay_t<cur_self_type>> {
+		using inner_type = decltype(mk_content_type<type>())::type;
+		return get<inner_type>(v.holder);
+	}
+	template<auto ind, typename cur_self_type>
+	friend constexpr auto&& get(cur_self_type&& v) requires std::is_base_of_v<self_type, std::decay_t<cur_self_type>> {
+		return get<__type_pack_element<ind, types...>>(v);
+	}
+
+	template<typename type, typename cur_self_type>
+	friend constexpr bool holds_alternative(cur_self_type&& v) requires std::is_base_of_v<self_type, std::decay_t<cur_self_type>> {
+		using inner_type = decltype(mk_content_type<type>())::type;
+		return holds_alternative<inner_type>(v.holder);
+	}
+	template<auto ind, typename cur_self_type>
+	friend constexpr bool holds_alternative(cur_self_type&& v) requires std::is_base_of_v<self_type, std::decay_t<cur_self_type>> {
+		return holds_alternative<__type_pack_element<ind, types...>>(v);
 	}
 
 protected:
