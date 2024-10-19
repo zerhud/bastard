@@ -103,6 +103,14 @@ struct virtual_variant : base_type {
 		return holds_alternative<__type_pack_element<ind, types...>>(v);
 	}
 
+	template<typename type, typename cur_self_type>
+	friend constexpr auto first_index_of(cur_self_type&&) requires std::is_base_of_v<self_type, std::decay_t<cur_self_type>> {
+		static_assert( ((std::is_base_of_v<type, types>||std::is_same_v<type,types>) + ... ) > 0, "there is no such type" );
+		decltype(sizeof...(types)) ind=0;
+		(void)( ((std::is_base_of_v<type, types>||std::is_same_v<type,types>)||(++ind,false)) || ... );
+		return ind;
+	}
+
 protected:
 	base_type* pointer=nullptr;
 private:

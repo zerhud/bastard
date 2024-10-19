@@ -36,7 +36,8 @@ struct base {
 	virtual int solve(const info&) const =0 ;
 };
 
-struct expr1 : base {
+struct expr1_tag {};
+struct expr1 : base, expr1_tag {
 	factory f;
 	constexpr expr1() =default ;
 	constexpr expr1(factory f) : f(f) {}
@@ -141,6 +142,9 @@ static_assert( []{
 	create<int>(v) = random_number;
 	return holds_alternative<int>(v) + holds_alternative<2>(v);
 }() == 2 );
+
+static_assert( first_index_of<expr1_tag>(test_variant{}) == 0 );
+static_assert( first_index_of<int>(test_variant{}) == 2 );
 
 int main(int,char**) {
 	return 0;
