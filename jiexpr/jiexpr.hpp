@@ -361,18 +361,6 @@ struct jiexpr {
 	template<typename gh>
 	constexpr friend auto create_parser(const jiexpr& e) { return e.create_parser<gh>(); }
 
-	//TODO: remove the  copy_and_add_to_env method
-	constexpr friend auto copy_and_add_to_env(const jiexpr& vs, auto&& name, auto&& obj) {
-		struct {
-			data_type env;
-			jiexpr s;
-			constexpr data_type operator()(const parsed_expression& e) { return s(e); }
-		} ret{ *vs.env, vs };
-		ret.s.env = &ret.env;
-		ret.env.put(data_type(name), data_type::mk(obj));
-		return ret;
-	}
-
 	/*
 	 * - . and [] operators after literal
 	 */

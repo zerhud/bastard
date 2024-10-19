@@ -26,10 +26,6 @@ struct vertex_solver {
 	constexpr friend auto create_parser(const vertex_solver&) {
 		return gh::int_ | as<true>(th<'t'>::_char);
 	}
-
-	constexpr friend auto copy_and_add_to_env(const vertex_solver& vs, auto&&, auto&&) {
-		return vs;
-	}
 };
 
 struct factory : tests::factory{ };
