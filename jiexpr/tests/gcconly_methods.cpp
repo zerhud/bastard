@@ -39,7 +39,7 @@ constexpr auto test_with_env(auto src) {
 	arr.push_back(absd_data::mk([]{return absd_data{4};}));
 	obj.put(absd_data{absd_data::string_t{"arr"}}, std::move(arr));
 	env.put(absd_data{absd_data::string_t{"obj"}}, std::move(obj));
-	return eval(src, env);
+	return eval2(src, env);
 }
 
 int main(int,char**) {
@@ -50,7 +50,7 @@ int main(int,char**) {
 	static_assert( 3 == (absd_data::integer_t)test_with_env("obj['b']") );
 	static_assert( 4 == (absd_data::integer_t)test_with_env("obj.arr[3-3]") );
 	static_assert( 5 == (absd_data::integer_t)test_with_env("obj.arr[3-2].a") );
-;
+
 	static_assert( 1 == (absd_data::integer_t)test_with_env("fnc1()") );
 	static_assert( 2 == (absd_data::integer_t)test_with_env("fnc2(1)") );
 	static_assert( 2 == (absd_data::integer_t)test_with_env("fnc3()") );
@@ -65,6 +65,7 @@ int main(int,char**) {
 
 	static_assert( true == (bool)test_with_env("1+7 is add_filter") );
 	static_assert( false == (bool)test_with_env("1+7 is add_filter(8) ") );
+
 	return 0;
 }
 

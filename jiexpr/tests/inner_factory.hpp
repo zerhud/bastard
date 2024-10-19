@@ -35,3 +35,18 @@ constexpr absd_data eval(std::string_view src) {
 	env.mk_empty_object();
 	return eval(src, env);
 }
+
+constexpr auto eval2(std::string_view src, absd_data& env) {
+	jiexpr_test::operators_executer ops;
+	jiexpr_test ev{&env, ops};
+	auto parsed = ev.parse_str2<parser>(src);
+	jiexpr_test::solve_info info{};
+	info.env = &env;
+	return parsed.solve(info);
+}
+
+constexpr auto eval2(std::string_view src) {
+	absd_data env;
+	env.mk_empty_object();
+	return eval2(src, env);
+}

@@ -12,6 +12,8 @@
 
 namespace jiexpr_details {
 
+template<typename t> struct type_c{ using type=t; };
+
 template<typename, template<typename...>class> constexpr const bool is_specialization_of = false;
 template<template<typename...>class type, typename... args> constexpr const bool is_specialization_of<type<args...>, type> = true;
 
@@ -64,6 +66,17 @@ constexpr auto _inner_visit(auto&& fnc, const variant<alternatives...>& var) {
 template<template<typename...>class variant, typename... alternatives>
 constexpr auto inner_visit(auto&& fnc, const variant<alternatives...>& var) {
 	return _inner_visit<alternatives...>(std::forward<decltype(fnc)>(fnc), var);
+}
+
+template<typename data_factory>
+constexpr auto make_env_tuner() {
+	if constexpr(requires{typename data_factory::env_tuner;})
+		return type_c<typename data_factory::env_tuner>{};
+	else return type_c<std::decay_t<decltype([](auto env, auto obj){
+		decltype(env)ret{env.factory};
+		ret.mk_empty_object();
+		return ret;
+	})>>{};
 }
 
 } // namespace jiexpr_details

@@ -140,6 +140,8 @@ constexpr data_type jiexpr<data_type,operators_factory,data_factory>::operator()
 			|| 	jiexpr_details::is_specialization_of<std::decay_t<decltype(op)>, is_test_expr>
 			) {
 		data_type params;
+		return params;
+		/*
 		params.put(data_type{0}, op.object->ptr->cvt(*this));
 		auto ret = visit([this,&params](const auto& op){
 			if constexpr (requires{op.path;}) {
@@ -155,6 +157,7 @@ constexpr data_type jiexpr<data_type,operators_factory,data_factory>::operator()
 		}());
 		if constexpr (requires{op.test;}) return ops.template to_bool<data_type>(ret);
 		else return ret;
+		 */
 	}
 	else {
 		op.wasnt_specialized();
