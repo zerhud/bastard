@@ -37,66 +37,6 @@ struct jiexpr {
 	using op_holder_base = jiexpr_details::expression_base<data_factory, solve_info>;
 	template<typename type> using op_holder_wrapper = jiexpr_details::expression_item_wrapper<data_factory, solve_info, type>;
 
-	template<typename... types>
-	struct dynamic_variant {
-		struct base {
-			constexpr virtual ~base() noexcept =default ;
-			constexpr virtual data_type cvt(const self_type&) const =0 ;
-			constexpr virtual const base* move(dynamic_variant<types...>& v) =0 ;
-		};
-
-		template<typename type>
-		struct impl : base {
-			type data;
-			constexpr impl() =default ;
-			constexpr impl(type&& d) : data(std::forward<decltype(d)>(d)) {}
-			constexpr data_type cvt(const self_type& solver) const override {
-				return solver(data);
-			}
-			constexpr const base* move(dynamic_variant<types...>& v) override {
-				auto& val = v.holder.template emplace<tref::index_of<type, types...>()>( std::move(data) );
-				v.ptr = &val;
-				return v.ptr; //TODO: we can check all types if remove this lien
-			}
-		};
-
-		const base* ptr=nullptr;
-		variant_t<impl<types>...> holder;
-
-		constexpr dynamic_variant() {
-			create<0>(*this);
-		}
-		constexpr dynamic_variant(const dynamic_variant& other) =delete ;
-		constexpr dynamic_variant(dynamic_variant&& other) {
-			const_cast<base*>(other.ptr)->move(*this);
-			other.ptr = nullptr;
-		}
-		constexpr ~dynamic_variant() noexcept {
-			ptr = nullptr;
-		}
-
-		constexpr auto index() const { return holder.index(); }
-		friend constexpr auto visit(const auto& fnc, const dynamic_variant<types...>& v) {
-			return visit([&fnc](auto& v){ return fnc(v.data); }, v.holder);
-		}
-		template<typename ind>
-		friend constexpr auto& create(dynamic_variant<types...>& v) {
-			auto& ret = v.holder.template emplace<tref::index_of<ind, types...>()>();
-			v.ptr = &ret;
-			return ret.data;
-		}
-		template<auto ind>
-		friend constexpr auto& create(dynamic_variant<types...>& v) {
-			auto& ret = v.holder.template emplace<ind>();
-			v.ptr = &ret;
-			return ret.data;
-		}
-		template<auto ind> friend constexpr auto& get(dynamic_variant<types...>& v) { return get<ind>(v.holder).data; }
-		template<auto ind> friend constexpr const auto& get(const dynamic_variant<types...>& v) { return get<ind>(v.holder).data; }
-		template<typename ind> friend constexpr const auto& get(const dynamic_variant<types...>& v) { return get<tref::index_of<ind,types...>()>(v.holder).data; }
-		template<typename ind> friend constexpr bool holds_alternative(const dynamic_variant<types...>& v){ return v.holder.index() == tref::index_of<ind,types...>(); }
-	};
-
 	template<typename expr_t>
 	struct binary_op : op_holder_base {
 		std::decay_t<expr_t> left;
@@ -409,54 +349,9 @@ struct jiexpr {
 			, string_t,integer_t,float_point_t,bool
 	> {};
 
-	template<typename... operators>
-	using parse_result = dynamic_variant<std::decay_t<operators>...,string_t,integer_t,float_point_t,bool>;
+	using parsed_expression = expression_type<ast_forwarder>;
 
-	template<template<class>class fa> struct expr_type : parse_result<
-	       ternary_op< fa<expr_type<fa>> >
-	     , apply_filter_expr< fa<expr_type<fa>> >
-	     , dynamic_variant< op_and< fa<expr_type<fa>> >, op_or< fa<expr_type<fa>> > >
-	     , dynamic_variant
-	        < op_ceq<fa<expr_type<fa>>>, op_neq<fa<expr_type<fa>>>, op_lt<fa<expr_type<fa>>>
-	        , op_gt<fa<expr_type<fa>>>, op_get<fa<expr_type<fa>>>, op_let<fa<expr_type<fa>>>
-	        , op_in<fa<expr_type<fa>>>, is_test_expr<fa<expr_type<fa>>>
-	        >
-	     , dynamic_variant< op_subtract < fa<expr_type<fa>> >, op_addition< fa<expr_type<fa>> >, op_concat< fa<expr_type<fa>> > >
-	     , dynamic_variant< op_multiply < fa<expr_type<fa>> >, op_division< fa<expr_type<fa>> >, op_fp_div< fa<expr_type<fa>> > >
-	     , op_power    < fa<expr_type<fa>> >
-	     , op_not      < fa<expr_type<fa>> >
-	     , list_expr   < fa<expr_type<fa>> >
-	     , dict_expr   < fa<expr_type<fa>> >
-	     , var_expr    < fa<expr_type<fa>> >
-	     , fnc_call_expr < fa<expr_type<fa>> >
-	     , op_eq       < fa<expr_type<fa>> >
-	> {
-		constexpr data_type solve(const solve_info&) const {
-			return data_type{};
-		}
-	};
-
-	using parsed_expression = expr_type<ast_forwarder>;
-
-	data_type* env;
-	operators_factory ops;
 	data_factory df;
-
-	template<template<class>class fa> constexpr data_type operator()(const expr_type<fa>& e) {
-		return e.ptr->cvt(*this);
-	}
-	constexpr data_type operator()(string_t v) const { return data_type{ v }; }
-	constexpr data_type operator()(integer_t v) const { return data_type{ v }; }
-	constexpr data_type operator()(float_point_t v) const { return data_type{ v }; }
-	constexpr data_type operator()(bool v) const { return data_type{ v }; }
-	template<typename... types> constexpr data_type operator()(const op_concat<types...>& op) const ;
-	template<typename... types> constexpr data_type operator()(const op_eq<types...>& op) const ;
-	template<typename... types> constexpr data_type operator()(const list_expr<types...>& op) const ;
-	template<typename... types> constexpr data_type operator()(const dict_expr<types...>& op) const ;
-	template<typename... types> constexpr data_type operator()(const var_expr<types...>& op) const ;
-	template<typename... types> constexpr data_type operator()(const fnc_call_expr<types...>& op) const ;
-	template<typename... types> constexpr data_type operator()(const ternary_op<types...>& op) const ;
-	constexpr data_type operator()(const auto& op) const ;
 
 	template<typename gh>
 	constexpr auto create_parser() const ;
@@ -478,32 +373,17 @@ struct jiexpr {
 		return ret;
 	}
 
-	template<typename gh> constexpr auto parse_as_embedded(auto&& ctx, auto src, auto& result) const {
-		auto p = create_parser<gh>();
-		return p.parse(ctx, src, result);
-	}
-
 	/*
 	 * - . and [] operators after literal
 	 */
 	template<typename gh>
 	constexpr auto parse_str(auto&& src) const {
-		expr_type<ast_forwarder> r;
-		parse(create_parser<gh>(), +gh::space, gh::make_source(src), r);
-		return r;
-	}
-	template<typename gh>
-	constexpr auto parse_str2(auto&& src) const {
 		using result_t = expression_type<ast_forwarder>;
 		using expr_t = ast_forwarder<expression_type<ast_forwarder>>;
 		expression_type<ast_forwarder> r;
 		parse(_create_parser<gh, result_t, expr_t>(), +gh::space, gh::make_source(src), r);
 		return r;
 	}
-
-private:
-	constexpr void mk_params(auto& params, const auto& op) const ;
 };
 
 #include "jiexpr/parser.ipp"
-#include "jiexpr/evaluators.ipp"

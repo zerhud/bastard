@@ -52,10 +52,11 @@ struct parser_factory {
 	constexpr friend const auto& vertex_expression(const parser_factory& f) { return *f.jiexpr; }
 	constexpr friend auto solve_vertex(parser_factory& self, const auto& f, const auto& expr, const auto* graph) {
 		data_type env;
-		self.jiexpr->env = &env;
 		env.mk_empty_object();
 		env.put(data_type{"v"}, data_type::mk(ast_graph::absd_object(f, graph)));
-		return (*self.jiexpr)(expr);
+		jiexpr_test::solve_info info{};
+		info.env = &env;
+		return expr.solve(info);
 	}
 };
 
@@ -63,7 +64,6 @@ struct fixture {
 	factory f;
 	test_data::test_fields src_st;
 	graph_type graph = ast_graph::mk_graph(f, src_st);
-	data_type jiexpr_env;
 	jiexpr_test jiexpr;
 	parser_factory pf;
 
@@ -72,7 +72,6 @@ struct fixture {
 	}
 
 	constexpr auto mk_executor() {
-		jiexpr.env = &jiexpr_env;
 		return ast_graph::query_executor( f, &pf, src_st );
 	}
 

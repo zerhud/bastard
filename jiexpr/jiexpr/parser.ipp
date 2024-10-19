@@ -11,8 +11,8 @@
 template< typename data_type, typename operators_factory, typename data_factory >
 template<typename gh>
 constexpr auto jiexpr<data_type,operators_factory,data_factory>::create_parser() const {
-	using result_t = expr_type<ast_forwarder>;
-	using expr_t = ast_forwarder<expr_type<ast_forwarder>>;
+	using result_t = expression_type<ast_forwarder>;
+	using expr_t = ast_forwarder<expression_type<ast_forwarder>>;
 	return _create_parser<gh, result_t, expr_t>();
 }
 
