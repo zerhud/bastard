@@ -54,7 +54,7 @@ struct jiexpr {
 		constexpr ternary_op() =default ;
 		constexpr explicit ternary_op(data_factory) {}
 		constexpr data_type solve(const solve_info& i) const override {
-			if(i.ops.template to_bool<data_type>(cond->solve(i))) return left->solve(i);
+			if(to_bool<data_type>(i.ops, cond->solve(i))) return left->solve(i);
 			if(right) return right->solve(i);
 			return data_type{i.df};
 		}
@@ -62,31 +62,31 @@ struct jiexpr {
 	template<typename expr_t> struct op_division : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template int_div<data_type>(this->left->solve(i), this->right->solve(i));
+			return int_div<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
 		}
 	};
 	template<typename expr_t> struct op_multiply : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template mul<data_type>(this->left->solve(i), this->right->solve(i));
+			return multiply<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
 		}
 	};
 	template<typename expr_t> struct op_fp_div   : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template fp_div<data_type>(this->left->solve(i), this->right->solve(i));
+			return fp_div<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
 		}
 	};
 	template<typename expr_t> struct op_subtract : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template sub<data_type>( this->left->solve(i), this->right->solve(i) );
+			return sub<data_type>( i.ops, this->left->solve(i), this->right->solve(i) );
 		}
 	};
 	template<typename expr_t> struct op_addition : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template add<data_type>( this->left->solve(i), this->right->solve(i) );
+			return add<data_type>( i.ops, this->left->solve(i), this->right->solve(i) );
 		}
 	};
 	template<typename expr_t> struct op_concat   : binary_op<expr_t> {
@@ -96,69 +96,69 @@ struct jiexpr {
 			auto right_str = mk_str(i.df);
 			back_insert_format(back_inserter(i.df, left_str), this->left->solve(i));
 			back_insert_format(back_inserter(i.df, right_str), this->right->solve(i));
-			return data_type{ i.df, i.ops.do_concat(std::move(left_str), std::move(right_str)) };
+			return data_type{ i.df, do_concat(i.ops, std::move(left_str), std::move(right_str)) };
 		}
 	};
 	template<typename expr_t> struct op_power    : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template pow<data_type>(this->left->solve(i), this->right->solve(i));
+			return pow<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
 		}
 	};
 
 	template<typename expr_t> struct op_ceq      : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template do_ceq<data_type>(this->left->solve(i), this->right->solve(i));
+			return do_ceq<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
 		}
 	};
 	template<typename expr_t> struct op_neq      : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template do_neq<data_type>( this->left->solve(i), this->right->solve(i) );
+			return do_neq<data_type>(i.ops, this->left->solve(i), this->right->solve(i) );
 		}
 	};
 	template<typename expr_t> struct op_gt       : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template do_gt<data_type>(this->left->solve(i), this->right->solve(i));
+			return do_gt<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
 		}
 	};
 	template<typename expr_t> struct op_lt       : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template do_lt<data_type>(this->left->solve(i), this->right->solve(i));
+			return do_lt<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
 		}
 	};
 	template<typename expr_t> struct op_get      : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template do_get<data_type>(this->left->solve(i), this->right->solve(i));
+			return do_get<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
 		}
 	};
 	template<typename expr_t> struct op_let      : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template do_let<data_type>( this->left->solve(i), this->right->solve(i) );
+			return do_let<data_type>(i.ops, this->left->solve(i), this->right->solve(i) );
 		}
 	};
 	template<typename expr_t> struct op_in       : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return data_type{ i.df, i.ops.template do_in<data_type>(this->left->solve(i), this->right->solve(i)) };
+			return data_type{ i.df, do_in<data_type>(i.ops, this->left->solve(i), this->right->solve(i)) };
 		}
 	};
 
 	template<typename expr_t> struct op_and      : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template do_and<data_type>( this->left->solve(i), this->right->solve(i) );
+			return do_and<data_type>( i.ops, this->left->solve(i), this->right->solve(i) );
 		}
 	};
 	template<typename expr_t> struct op_or       : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template do_or<data_type>( this->left->solve(i), this->right->solve(i) );
+			return do_or<data_type>( i.ops, this->left->solve(i), this->right->solve(i) );
 		}
 	};
 
@@ -168,7 +168,7 @@ struct jiexpr {
 		constexpr op_not() =default ;
 		constexpr explicit op_not(data_factory) {}
 		constexpr data_type solve(const solve_info& i) const override {
-			return i.ops.template negate<data_type>( expr->solve(i) );
+			return negate<data_type>( i.ops, expr->solve(i) );
 		}
 	};
 
@@ -319,7 +319,7 @@ struct jiexpr {
 			auto first_param = object->solve(info);
 			auto prepared = test.prepare_call(info);
 			prepared.env.put(data_type{0}, first_param);
-			return info.ops.template to_bool<data_type>(test.exec(prepared, 1));
+			return to_bool<data_type>(info.ops, test.exec(prepared, 1));
 		}
 	};
 
