@@ -289,13 +289,24 @@ public:
 
 	[[nodiscard]] constexpr self_type call(auto&& params);
 
+	[[nodiscard]] friend constexpr auto exec_operation(const self_type& obj, auto&& op) {
+		return visit([&](const auto& val){
+			if constexpr (requires{op(val);}) return self_type{ obj.factory, op(val) };
+			else if constexpr (requires{op(*val);}) return self_type{ obj.factory, op(*val) };
+			else {
+				using err_type = details::interfaces::exec_op<decltype(obj), decltype(obj)>;
+				obj.throw_wrong_interface_error<err_type>();
+				return self_type{obj.factory};
+			}
+		}, obj.holder);
+	}
 	[[nodiscard]] friend constexpr auto exec_operation(const self_type& left, const self_type& right, auto&& op) {
 		return visit([&left,&op](const auto& l, const auto& r) -> self_type {
 			if constexpr (requires{op(l,r);}) return self_type{left.factory,op(l,r)};
 			else {
 				using err_type = details::interfaces::exec_op<decltype(l), decltype(r)>;
 				left.throw_wrong_interface_error<err_type>();
-				return self_type{};
+				return self_type{left.factory};
 			}
 		}, left.holder, right.holder);
 	}

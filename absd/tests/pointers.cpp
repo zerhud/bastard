@@ -14,6 +14,8 @@ namespace pointers_test {
 
 template<typename data_type>
 struct empty_object {
+	int inner_val = 47;
+
 	constexpr data_type at(auto&&) const { return data_type{3}; }
 	constexpr auto size() const { return 1ul; }
 	constexpr bool contains(const auto& key) const { return (typename data_type::integer_t)key == 1; }
@@ -66,7 +68,20 @@ void main_test() {
 	}() == 3 );
 }
 
+template<typename data>
+void exec_op_test() {
+	static_assert( []{
+		pointers_test::empty_object<data> obj;
+		data d{&obj};
+		obj.inner_val = 53;
+		return (typename data::integer_t)exec_operation(d, [](const pointers_test::empty_object<data>& v){
+			return v.inner_val;
+		});
+	}() == 53 );
+}
+
 int main(int,char**) {
 	main_test<absd::data<pointers_test::factory>>();
+	exec_op_test<absd::data<pointers_test::factory>>();
 	return 0;
 }
