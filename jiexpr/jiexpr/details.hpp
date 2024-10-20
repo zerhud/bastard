@@ -10,6 +10,8 @@
 
 #include <utility>
 
+#include "default_operators.hpp"
+
 namespace jiexpr_details {
 
 template<typename t> struct type_c{ using type=t; };
@@ -77,6 +79,12 @@ constexpr auto make_env_tuner() {
 		ret.mk_empty_object();
 		return ret;
 	})>>{};
+}
+
+template<typename factory>
+constexpr auto make_default_operators(const factory& f) {
+	if constexpr (requires{make_jiexpr_default_operators(f);}) return make_jiexpr_default_operators(f);
+	else return expr_operators_simple{};
 }
 
 } // namespace jiexpr_details

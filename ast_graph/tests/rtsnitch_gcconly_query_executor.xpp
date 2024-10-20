@@ -20,7 +20,6 @@
 
 #include "absd/iostream_op.hpp"
 #include "jiexpr.hpp"
-#include "jiexpr/default_operators.hpp"
 #include "ast_graph/query_executor.hpp"
 #include "ast_graph/graph.hpp"
 #include "ast_graph/graph_absd.hpp"
@@ -57,7 +56,7 @@ struct test_fields {
 struct factory : tests::factory {
 	using data_type = absd::data<factory>;
 	using parser = ascip<std::tuple>;
-	using jiexpr_test = jiexpr<data_type, jiexpr_details::expr_operators_simple, factory>;
+	using jiexpr_test = jiexpr<data_type, factory>;
 };
 constexpr auto mk_str(const factory&) {
 	return std::string{};

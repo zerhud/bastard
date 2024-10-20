@@ -17,13 +17,13 @@
 #include "jiexpr/virtual_variant.hpp"
 
 template<
-        typename data_type,
-		typename operators_factory,
-		typename data_factory
-		>
+	typename data_type,
+	typename data_factory
+	>
 struct jiexpr {
+	using operators_factory = decltype(jiexpr_details::make_default_operators(std::declval<data_factory>()));
 	template<typename... types> using variant_t = typename data_factory::template variant_t<types...>;
-	using self_type = jiexpr<data_type, operators_factory, data_factory>;
+	using self_type = jiexpr<data_type, data_factory>;
 	using operators_executer = operators_factory;
 	using env_tuner = decltype(jiexpr_details::make_env_tuner<data_factory>())::type;
 

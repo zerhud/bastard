@@ -4,7 +4,6 @@
 #include "tests/factory.hpp"
 #include "absd/iostream_op.hpp"
 #include "jiexpr.hpp"
-#include "jiexpr/default_operators.hpp"
 #include "ast_graph/query_executor.hpp"
 #include "ast_graph/absd_object.hpp"
 #include "ascip.hpp"
@@ -43,7 +42,7 @@ struct factory : tests::factory {
 
 using data_type = factory::data_type;
 using graph_type = decltype(ast_graph::mk_graph(factory{}, test_data::test_fields{}));
-using jiexpr_test = jiexpr<data_type, jiexpr_details::expr_operators_simple, factory>;
+using jiexpr_test = jiexpr<data_type, factory>;
 
 struct parser_factory {
 	data_type env;
