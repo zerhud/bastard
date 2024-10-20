@@ -8,17 +8,17 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
-template< typename data_type, typename data_factory >
+template< typename data_factory >
 template<typename gh>
-constexpr auto jiexpr<data_type,data_factory>::create_parser() const {
+constexpr auto jiexpr<data_factory>::create_parser() const {
 	using result_t = expression_type<ast_forwarder>;
 	using expr_t = ast_forwarder<expression_type<ast_forwarder>>;
 	return _create_parser<gh, result_t, expr_t>();
 }
 
-template< typename data_type, typename data_factory >
+template< typename data_factory >
 template<typename gh, typename result_t, typename expr_t, template<auto>class th>
-constexpr auto jiexpr<data_type,data_factory>::_create_parser() const {
+constexpr auto jiexpr<data_factory>::_create_parser() const {
 	auto fwd = [this](auto& v){ return mk_fwd(df, v); };
 	auto fwd_emp = [this](auto& v){ return mk_fwd(df, v.emplace_back()); };
 	//TODO: initialize string (ident, quoted_string, array) and vectors (array only) with data factory

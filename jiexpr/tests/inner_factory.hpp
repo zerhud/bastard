@@ -21,7 +21,7 @@ struct factory : tests::factory {
 
 using parser = ascip<std::tuple>;
 using absd_data = absd::data<factory>;
-using jiexpr_test = jiexpr<absd_data, factory>;
+using jiexpr_test = jiexpr<factory>;
 
 constexpr auto eval(std::string_view src, absd_data& env) {
 	jiexpr_test::operators_executer ops;

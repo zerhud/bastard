@@ -42,7 +42,7 @@ struct factory : tests::factory {
 
 using data_type = factory::data_type;
 using graph_type = decltype(ast_graph::mk_graph(factory{}, test_data::test_fields{}));
-using jiexpr_test = jiexpr<data_type, factory>;
+using jiexpr_test = jiexpr<factory>;
 
 struct parser_factory {
 	data_type env;

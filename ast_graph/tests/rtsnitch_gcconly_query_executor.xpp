@@ -56,7 +56,7 @@ struct test_fields {
 struct factory : tests::factory {
 	using data_type = absd::data<factory>;
 	using parser = ascip<std::tuple>;
-	using jiexpr_test = jiexpr<data_type, factory>;
+	using jiexpr_test = jiexpr<factory>;
 };
 constexpr auto mk_str(const factory&) {
 	return std::string{};
