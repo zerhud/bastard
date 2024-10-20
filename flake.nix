@@ -43,7 +43,7 @@
         name = "jiexpr";
         buildInputs = with pkgs;[ tref ];
         snitch_header = snitch.out;
-        nativeBuildInputs = with pkgs;[clang_17 ninja ascip snitch boost185 (boost-build.override {useBoost = boost185;})];
+        nativeBuildInputs = with pkgs;[clang_19 ninja ascip snitch boost185 (boost-build.override {useBoost = boost185;})];
         installPhase = "mkdir -p \"$out/include\" && cp ascip.hpp -t \"$out/include\"";
         buildPhase = "g++ -std=c++23 -fwhole-program -march=native ./test.cpp -o ascip_test && ./ascip_test";
         meta.description = "jiexpr is an jinja interpretator with extensions writted in cpp. it can to be embbadded in your projects with open source license.";
