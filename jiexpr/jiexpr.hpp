@@ -215,14 +215,9 @@ struct jiexpr {
 		constexpr data_type solve(const solve_info& info) const override {
 			auto cur = (*info.env)[path.at(0)->solve(info)];
 			for(auto pos = ++path.begin();pos!=path.end();++pos) {
-				auto& item = **pos;
-				//TODO: do we really need in holds_alternative?
-				if(holds_alternative<string_t>(item)) cur = cur[item.solve(info)];
-				else {
-					auto key = item.solve(info);
-					if(key.is_int()) cur = cur[(integer_t)key];
-					else cur = cur[key];
-				}
+				auto key = (*pos)->solve(info);
+				if(key.is_int()) cur = cur[(integer_t)key];
+				else cur = cur[key];
 			}
 			return cur;
 		}
@@ -272,11 +267,8 @@ struct jiexpr {
 			ctx.info.env = &ctx.env;
 			for(auto& param:this->params) {
 				auto solved = param->solve(ctx.info);
-				//TODO: remove this `if constexpr` after remove prev expr
-				if constexpr (requires{first_index_of<op_eq_tag>(*param);}) {
-					if( param->holder.index() != first_index_of<op_eq_tag>(*param) )
-						ctx.env.put(data_type{ind++}, solved);
-				}
+				if( param->holder.index() != first_index_of<op_eq_tag>(*param) )
+					ctx.env.put(data_type{ind++}, solved);
 			}
 			return ctx.fnc.call(ctx.env);
 		}
