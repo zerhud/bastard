@@ -16,6 +16,11 @@
 #include "jiexpr/details.hpp"
 #include "jiexpr/virtual_variant.hpp"
 
+//NOTE: there is a clang bug: https://github.com/llvm/llvm-project/issues/59966
+//      workaround:
+//      1. the solve methods have to be defined after first instantiation
+//      2. call base class methods via a base class pointer,
+//         but after it clang can't compile and doesn't produce an understandable message
 template< typename data_factory >
 struct jiexpr {
 	using data_type = data_factory::data_type;
@@ -266,7 +271,7 @@ struct jiexpr {
 			for(auto& param:this->params) {
 				auto solved = param->solve(ctx.info);
 				if( !param->is_eq_operator() )
-					ctx.env.put(data_type{ind++}, solved);
+					ctx.env.put(data_type{ind++}, std::move(solved));
 			}
 			return ctx.fnc.call(ctx.env);
 		}
