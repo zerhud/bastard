@@ -231,6 +231,7 @@ struct jiexpr {
 		expr_t value;
 
 		constexpr static auto struct_fields_count() { return 2; }
+		constexpr bool is_eq_operator() const override { return true; }
 		constexpr data_type solve(const solve_info& info) const override {
 			auto cur = *info.env;
 			auto& left = name.path;
@@ -264,7 +265,7 @@ struct jiexpr {
 			ctx.info.env = &ctx.env;
 			for(auto& param:this->params) {
 				auto solved = param->solve(ctx.info);
-				if( param->holder.index() != first_index_of<op_eq_tag>(*param) )
+				if( !param->is_eq_operator() )
 					ctx.env.put(data_type{ind++}, solved);
 			}
 			return ctx.fnc.call(ctx.env);

@@ -19,7 +19,8 @@ struct expression_base {
 	using solve_info = _solve_info;
 
 	virtual ~expression_base() noexcept =default ;
-	virtual data_type solve(const solve_info&) const =0 ;
+	constexpr virtual data_type solve(const solve_info&) const =0 ;
+	constexpr virtual bool is_eq_operator() const {return false;}
 };
 
 template<typename factory, typename solve_info, typename item_type>
@@ -44,7 +45,8 @@ struct expression_variant : base_type {
 
 	using data_type = base_type::data_type;
 	using solve_info = base_type::solve_info;
-	constexpr data_type solve(const solve_info& i) const { return this->pointer->solve(i); }
+	constexpr data_type solve(const solve_info& i) const override { return this->pointer->solve(i); }
+	constexpr bool is_eq_operator() const override { return this->pointer->is_eq_operator(); }
 };
 
 } // namespace jiexpr_details
