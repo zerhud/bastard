@@ -30,6 +30,7 @@ namespace ast_graph {
 template<typename factory, typename parser_factory, typename source>
 struct query_executor {
 	using graph_type = decltype(mk_graph(std::declval<factory>(), std::declval<source>()));
+	using graph_view = decltype(std::declval<graph_type>().create_view());
 	using parser = typename factory::parser;
 	using vertex_expr = std::decay_t<decltype(vertex_expression(std::declval<parser_factory>()))>;
 	using qgraph = details::query_graph<factory, vertex_expr>;
@@ -40,26 +41,52 @@ struct query_executor {
 	parser_factory* pf;
 	const source& src;
 	graph_type graph;
-	graph_type result;
+	graph_view result;
 
 	constexpr query_executor(factory f, parser_factory* pf, const source& src)
 	: f(f)
 	, pf(pf)
 	, src(src)
 	, graph(mk_graph(f, src))
-	, result(mk_empty_graph(f, src))
+	, result(f)
 	{}
 
 	constexpr auto operator()(const auto& q) requires requires { visit([](const auto&){}, q); } {
 		return visit( *this, q );
 	}
+	// graph
 	constexpr auto operator()(const qgraph& q) { return visit(*this, q.data); }
-	constexpr auto operator()(const qvertex& q) { }
 	constexpr auto operator()(const qgraph::path& q) {
+		return graph.create_view();
 	}
 	constexpr auto operator()(const qgraph::add& q) {
+		return graph.create_view();
 	}
 	constexpr auto operator()(const qgraph::sub& q) {
+		return graph.create_view();
+	}
+
+	// vertex
+	constexpr auto operator()(const qvertex& q) { return visit(*this, q.data); }
+	constexpr auto operator()(const qvertex::emb_expr& q) {
+		for(auto& i:graph.vertices) {
+			if(solve_vertex(*pf, f, q, i.base)) create_vertex(result, &i);
+		}
+		return result;
+	}
+	constexpr auto operator()(const qvertex::own_expr& q) {
+		for(auto& i:q) visit(*this, i);
+		return result;
+	}
+	constexpr auto operator()(const qvertex::by_name& q) {
+		//for(auto& i:graph) if()
+		return graph.create_view();
+	}
+	constexpr auto operator()(const qvertex::by_type_and_name& q) {
+		return graph.create_view();
+	}
+	constexpr auto operator()(const qvertex::by_field_value& q) {
+		return graph.create_view();
 	}
 	/*
 	constexpr bool check_vertex(const vertex_type& v, const qvertex& q) {
@@ -71,18 +98,12 @@ struct query_executor {
 		//auto& eq = get<0>(get<0>(q.data));
 	}
 	*/
-	constexpr auto exec(auto&& parsed) {
-		typename graph_type::view_type ret(f);
-		for(auto& i:graph.vertices) {
-			if(solve_vertex(*pf, f, get<0>(get<2>(parsed.data).data), i.base)) create_vertex(ret, &i);
-		}
-		return ret;
-	}
-	constexpr auto operator()(auto&& query) {
+	constexpr auto operator()(auto&& query) requires requires{ parser::make_source(std::forward<decltype(query)>(query)); } {
 		qgraph r;
 		const auto& vs = vertex_expression(*pf);
 		parse( qgraph::template mk_parser<parser>(f, vs), +parser::space, parser::make_source(std::forward<decltype(query)>(query)), r.data );
-		return exec(std::move(r));
+		return (*this)(r);
+		//return exec(std::move(r));
 	}
 };
 

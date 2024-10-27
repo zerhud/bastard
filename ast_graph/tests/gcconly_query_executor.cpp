@@ -13,7 +13,7 @@ namespace test_data {
 struct variant_leaf1 {
 	int v1f = 0;
 };
-struct variant_leaf2 {
+struct variant_leaf_with_name {
 	int v2f = 1;
 	std::string name;
 };
@@ -22,7 +22,7 @@ struct pointer_leaf {
 };
 struct test_leaf {
 	int ff = 3;
-	std::variant<variant_leaf1, variant_leaf2> vl;
+	std::variant<variant_leaf1, variant_leaf_with_name> vl;
 	std::unique_ptr<pointer_leaf> pl;
 };
 static_assert(tref::gs::size<test_leaf> == 3);
@@ -88,6 +88,14 @@ static_assert( [f=fixture{}]mutable{
 	auto r = q("{{}}");
 	return (r.size() > 0) + 2*(f.mk_obj() == f.mk_obj(r, r.root()));
 }() == 3 );
+/*
+static_assert( [f=fixture{}]mutable{
+	auto q = f.mk_executor();
+	f.src_st.leafs.emplace_back().vl.emplace<test_data::variant_leaf_with_name>().name = "test";
+	auto r = q("{'test'}");
+	return r.size();
+}() == 1 );
+*/
 
 int main(int,char**) {
 	return 0;

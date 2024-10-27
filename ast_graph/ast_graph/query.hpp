@@ -31,7 +31,6 @@ namespace details{
 //                       max_deep: 0 match nothing, -1 match all (last)
 //                       match_count: 0 or omit - all, number - match number
 
-
 template<typename factory>
 struct query_edge {
 	using string_t = typename factory::string_t;
@@ -65,10 +64,10 @@ struct query_vertex {
 	struct by_field_value { string_t field; own_literal value; };
 	using own_expr = vec<variant<by_type_and_name, by_field_value, by_name>>;
 
-	using expr = inner_expr::parsed_expression;
+	using emb_expr = inner_expr::parsed_expression;
 
 	int arg_number=0;
-	variant<expr,own_expr> data;
+	variant<emb_expr,own_expr> data;
 
 	template<typename gh, template<auto>class th=gh::template tmpl>
 	constexpr static auto mk_parser(auto&& inner_expr_parser) {
