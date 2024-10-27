@@ -109,7 +109,8 @@ static_assert( []{
 int main(int,char**) {
 	auto src = mk_test_fields(2);
 	auto g = ast_graph::mk_graph(inner_factory{}, src);
-	std::cout << "debug: " << g.root().base->children[0].name << std::endl;
-	std::cout << "debug: " << g.root().base->children[0].vertex->debug_info() << std::endl;
+	auto v = g.create_view();
+	std::cout << "debug: " << ast_links_of(v, v.root())[0].name << std::endl;
+	std::cout << "debug: " << ast_links_of(v, v.root())[0].child->debug_info() << std::endl;
 	return 0;
 }

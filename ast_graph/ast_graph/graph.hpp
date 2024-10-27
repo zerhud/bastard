@@ -17,18 +17,11 @@ namespace ast_graph {
 template<typename factory>
 struct ast_vertex {
 	using string_view = typename factory::string_view;
-	struct link {
-		string_view name{};
-		const ast_vertex* vertex=nullptr;
-	};
-
 	using names_type = decltype(mk_vec<string_view>(factory{}));
 	using data_type  = typename factory::data_type;
-	using link_holder = decltype(mk_vec<link>(factory{}));
 
 	virtual constexpr ~ast_vertex() noexcept =default ;
 
-	link_holder children ; //< all children. links will be added to children later
 	const ast_vertex* parent = nullptr ;
 
 	virtual string_view type_name() const =0 ;
@@ -85,10 +78,7 @@ struct ast_vertex_holder : ast_vertex<factory> {
 	}
 	constexpr unsigned size() const override {
 		if constexpr (requires{ src->size(); }) return src->size();
-		else {
-			auto n = create_node();
-			return n.fields_count() + this->children.size();
-		}
+		else return create_node().fields_count();
 	}
 
 	constexpr const char* debug_info() const override {return __PRETTY_FUNCTION__;}
@@ -216,8 +206,6 @@ constexpr auto mk_graph(const factory& f, auto& storage, auto&& name, auto& pare
 	auto& cur_parent = *create_vertex(storage, f, src).base;
 	create_ast_link( storage, name, &parent, &cur_parent );
 	cur_parent.parent = &parent;
-	parent.children.emplace_back( typename ast_vertex<factory>::link{ std::forward<decltype(name)>(name), &cur_parent} );
-	parent.children.back().vertex = &cur_parent;
 	for(const auto& i:src) mk_graph(f, storage, "", cur_parent, i);
 }
 template<typename factory, tref::variant source>
@@ -233,8 +221,6 @@ constexpr auto mk_graph(const factory& f, auto& storage, auto&& name, auto& pare
 	auto& cur_parent = *create_vertex( storage, f, src ).base;
 	create_ast_link( storage, name, &parent, &cur_parent );
 	cur_parent.parent = &parent;
-	parent.children.emplace_back( typename ast_vertex<factory>::link{std::forward<decltype(name)>(name), &cur_parent} );
-	parent.children.back().vertex = &cur_parent;
 	node<factory, source>{f, &src}.for_each_child_value([&](auto&& name, const auto& v){
 		mk_graph(f, storage, std::forward<decltype(name)>(name), cur_parent, v);
 	});
