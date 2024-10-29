@@ -14,6 +14,16 @@
 
 namespace ast_graph {
 
+namespace details {
+
+constexpr bool contains(const auto& c, const auto& k) {
+	if constexpr(requires{contains(c,k);}) return contains(c,k);
+	else if constexpr(requires{c.contains(k);}) return c.contains(k);
+	else return find(begin(c), end(c), k) == end(c);
+}
+
+} // namespace details
+
 template<typename factory>
 struct ast_vertex {
 	using string_view = typename factory::string_view;
@@ -125,7 +135,8 @@ struct graph_holder {
 	constexpr auto size() const { return vertices.size(); }
 	constexpr auto& root() { return vertices.front(); }
 	constexpr const auto& root() const { return vertices.front(); }
-	constexpr auto create_view() const { return view_type( *this ); }
+	constexpr auto create_empty_view() const { view_type v( *this ); return v; }
+	constexpr auto create_view() const { view_type v( *this ); v.include_all(); return v; }
 	constexpr friend void reserve_vertex_count(graph_holder& h, auto sz) { h.vertices.reserve(sz); }
 	constexpr friend auto& create_vertex(graph_holder& h, auto&&... args) {
 		return h.vertices.emplace_back(std::forward<decltype(args)>(args)...);
@@ -146,19 +157,19 @@ struct graph_view {
 	using vertex_holder = decltype(mk_vec<const vertex_type*>(factory{}));
 
 	factory f;
-	link_holder edges;
 	vertex_holder vertices;
+	const holder* base;
 
-	constexpr graph_view(const holder& h) : graph_view(h.f) {
-		for(auto& e:h.edges) edges.emplace_back(e);
-		for(auto& v:h.vertices) vertices.emplace_back(&v);
+	constexpr explicit graph_view(const holder& h)
+	: f(h.f)
+	, vertices(mk_vec<const vertex_type*>(h.f))
+	, base(&h)
+	{
 	}
 
-	constexpr explicit graph_view(const factory& f)
-	: f(f)
-	, edges(mk_vec<link>(f))
-	, vertices(mk_vec<const vertex_type*>(f))
-	{}
+	constexpr void include_all() {
+		for(auto& v:base->vertices) vertices.emplace_back(&v);
+	}
 
 	constexpr auto size() const { return vertices.size(); }
 	constexpr auto* root() { return vertices.front()->base; }
@@ -169,12 +180,12 @@ struct graph_view {
 
 	constexpr friend auto ast_links_of(const graph_view& view, const vertex_interface* root) {
 		link_holder ret = mk_vec<link>(view.f);
-		for(auto& e:view.edges) if(e.parent == root) ret.emplace_back(e);
+		for(auto& e:view.base->edges) if(e.parent == root) ret.emplace_back(e);
 		return ret;
 	}
 	constexpr friend auto children_of(const graph_view& view, const vertex_interface* root) {
 		auto ret = mk_vec<const vertex_interface*>(view.f);
-		for(auto& e:view.edges) if(e.parent == root) ret.emplace_back(e.child);
+		for(auto& e:view.base->edges) if(e.parent == root) ret.emplace_back(e.child);
 		return ret;
 	}
 
