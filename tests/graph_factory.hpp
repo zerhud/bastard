@@ -9,6 +9,7 @@
  *************************************************************************/
 
 #include <string>
+#include <format>
 #include <utility>
 #include <string_view>
 #include <source_location>
@@ -44,6 +45,16 @@ constexpr auto mk_data(const factory&, std::string_view src) {
 template<typename factory>
 constexpr auto mk_data(const factory&, auto&& src) {
 	return typename factory::data_type{ std::forward<decltype(src)>(src) };
+}
+template<typename factory>
+[[noreturn]] void throw_vertex_not_present_in_graph(const factory&, const auto* vertex, const auto& graph) {
+	using namespace std::literals;
+	throw std::runtime_error(std::format("the vertex {}, is not present in the graph {}", (void*)vertex, (void*)&graph));
+}
+template<typename factory>
+[[noreturn]] void throw_base_not_matched(const factory&) {
+	using namespace std::literals;
+	throw std::runtime_error("base doesn't match in in view operations");
 }
 
 } // namespace tests

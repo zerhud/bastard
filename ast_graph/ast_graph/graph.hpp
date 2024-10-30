@@ -12,14 +12,16 @@
 #include "mk_children_types.hpp"
 #include "graph_calc_size.hpp"
 
+#include <utility>
+
 namespace ast_graph {
 
 namespace details {
 
-constexpr bool contains(const auto& c, const auto& k) {
+constexpr bool call_contains(const auto& c, const auto& k) {
 	if constexpr(requires{contains(c,k);}) return contains(c,k);
 	else if constexpr(requires{c.contains(k);}) return c.contains(k);
-	else return find(begin(c), end(c), k) == end(c);
+	else return find(begin(c), end(c), k) != end(c);
 }
 
 } // namespace details
@@ -92,17 +94,28 @@ struct ast_vertex_holder : ast_vertex<factory> {
 	}
 
 	constexpr const char* debug_info() const override {return __PRETTY_FUNCTION__;}
+	friend constexpr bool operator==(const ast_vertex_holder& left, const ast_vertex_holder& right) {
+		return left.src == right.src;
+	}
 };
 
 template<typename factory, typename... types>
 struct vertex_holder {
+	using vertex_interface = ast_vertex<factory>;
 	template<typename t> using vertex = ast_vertex_holder<factory, t>;
 	using variant = factory::template variant<vertex<types>...>;
 	explicit constexpr vertex_holder(const factory& f, const auto& val) : holder(vertex<tref::decay_t<decltype(val)>>(f, val)) {
 		base = &get<vertex<tref::decay_t<decltype(val)>>>(holder);
 	}
-	ast_vertex<factory>* base;
+	vertex_interface* base;
 	variant holder;
+
+	friend constexpr bool operator==(const vertex_holder& left, const vertex_holder& right) {
+		return left.holder == right.holder;
+	}
+	friend constexpr bool operator==(const vertex_holder& left, const vertex_interface& right) {
+		return left.base == &right;
+	}
 };
 
 template<typename factory, typename _node_type> struct graph_view ;
@@ -145,6 +158,11 @@ struct graph_holder {
 	constexpr friend auto& create_ast_link( graph_holder& h, auto&& name, const auto* parent, const auto* child) {
 		return h.edges.emplace_back( std::forward<decltype(name)>(name), parent, child );
 	}
+	constexpr auto links_of(const vertex_interface* parent) const {
+		link_holder ret = mk_vec<link>(f);
+		for(auto& e:edges) if(e.parent == parent) ret.emplace_back(e);
+		return ret;
+	}
 };
 
 template<typename factory, typename _node_type>
@@ -154,7 +172,7 @@ struct graph_view {
 	using link_holder = holder::link_holder;
 	using vertex_type = holder::vertex_type;
 	using vertex_interface = holder::vertex_interface;
-	using vertex_holder = decltype(mk_vec<const vertex_type*>(factory{}));
+	using vertex_holder = decltype(mk_vec<const vertex_interface*>(factory{}));
 
 	factory f;
 	vertex_holder vertices;
@@ -162,27 +180,46 @@ struct graph_view {
 
 	constexpr explicit graph_view(const holder& h)
 	: f(h.f)
-	, vertices(mk_vec<const vertex_type*>(h.f))
+	, vertices(mk_vec<const vertex_interface*>(h.f))
 	, base(&h)
 	{
 	}
 
 	constexpr void include_all() {
-		for(auto& v:base->vertices) vertices.emplace_back(&v);
+		for(auto& v:base->vertices) vertices.emplace_back(v.base);
 	}
 
 	constexpr auto size() const { return vertices.size(); }
-	constexpr auto* root() { return vertices.front()->base; }
+	constexpr auto* root() { return vertices.front(); }
 
-	constexpr friend auto& create_vertex(graph_view& h, const vertex_type* v) {
-		return h.vertices.emplace_back(v);
+	constexpr auto& add_vertex(const vertex_interface* v) {
+		if(!details::call_contains(base->vertices, *v)) throw_vertex_not_present_in_graph(f, v, *base);
+		if(details::call_contains(vertices, v)) return *v;
+		return *vertices.emplace_back(v);
 	}
 
-	constexpr friend auto ast_links_of(const graph_view& view, const vertex_interface* root) {
-		link_holder ret = mk_vec<link>(view.f);
-		for(auto& e:view.base->edges) if(e.parent == root) ret.emplace_back(e);
+	constexpr auto ast_links_of(const vertex_interface* root) const {
+		link_holder ret = mk_vec<link>(f);
+		for(auto& e:base->edges) if(e.parent == root && details::call_contains(vertices, e.child)) ret.emplace_back(e);
 		return ret;
 	}
+
+	constexpr graph_view& operator+=(const graph_view& other) {
+		if(other.base != base) throw_base_not_matched(f);
+		for(auto& ov:other.vertices) if(!details::call_contains(vertices, ov)) vertices.emplace_back(ov);
+		return *this;
+	}
+	constexpr graph_view& operator-=(const graph_view& other) {
+		auto tmp = mk_vec<const vertex_interface*>(f);
+		for(auto& vertex:vertices) {
+			if(!details::call_contains(other.vertices, vertex))
+				tmp.emplace_back(vertex);
+		}
+		vertices = std::move(tmp);
+		return *this;
+	}
+
+	//TODO: remove method?
 	constexpr friend auto children_of(const graph_view& view, const vertex_interface* root) {
 		auto ret = mk_vec<const vertex_interface*>(view.f);
 		for(auto& e:view.base->edges) if(e.parent == root) ret.emplace_back(e.child);
@@ -192,7 +229,7 @@ struct graph_view {
 	constexpr friend bool operator==(const graph_view& left, const graph_view& right) {
 		if(left.vertices.size()!=right.vertices.size()) return false;
 		for(auto i=0;i<left.vertices.size();++i) {
-			if(left.vertices[i]->base->origin() != right.vertices[i]->base->origin()) return false;
+			if(left.vertices[i]->origin() != right.vertices[i]->origin()) return false;
 		}
 		return true;
 	}

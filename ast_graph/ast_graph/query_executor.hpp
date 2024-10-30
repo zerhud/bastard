@@ -70,7 +70,7 @@ struct query_executor {
 	constexpr auto operator()(const qvertex& q) { return visit(*this, q.data); }
 	constexpr auto operator()(const qvertex::emb_expr& q) {
 		for(auto& i:graph.vertices) {
-			if(solve_vertex(*pf, f, q, i.base)) create_vertex(result, &i);
+			if(solve_vertex(*pf, f, q, i.base)) add_vertex(result, &i);
 		}
 		return result;
 	}

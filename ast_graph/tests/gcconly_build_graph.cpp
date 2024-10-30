@@ -77,9 +77,9 @@ static_assert( [f=fixture{}]mutable{
 }() == true );
 static_assert( [f=fixture{}]mutable{
 	auto [_,v] = f.mk_test_fields(2).mk_test_graph();
-	auto children = ast_links_of(v, v.root());
+	auto children = v.ast_links_of(v.root());
 	auto& c0 = children[0];
-	auto cn = ast_links_of(v, c0.child);
+	auto cn = v.ast_links_of(c0.child);
 	return
 	  (c0.parent == v.root()) +
 	2*(c0.name == "leafs") +
@@ -94,15 +94,15 @@ static_assert( [f=fixture{}]mutable{
 	f.src.leafs[0].vl.emplace<1>().v2f = 7;
 
 	auto[ g, v ] = f.mk_test_graph();
-	auto children = ast_links_of(v, v.root());
+	auto children = v.ast_links_of(v.root());
 	auto& c0 = children[0];
-	auto cn = ast_links_of(v, c0.child);
+	auto cn = v.ast_links_of(c0.child);
 
 	return
 	  (cn.size() == 2) +
 	2*(cn[1].child->field("ff") == inner_factory::data_type{3}) +
-	4*(ast_links_of(v, cn[0].child)[0].name == "vl") +
-	8*(ast_links_of(v, cn[0].child)[0].child->field("v2f") == inner_factory::data_type{7})
+	4*(v.ast_links_of(cn[0].child)[0].name == "vl") +
+	8*(v.ast_links_of(cn[0].child)[0].child->field("v2f") == inner_factory::data_type{7})
 	;
 }() == 15 );
 
@@ -123,12 +123,50 @@ static_assert( [f=fixture{}]mutable{
 	auto g2 = ast_graph::mk_graph(f.f, src2);
 	return g1.create_view() != g2.create_view();
 }(), "can compare graph view with operator!=" );
+static_assert( []{
+	fixture f;
+	auto [g,_] = f.mk_test_fields(2).mk_test_graph();
+	return g.links_of(g.links_of(g.root().base)[0].child).size();
+}() == 2);
+static_assert( []{
+	fixture f;
+	auto [g,v] = f.mk_test_fields(2).mk_test_graph();
+	auto vs = g.create_empty_view();
+	vs.add_vertex(g.root().base);
+	auto& leafs = vs.add_vertex(g.links_of(g.root().base)[0].child);
+	vs.add_vertex(g.links_of(&leafs)[0].child);
+	return (vs.size() == 3) + 2*(vs.ast_links_of(&leafs).size() == 1);
+}() == 3, "get vertices only added to view, not all present in graph");
+
+static_assert( []{
+	fixture f;
+	auto [g,v] = f.mk_test_fields(2).mk_test_graph();
+	auto vt = g.create_empty_view();
+	vt += v;
+	return v.size() == vt.size();
+}() == true );
+static_assert( []{
+	fixture f;
+	auto [g,v] = f.mk_test_fields(2).mk_test_graph();
+	auto vt = g.create_empty_view();
+	vt += v;
+	return v.size() == vt.size();
+}() == true );
+static_assert( []{
+	fixture f;
+	auto [g,v] = f.mk_test_fields(2).mk_test_graph();
+	auto vt = g.create_empty_view();
+	auto orig_size = v.size();
+	vt.add_vertex(g.root().base);
+	v -= vt;
+	return v.size() == orig_size-1;
+}() == true );
 
 int main(int,char**) {
 	auto src = fixture{}.create_test_fields(2);
 	auto g = ast_graph::mk_graph(inner_factory{}, src);
 	auto v = g.create_view();
-	std::cout << "debug: " << ast_links_of(v, v.root())[0].name << std::endl;
-	std::cout << "debug: " << ast_links_of(v, v.root())[0].child->debug_info() << std::endl;
+	std::cout << "debug: " << v.ast_links_of(v.root())[0].name << std::endl;
+	std::cout << "debug: " << v.ast_links_of(v.root())[0].child->debug_info() << std::endl;
 	return 0;
 }
