@@ -39,13 +39,13 @@ struct graph_absd {
 	}
 	constexpr auto at(int_t k) {
 		if(!cur_root->is_array()) return data_type{};
-		auto children = children_of(g, cur_root);
+		auto children = g.ast_links_of(cur_root);
 		if(k > children.size()) return data_type{};
-		return data_type::mk(graph_absd(f, g, children[k]));
+		return data_type::mk(graph_absd(f, g, children[k].child));
 	}
 	constexpr auto at(const data_type& k) {
 		if(k.is_string()) {
-			auto children = ast_links_of(g, cur_root);
+			auto children = g.ast_links_of(cur_root);
 			auto&& str_k = (str_t)k;
 			for(auto& i:children) if(i.name == str_k) return data_type::mk(graph_absd(f, g, i.child));
 			if(str_k=="__parent") return cur_root->parent ? data_type::mk(graph_absd(f, g, cur_root->parent)) : data_type{};
@@ -55,12 +55,12 @@ struct graph_absd {
 		return data_type{};
 	}
 	constexpr auto size() const {
-		auto children = children_of(g, cur_root);
+		auto children = g.ast_links_of(cur_root);
 		return children.size() + cur_root->fields_count();
 	}
 	constexpr bool contains(const data_type& k) const {
 		for(auto&& field:cur_root->fields()) if((str_t)k==field) return true;
-		auto children = ast_links_of(g, cur_root);
+		auto children = g.ast_links_of(cur_root);
 		auto&& str_k = (str_t)k;
 		for(const auto& child:children) if(str_k == child.name) return true;
 		return false;
@@ -68,7 +68,7 @@ struct graph_absd {
 	constexpr auto keys() const {
 		auto ret = mk_vec<data_type>(f);
 		for(auto&& field:cur_root->fields()) ret.emplace_back(mk_data(f, std::move(field)));
-		auto children = ast_links_of(g, cur_root);
+		auto children = g.ast_links_of(cur_root);
 		for(const auto& child:children) ret.emplace_back(mk_data(f, child.name));
 		return ret;
 	}

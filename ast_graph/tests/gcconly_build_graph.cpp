@@ -79,15 +79,15 @@ static_assert( test_fixture{[](auto& f){ return f.v.size(); }}() == 2 );
 static_assert( test_fixture{[](auto& f){
 	auto [_,v] = f.mk_test_fields(2).mk_test_graph();
 	return v.size();
-}}() == 2 );
+}}() == 6 );
 static_assert( test_fixture{[](auto& f){
-	auto [_,v] = f.mk_test_fields(2).mk_test_graph();
-	return children_of(v, v.root()).size();
+	auto [g,v] = f.mk_test_fields(2).mk_test_graph();
+	return v.ast_links_of(g.root().base).size();
 }}() == 1 );
 static_assert(ast_graph::mk_graph(inner_factory{}, fixture{}.mk_test_fields(2).src ).create_view().root()->is_array() == false );
 static_assert( test_fixture{[](auto& f){
-	auto [_,v] = f.mk_test_fields(2).mk_test_graph();
-	return children_of(v, v.root())[0]->is_array();
+	auto [g,v] = f.mk_test_fields(2).mk_test_graph();
+	return v.ast_links_of(g.root().base)[0].child->is_array();
 }}() == true );
 static_assert( test_fixture{[](auto& f){
 	auto [_,v] = f.mk_test_fields(2).mk_test_graph();

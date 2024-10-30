@@ -219,13 +219,6 @@ struct graph_view {
 		return *this;
 	}
 
-	//TODO: remove method?
-	constexpr friend auto children_of(const graph_view& view, const vertex_interface* root) {
-		auto ret = mk_vec<const vertex_interface*>(view.f);
-		for(auto& e:view.base->edges) if(e.parent == root) ret.emplace_back(e.child);
-		return ret;
-	}
-
 	constexpr friend bool operator==(const graph_view& left, const graph_view& right) {
 		if(left.vertices.size()!=right.vertices.size()) return false;
 		for(auto i=0;i<left.vertices.size();++i) {
