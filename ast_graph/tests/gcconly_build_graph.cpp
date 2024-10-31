@@ -161,7 +161,7 @@ static_assert( test_fixture{[](auto& f){
 	auto vt = g.create_empty_view();
 	vt += v;
 	return v.size() == vt.size();
-}}() == true );
+}}() == true, "test operator+=" );
 static_assert( test_fixture{[](auto& f){
 	auto [g,v] = f.mk_test_fields(2).mk_test_graph();
 	auto vt = g.create_empty_view();
@@ -169,7 +169,7 @@ static_assert( test_fixture{[](auto& f){
 	vt.add_vertex(g.root().base);
 	v -= vt;
 	return v.size() == orig_size-1;
-}}() == true );
+}}() == true, "test operator-=" );
 
 int main(int,char**) {
 	auto src = fixture{}.create_test_fields(2);
