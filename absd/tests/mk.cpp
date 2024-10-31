@@ -10,13 +10,6 @@
 #include "absd.hpp"
 
 #include <cassert>
-#include <iostream>
-
-#ifndef __clang__
-#define CTRT(code) static_assert( code );
-#else
-#define CTRT(code) assert( code );
-#endif
 
 struct test_exception {};
 struct ex_factory : tests::factory { };
@@ -86,7 +79,6 @@ struct constant_array_and_obj {
 	}
 };
 
-template<bool run_ct>
 constexpr void test() {
 	using obj = constant_object<absd_data>;
 	static_assert( absd_data::mk(1) == absd_data{1} );
@@ -97,7 +89,7 @@ constexpr void test() {
 	static_assert( absd_data::mk(constant_array{}).is_array() );
 	static_assert( absd_data::mk(constant_array_and_obj{}).is_array() );
 	static_assert( absd_data::mk(constant_array_and_obj{}).is_object() );
-	CTRT( absd_data::mk(constant_array_and_obj{})[absd_data{"m0"}].is_int() );
+	static_assert( absd_data::mk(constant_array_and_obj{})[absd_data{"m0"}].is_int() );
 	static_assert( absd_data::mk(constant_array_and_obj{})[absd_data{0}].is_int() );
 }
 
@@ -117,7 +109,7 @@ void cannot_modify() {
 } // namespace object_tests
 
 int main(int,char**) {
-	object_tests::test<false>();
+	object_tests::test();
 	object_tests::cannot_modify();
 	return 0;
 }
