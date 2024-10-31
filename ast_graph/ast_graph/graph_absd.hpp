@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <utility>
+
 namespace ast_graph {
 
 template<typename factory, typename graph> struct graph_absd ;
