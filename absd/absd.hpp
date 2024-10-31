@@ -20,10 +20,6 @@
 
 namespace absd::details {
 
-template<typename...> struct type_list {};
-template<typename t> struct _type_c{ using type=t; };
-template<typename t> constexpr _type_c<t> type_c;
-
 template<typename factory> constexpr auto mk_integer_type() {
 	if constexpr(!requires{ typename factory::integer_t; }) return int{};
 	else return typename factory::integer_t{};
@@ -254,7 +250,7 @@ public:
 	constexpr auto& operator=(integer_t v){ null_multi_pointers(); return assign(v); }
 	constexpr auto& operator=(float_point_t v){ null_multi_pointers(); return assign(v); }
 
-	constexpr explicit operator bool() const { return get<bool>(holder); }
+	constexpr explicit operator bool() const { return is_none() || get<bool>(holder); }
 	constexpr operator string_t() const { return holder.index() == 5 ? *get<const string_t*>(holder) : get<string_t>(holder); }
 	constexpr operator integer_t() const { return get<integer_t>(holder); }
 	constexpr operator float_point_t() const { return get<float_point_t>(holder); }
@@ -311,15 +307,28 @@ public:
 		}, left.holder, right.holder);
 	}
 
-	[[nodiscard]] friend constexpr bool operator==(const self_type& left, const self_type& right) {
-		return visit([](const auto& l, const auto& r){
-			if constexpr(requires{ l->is_eq(*r); }) return l->is_eq(*r);
-			else if constexpr(requires{ l==r; }) return l==r;
-			else if constexpr(requires{ *l==r; }) return *l==r;
-			else if constexpr(requires{ *l==*r; }) return *l==*r;
-			else if constexpr(requires{ l==*r; }) return l==*r;
-			else return false;
+	template<typename right_type>
+	[[nodiscard]] friend constexpr bool operator==(const self_type& left, const right_type& right) {
+		if constexpr (std::is_same_v<self_type, right_type>) return
+			(left.is_none() && right.is_none()) || visit([](const auto& l, const auto& r){
+				if constexpr(requires{ l->is_eq(*r); }) return l->is_eq(*r);
+				else if constexpr(requires{ l==r; }) return l==r;
+				else if constexpr(requires{ *l==r; }) return *l==r;
+				else if constexpr(requires{ *l==*r; }) return *l==*r;
+				else if constexpr(requires{ l==*r; }) return l==*r;
+				else return false;
 			}, left.holder, right.holder);
+		else if constexpr (requires{get<4>(left.holder)==right;})
+			return // ^^ strings
+			  (left.holder.index() == 4 && get<4>(left.holder) == right) ||
+			  (left.holder.index() == 5 && *get<5>(left.holder) == right);
+		else if constexpr (requires{get<3>(left.holder)==right;})
+			return // ^^ integers and bool
+			  (left.holder.index() == 3 && get<3>(left.holder) == right) ||
+			  (left.holder.index() == 2 && get<2>(left.holder) == right) ||
+			  (left.holder.index() == 1 && get<1>(left.holder) == right)
+			;
+		else return false;
 	}
 };
 

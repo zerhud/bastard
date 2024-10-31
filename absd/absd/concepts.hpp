@@ -10,6 +10,14 @@
 
 namespace absd::details {
 
+template<typename...> struct type_list {};
+template<typename t> struct _type_c{ using type=t; };
+template<typename t> constexpr _type_c<t> type_c;
+template<typename t> constexpr bool operator==(_type_c<t>, _type_c<t>) { return true; }
+template<typename l, typename r> constexpr bool operator==(_type_c<l>, _type_c<r>) { return false; }
+template<typename t> constexpr bool operator!=(_type_c<t>, _type_c<t>) { return false; }
+template<typename l, typename r> constexpr bool operator!=(_type_c<l>, _type_c<r>) { return true; }
+
 template<typename type>
 concept iteratable =
 		requires(const type& v){ begin(v); end(v); } ||

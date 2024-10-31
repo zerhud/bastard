@@ -18,6 +18,10 @@
 #define CTRT(code) assert( code );
 #endif
 
+static_assert( absd::details::type_c<int> == absd::details::type_c<int> );
+static_assert( absd::details::type_c<int> != absd::details::type_c<char> );
+static_assert( !(absd::details::type_c<int> == absd::details::type_c<char>) );
+
 template<typename factory>
 constexpr void main_test() {
 	using data = absd::data<factory>;
@@ -43,11 +47,17 @@ constexpr void main_test() {
 	static_assert( (bool)exec_operation(data{3}, data{3}, [](auto& l, auto& r)requires requires{l<r;}{ return l<r;}) == false );
 	CTRT( data{string_t{"abcd"}}.contains(data{string_t{"d"}}) );
 	CTRT( !data{string_t{"abcd"}}.contains(data{string_t{"e"}}) );
-	CTRT( []{
+	static_assert( []{
 		string_t str = "test";
 		data d{&str};
-		return (d.size() == 4) + 2*(d == data{"test"}) + 4*(d == data{&str});
-	}() == 7 );
+		return (d.size() == 4) + 2*(d == data{"test"}) + 4*(d == data{&str}) + 8*(d=="test");
+	}() == 15, "works with string pointer" );
+	static_assert( data{ "foo" } == "foo", "can compare with value" );
+	static_assert( data{ 100 } == 100, "can compare with value" );
+	static_assert( data{ 100 } != 101, "can compare with value" );
+	static_assert( data{ true } == true, "can compare with value" );
+	static_assert( data{} == data{}, "none is equal to none only" );
+	static_assert( data{} != 1, "none is equal to none only" );
 }
 
 constexpr std::string test_format(auto&& d) {
