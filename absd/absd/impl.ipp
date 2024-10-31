@@ -12,7 +12,7 @@ namespace absd {
 
 template<typename _factory>
 template<typename interface, typename ret_val_t>
-constexpr ret_val_t data<_factory>::throw_wrong_interface_error(ret_val_t ret_val) const {
+constexpr ret_val_t data<_factory>::_throw_wrong_interface_error(ret_val_t ret_val) const {
 	throw_wrong_interface_error<interface>(factory);
 	std::unreachable();
 	return ret_val;
@@ -58,18 +58,17 @@ constexpr auto data<factory>::mk_ca_val(auto&& v, auto&& ... args) {
 template<typename factory>
 constexpr bool data<factory>::contains(const auto& val) const {
 	return !is_none() && visit([this,&val](const auto& v){
-		if(is_multiptr_obj(v)) return multi_object->contains(val);
-		if(is_multiptr_arr(v)) return multi_array->contains(val);
-		if constexpr(requires{v.contains(typename std::decay_t<decltype(v)>::key_type{});}) return v.contains(val);
-		if constexpr(requires{v.contains(val);}) return v.contains(val);
-		else if constexpr(requires{v->contains(val);}) return v->contains(val);
-		else if constexpr(requires{visit([](auto&&){}, val.holder);}) {
-			return visit([this,&v](const auto& right){
-				if constexpr (requires{v.contains(right);}) return v.contains(right);
-				else return throw_wrong_interface_error<details::interfaces::contains>(false);
-			}, val.holder);
+		if constexpr (requires{multi_object->contains(val);}) {
+			if(is_multiptr_obj(v)) return multi_object->contains(val);
+			if(is_multiptr_arr(v)) return multi_array->contains(val);
 		}
-		else return throw_wrong_interface_error<details::interfaces::contains>(false);
+		auto call_contains = [&](const auto& right) {
+			if constexpr (requires{v.contains(right);}) return v.contains(right);
+			else if constexpr (requires{v->contains(right);}) return v->contains(right);
+			else return _throw_wrong_interface_error<details::interfaces::contains>(false);
+		};
+		if constexpr( !is_instantiation<decltype(val)>() ) return call_contains(val);
+		else return visit(call_contains, val.holder);
 	}, holder);
 }
 
@@ -87,7 +86,7 @@ template<typename _factory>
 constexpr auto data<_factory>::keys() const {
 	return visit( [this](const auto& v){
 		if(is_multiptr_obj(v)) return multi_object->keys(factory_t{});
-		else return throw_wrong_interface_error<details::interfaces::keys>();
+		else return _throw_wrong_interface_error<details::interfaces::keys>();
 	}, holder);
 }
 
@@ -100,7 +99,7 @@ constexpr data<_factory>::self_type& data<_factory>::push_back(data::self_type d
 		else if constexpr(requires{ v->emplace_back(std::move(d)); }) { return v->emplace_back(std::move(d)); }
 		else if constexpr(requires{ v.push_back(std::move(d)); }) { return v.push_back(std::move(d)); }
 		else if constexpr(requires{ v->push_back(std::move(d)); }) { return v->push_back(std::move(d)); }
-		else return throw_wrong_interface_error<details::interfaces::push_back,self_type&>(*this);
+		else return _throw_wrong_interface_error<details::interfaces::push_back,self_type&>(*this);
 	}, holder);
 }
 
@@ -109,7 +108,7 @@ constexpr data<factory>::self_type& data<factory>::put(data::self_type key, data
 	if(is_none()) mk_empty_object();
 	return visit([this,&key,&value](auto& v) -> self_type& {
 		if(is_multiptr_obj(v)) return multi_object->put(key, value);
-		else return throw_wrong_interface_error<details::interfaces::put,self_type&>(*this);
+		else return _throw_wrong_interface_error<details::interfaces::put,self_type&>(*this);
 	}, holder);
 }
 
@@ -119,7 +118,7 @@ constexpr data<factory>::self_type data<factory>::operator[](data::integer_t ind
 		if(is_multiptr_arr(v)) return multi_array->at(ind);
 		if constexpr(requires{ self_type{v.at(ind)}; }) return v.at(ind);
 		else if constexpr(requires{ self_type{v->at(ind)}; }) return v->at(ind);
-		else return throw_wrong_interface_error<details::interfaces::at_ind>(*this);
+		else return _throw_wrong_interface_error<details::interfaces::at_ind>(*this);
 	}, holder);
 }
 
@@ -130,7 +129,7 @@ constexpr data<factory>::self_type data<factory>::operator[](const data::self_ty
 		else if(is_multiptr_obj(v)) return multi_object->at(key);
 		if constexpr(requires{ v.at(key); }) return v.at(key);
 		else if constexpr(requires{ v->at(key); }) return v->at(key);
-		else return throw_wrong_interface_error<details::interfaces::at_key>(*this);
+		else return _throw_wrong_interface_error<details::interfaces::at_key>(*this);
 	}, holder);
 }
 
@@ -138,7 +137,7 @@ template<typename factory>
 constexpr data<factory>::self_type data<factory>::call(auto&& params) {
 	return visit([this,&params](auto& v) -> self_type {
 		if(is_multiptr_cll(v)) return multi_callable->call(std::forward<decltype(params)>(params));
-		else return throw_wrong_interface_error<details::interfaces::call>(*this);
+		else return _throw_wrong_interface_error<details::interfaces::call>(*this);
 	}, holder);
 }
 

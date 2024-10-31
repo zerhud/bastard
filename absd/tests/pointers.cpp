@@ -18,7 +18,7 @@ struct empty_object {
 
 	constexpr data_type at(auto&&) const { return data_type{3}; }
 	constexpr auto size() const { return 1ul; }
-	constexpr bool contains(const auto& key) const { return (typename data_type::integer_t)key == 1; }
+	constexpr bool contains(const typename data_type::integer_t& key) const { return key == 1; }
 	constexpr std::vector<data_type> keys() const {
 		return {data_type{1}};
 	}

@@ -11,13 +11,6 @@
 
 #include <iostream>
 
-#ifndef __clang__
-#define CTRT(code) static_assert( code );
-#else
-#include <cassert>
-#define CTRT(code) assert( code );
-#endif
-
 static_assert( absd::details::type_c<int> == absd::details::type_c<int> );
 static_assert( absd::details::type_c<int> != absd::details::type_c<char> );
 static_assert( !(absd::details::type_c<int> == absd::details::type_c<char>) );
@@ -36,17 +29,18 @@ constexpr void main_test() {
 	static_assert( data{ (integer_t)10 }.assign().is_none() );
 	static_assert( data{ (float_point_t).5 }.is_int() == false );
 	static_assert( data{ (float_point_t).5 }.assign( (integer_t)3 ).is_int() );
-	CTRT( data{ string_t{} }.is_string() == true );
-	CTRT( data{ string_t{} }.is_array() == false );
+	static_assert( data{ string_t{} }.is_string() == true );
+	static_assert( data{ string_t{} }.is_array() == false );
 	static_assert( []{ data d; d=10; return (integer_t)d; }() == 10 );
-	CTRT( []{ data d; d="hel"; auto ret = ((string_t)d)[2]; return ret; }() == 'l' );
+	static_assert( []{ data d; d="hel"; auto ret = ((string_t)d)[2]; return ret; }() == 'l' );
 	static_assert( data{ integer_t{} }.size() == sizeof(integer_t) );
-	CTRT( data{ string_t{"hello"} }.size() == 5 );
+	static_assert( data{ string_t{"hello"} }.size() == 5 );
 	static_assert( data{3} == data{3} );
 	static_assert( (bool)exec_operation(data{2}, data{3}, [](auto& l, auto& r)requires requires{l<r;}{ return l<r;}) == true );
 	static_assert( (bool)exec_operation(data{3}, data{3}, [](auto& l, auto& r)requires requires{l<r;}{ return l<r;}) == false );
-	CTRT( data{string_t{"abcd"}}.contains(data{string_t{"d"}}) );
-	CTRT( !data{string_t{"abcd"}}.contains(data{string_t{"e"}}) );
+	static_assert(  data{string_t{"abcd"}}.contains(string_t{"d"}) );
+	static_assert( !data{string_t{"abcd"}}.contains(string_t{"e"}) );
+	static_assert( data{string_t{"abcd"}}.contains(data{string_t{"d"}}) );
 	static_assert( []{
 		string_t str = "test";
 		data d{&str};
@@ -70,7 +64,7 @@ template<typename data_type>
 constexpr void test_format() {
 	using namespace std::literals;
 	static_assert( "1"sv == test_format(data_type{1}) );
-	CTRT( "test"sv == test_format(data_type{"test"}) );
+	static_assert( "test"sv == test_format(data_type{"test"}) );
 	static_assert( "[]"sv == test_format(data_type{}.mk_empty_array()) );
 	static_assert( "[1]"sv == []{
 		data_type src;

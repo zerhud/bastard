@@ -109,6 +109,11 @@ public:
 	[[no_unique_address]] factory_t factory;
 private:
 
+	template<typename type>
+	consteval static bool is_instantiation() {
+		return requires(const type& v){ []<typename f>(const data<f>&){}(v); };
+	}
+
 	constexpr auto suppress_clang_warning() const {}
 	constexpr static auto inner_mk(const factory_t& f, auto&& _v, auto&&... args);
 	constexpr static void mk_ptr_and_assign(self_type& ret, const auto& f, auto&& v);
@@ -170,7 +175,7 @@ private:
 	}
 
 	template<typename interface, typename ret_val_t=self_type>
-	constexpr ret_val_t throw_wrong_interface_error(ret_val_t ret_val = self_type{}) const ;
+	constexpr ret_val_t _throw_wrong_interface_error(ret_val_t ret_val = self_type{}) const ;
 
 	template<typename type, template<typename...>class list, typename... types>
 	constexpr static bool is_listed_in_factory(list<types...>) {
@@ -291,7 +296,7 @@ public:
 			else if constexpr (requires{op(*val);}) return self_type{ obj.factory, op(*val) };
 			else {
 				using err_type = details::interfaces::exec_op<decltype(obj), decltype(obj)>;
-				obj.throw_wrong_interface_error<err_type>();
+				obj._throw_wrong_interface_error<err_type>();
 				return self_type{obj.factory};
 			}
 		}, obj.holder);
@@ -301,7 +306,7 @@ public:
 			if constexpr (requires{op(l,r);}) return self_type{left.factory,op(l,r)};
 			else {
 				using err_type = details::interfaces::exec_op<decltype(l), decltype(r)>;
-				left.throw_wrong_interface_error<err_type>();
+				left._throw_wrong_interface_error<err_type>();
 				return self_type{left.factory};
 			}
 		}, left.holder, right.holder);
