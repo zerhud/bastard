@@ -76,7 +76,7 @@ struct query_vertex {
 		auto op =
 				  (gh::quoted_string >> th<':'>::_char >> ++gh::quoted_string)
 				| (gh::quoted_string >> th<'='>::_char >> ++(gh::int_ | gh::fp | gh::quoted_string | bool_parser))
-				| ( gh::nop >> fnum<0>(gh::quoted_string) )
+				| (gh::nop >> fnum<0>(gh::quoted_string))
 				;
 		constexpr auto own_expr_begin = th<'{'>::_char;
 		constexpr auto own_expr_end = th<'}'>::_char;
@@ -139,5 +139,20 @@ struct query_graph {
 };
 
 } // namespace details
+
+template<typename parser_factory>
+constexpr auto parse_from(const parser_factory& pf, auto&& src) {
+	//TODO: throws on parser error
+	using vertex_expr = std::decay_t<decltype(vertex_expression(std::declval<parser_factory>()))>;
+	using parser = parser_factory::parser;
+	details::query_graph<parser_factory, vertex_expr> result;
+	const auto& vs = vertex_expression(pf);
+	parse(
+			result.template mk_parser<parser>(pf, vs),
+			+parser::space,
+			parser::make_source(std::forward<decltype(src)>(src)),
+			result.data);
+	return result;
+}
 
 } // namespace ast_graph

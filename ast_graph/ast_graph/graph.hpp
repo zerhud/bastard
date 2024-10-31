@@ -170,7 +170,6 @@ struct graph_view {
 	using holder = graph_holder<factory, _node_type>;
 	using link = holder::link;
 	using link_holder = holder::link_holder;
-	using vertex_type = holder::vertex_type;
 	using vertex_interface = holder::vertex_interface;
 	using vertex_holder = decltype(mk_vec<const vertex_interface*>(factory{}));
 

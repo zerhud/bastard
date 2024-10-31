@@ -22,5 +22,8 @@ constexpr auto back_inserter(const jiexpr_factory&, auto& v) {
 constexpr auto mk_str(const jiexpr_factory&) {
 	return std::string{};
 }
+constexpr auto mk_str(const jiexpr_factory&, auto&& arg) {
+	return std::string{std::forward<decltype(arg)>(arg)};
+}
 
 } // namespace tests

@@ -12,9 +12,45 @@
 #include "graph.hpp"
 #include "graph_absd.hpp"
 
-#include <iostream>
-
 namespace ast_graph {
+
+template<typename factory, typename outer_parser_factory>
+struct vertex_evaluator {
+	using vertex = ast_vertex<factory>;
+	using vertex_expr = std::decay_t<decltype(vertex_expression(std::declval<outer_parser_factory>()))>;
+	using qvertex = details::query_graph<outer_parser_factory, vertex_expr>::qvertex;
+
+	factory f;
+	outer_parser_factory* pf;
+	const vertex* input;
+
+	constexpr bool operator()(const qvertex& q) const { return visit(*this, q.data); }
+	constexpr bool operator()(const qvertex::emb_expr& q) const {
+		return (bool)(solve_vertex(*pf, f, q, input));
+	}
+	constexpr bool operator()(const qvertex::own_expr& q) const {
+		bool result = true;
+		for(auto& i:q) result &= visit(*this, i);
+		return result;
+	}
+	constexpr auto operator()(const qvertex::by_name& q) const {
+		auto value = input->field("name");
+		return value.is_string() && value == q.name;
+	}
+	constexpr auto operator()(const qvertex::by_type_and_name& q) const {
+		auto name_value = input->field("name");
+		auto type_value = input->field("type");
+		if(!type_value.is_string()) type_value = typename vertex::data_type{f, mk_str(f, input->type_name())};
+		return
+		     name_value.is_string() && name_value == q.name
+		  && type_value == q.type
+		  ;
+	}
+	constexpr auto operator()(const qvertex::by_field_value& q) const {
+		auto value = input->field(q.field);
+		return visit([&](const auto& v){return value==v;}, q.value);
+	}
+};
 
 /* use cases:
  *  1. all graph 
@@ -70,7 +106,7 @@ struct query_executor {
 	constexpr auto operator()(const qvertex& q) { return visit(*this, q.data); }
 	constexpr auto operator()(const qvertex::emb_expr& q) {
 		for(auto& i:graph.vertices) {
-			if(solve_vertex(*pf, f, q, i.base)) add_vertex(result, &i);
+			if(solve_vertex(*pf, f, q, i.base)) result.add_vertex(&i);
 		}
 		return result;
 	}

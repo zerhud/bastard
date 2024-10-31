@@ -205,10 +205,10 @@ public:
 		|| std::is_same_v<decltype(v), float_point_t>
 	) : holder(std::move(v)) {}
 	constexpr explicit data(factory_t f, auto v) requires (
-	std::is_same_v<decltype(v), bool>
-	|| std::is_same_v<decltype(v), string_t>
-	|| std::is_same_v<decltype(v), integer_t>
-	|| std::is_same_v<decltype(v), float_point_t>
+	       std::is_same_v<decltype(v), bool>
+	    || std::is_same_v<decltype(v), string_t>
+	    || std::is_same_v<decltype(v), integer_t>
+	    || std::is_same_v<decltype(v), float_point_t>
 	) : holder(std::move(v)), factory(std::move(f)) {}
 
 	constexpr explicit data(const string_t* str) : holder(str) {}

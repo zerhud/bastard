@@ -11,6 +11,8 @@
 
 #include <iostream>
 
+using namespace std::literals;
+
 static_assert( absd::details::type_c<int> == absd::details::type_c<int> );
 static_assert( absd::details::type_c<int> != absd::details::type_c<char> );
 static_assert( !(absd::details::type_c<int> == absd::details::type_c<char>) );
@@ -62,7 +64,6 @@ constexpr std::string test_format(auto&& d) {
 
 template<typename data_type>
 constexpr void test_format() {
-	using namespace std::literals;
 	static_assert( "1"sv == test_format(data_type{1}) );
 	static_assert( "test"sv == test_format(data_type{"test"}) );
 	static_assert( "[]"sv == test_format(data_type{}.mk_empty_array()) );
