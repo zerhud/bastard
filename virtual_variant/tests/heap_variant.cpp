@@ -58,26 +58,17 @@ struct wrapper : base {
 };
 
 struct test_variant : heap_variant<
-		std::variant, base, wrapper,
+		base, wrapper,
 		expr1, expr2, int, double> {
 	using base_type = heap_variant<
-			std::variant, base, wrapper,
+			base, wrapper,
 			expr1, expr2, int, double>;
 	constexpr test_variant() =default ;
 	constexpr test_variant(factory f) : base_type(std::move(f)) {}
 	constexpr int solve(const info& i) const override { return this->pointer->solve(i);}
 };
 
-static_assert( []{
-	factory f;
-	auto* ptr = allocate<expr2>(f, f);
-	base* bptr = ptr;
-	deallocate(f, bptr);
-	return 3;
-}() == 3 );
-
 static_assert( []{test_variant v; return create<expr1>(v).solve(info{});}() == 3 );
-/*
 static_assert( []{test_variant v; return create<int>(v);}() == 0 );
 static_assert( []{test_variant v; return create<2>(v);}() == 0 );
 static_assert( test_variant{}.solve(info()) == 3 );
@@ -133,7 +124,6 @@ static_assert( []{
 	create<expr1>(v);
 	return v2.solve(info{});
 }() == random_number, "can use move operator=" );
-*/
 
 int main(int,char**) {
 	return 0;
