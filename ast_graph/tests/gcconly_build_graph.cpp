@@ -20,7 +20,7 @@ struct inner_factory : tests::factory {
 struct variant_leaf1 { int v1f = 0; };
 struct variant_leaf2 { int v2f = 1; };
 struct pointer_leaf { int pf = 3; };
-struct test_leaf{
+struct test_leaf {
 	int ff=3;
 	std::variant<variant_leaf1, variant_leaf2> vl;
 	std::unique_ptr<pointer_leaf> pl;
@@ -63,7 +63,7 @@ struct fixture {
 };
 
 template<typename test>
-struct test_fixture : fixture, test{
+struct test_fixture : fixture, test {
 	using test::operator();
 	constexpr test_fixture(test&& t) : test(std::forward<decltype(t)>(t)) {}
 	constexpr auto operator()() {
