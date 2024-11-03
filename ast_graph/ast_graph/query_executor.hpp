@@ -12,6 +12,8 @@
 #include "graph.hpp"
 #include "graph_absd.hpp"
 
+#include <iostream>
+
 namespace ast_graph {
 
 template<typename factory>
@@ -51,7 +53,7 @@ struct vertex_evaluator {
 	}
 };
 
-template<typename factory, typename outer_parser_factory>
+template<typename factory>
 struct path_evaluator {
 	using evertex = vertex_evaluator<factory>;
 	using qgraph = evertex::qgraph;
@@ -61,43 +63,96 @@ struct path_evaluator {
 	using graph_type = common_graph<factory>;
 
 	factory f;
-	outer_parser_factory pf;
 	const graph_type* graph;
 	holder cur_input;
 	holder output;
+	holder cur_chain;
 
+	int cur_deep{0};
+	int cur_match{0};
+
+	template<auto line>
+	constexpr void debug() const {
+		if !consteval {
+			std::cout << line << ": " << output.size() << ' ' << cur_input.size() << std::endl;
+		}
+	}
+
+	constexpr bool check_edge(const qedge& q, int iter, const vertex* par, holder& out) const {
+		auto links = graph->links_of(par);
+		for(auto& link:links) {}
+		return true;
+	}
 	constexpr bool check_edge(const qedge& q) {
+		debug<__LINE__>();
+		for(auto& i:cur_input) {
+			auto cur_out = mk_vec<const vertex*>(f);
+			if(check_edge(q, 0, i, cur_out)) for(auto& v:cur_out) output.emplace_back(v);
+		}
+		debug<__LINE__>();
 		return true;
 	}
 
+	constexpr int operator()(const qgraph& q) {
+		debug<__LINE__>();
+		return (*this)(q.data);
+	}
 	template<typename... types>
-	constexpr auto operator()(const qgraph::template variant<types...>& v) { return visit(*this, v); }
-	constexpr auto operator()(const qgraph::add& ) { return __LINE__; }
-	constexpr auto operator()(const qgraph::sub& ) { return __LINE__; }
-	constexpr auto operator()(const qgraph::qvertex& q) {
-		auto cur = std::move(cur_input);
-		auto cur_input = mk_vec<const vertex*>(f);
-		for(auto& i:cur) {
-			if(vertex_evaluator{f, i}(q)) cur_input.emplace_back(i);
+	constexpr int operator()(const qgraph::template variant<types...>& v) {
+		//v.foo();
+		debug<__LINE__>();
+		return visit(*this, v);
+	}
+	constexpr int operator()(const qgraph::add& ) { debug<__LINE__>(); return __LINE__; }
+	constexpr int operator()(const qgraph::sub& ) { debug<__LINE__>(); return __LINE__; }
+	constexpr int operator()(const qgraph::qvertex& q) {
+		debug<__LINE__>();
+		for(auto& i:cur_input) {
+			if(vertex_evaluator{f, i}(q)) {
+				output.emplace_back(i);
+			}
+		}
+		debug<__LINE__>();
+		return __LINE__;
+	}
+	constexpr int operator()(const qgraph::path& q) {
+		debug<__LINE__>();
+		// make input
+		(*this)(*q.start);
+		cur_input = std::move(output);
+		output = mk_vec<const vertex*>(f);
+		debug<__LINE__>();
+		for(auto& vertex:cur_input) {
+			cur_deep = 0;
+			cur_match = 0;
+			cur_chain.clear();
+			for(auto& i:q.tail) if(!check_path_end(i, vertex)) break;
 		}
 		return __LINE__;
 	}
-	constexpr auto operator()(const qgraph::path& q) {
-		visit([this](const auto& q){
-			if constexpr (requires{ (*this)(q); }) return (*this)(q);
-			else return __LINE__;
-		}, *q.start);
-		for(auto& i:q.tail) if(!(*this)(i)) break;
-		return __LINE__;
+	constexpr bool check_path_end(const qgraph::path_end& q, const vertex* cur_parent) {
+		/*
+		if(-1 < q.edge.max_deep && q.edge.max_deep < ++cur_deep) return false;
+		path_evaluator eval{ f, graph, cur_input };
+		eval(*q.vertex);
+		auto next_layer = std::move(eval.output);
+		if(next_layer.empty()) return false;
+		cur_chain.emplace_back(cur_parent);
+		*/
+		return false;
 	}
 	constexpr bool operator()(const qgraph::path_end& q) {
+		debug<__LINE__>();
+		debug<__LINE__>();
 		if(!check_edge(q.edge)) return false;
+		debug<__LINE__>();
 		(*this)(*q.vertex);
+		debug<__LINE__>();
 		return true;
 	}
 };
 
-template<typename factory, typename outer_parser_factory>
+template<typename factory>
 struct graph_evaluator {
 	using evertex = vertex_evaluator<factory>;
 	using vertex = evertex::vertex;
