@@ -56,7 +56,7 @@ struct fake_emb_expr {
 	parsed_expression data;
 
 	template<typename gh>
-	friend constexpr auto create_parser(const fake_emb_expr&) {
+	constexpr friend auto create_parser(const fake_emb_expr&) {
 		constexpr auto bp = (as<true>(gh::template lit<"true">) | as<false>(gh::template lit<"false">));
 		return use_variant_result(bp) | gh::int_;
 	}
@@ -70,7 +70,7 @@ struct parser_factory : factory {
 	fake_emb_expr jiexpr;
 
 	constexpr friend const auto& vertex_expression(const parser_factory& f) { return f.jiexpr; }
-	constexpr friend auto solve_vertex(parser_factory& self, const auto& f, const auto& expr, const auto* graph) {
+	constexpr friend auto solve_vertex(parser_factory& self, const auto& expr, const auto* graph) {
 		return visit([](const auto& v){
 			return data_type{(bool)v};
 		}, expr);
@@ -118,6 +118,7 @@ struct test_fixture : test {
 };
 
 using vertex_evaluator = ast_graph::vertex_evaluator<factory, parser_factory>;
+using path_evaluator = ast_graph::path_evaluator<factory, parser_factory>;
 
 static_assert( test_fixture{[](auto& f){
 	auto parsed = ast_graph::parse_from(f.pf, "{}");
@@ -175,6 +176,17 @@ static_assert( test_fixture{[](auto& f){
 	2*(vertex_evaluator{f.f, &f.pf, f.first_named()}(qt)==true)
 	;
 }}() == 3 );
+
+/*
+static_assert( test_fixture{[](auto& f){
+	f.create_named("test");
+	auto parsed = ast_graph::parse_from(f.pf, "{'field_1'=1}-->{'test'}");
+	auto& qp = get<0>(parsed.data);
+	path_evaluator e{f.f, f.pf, &f.graph, f.graph.create_vertices_view()};
+	return e(qp);
+	//return e.output.size();
+}}() == 4 );
+*/
 
 int main(int,char**) {
 	return 0;

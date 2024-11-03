@@ -14,19 +14,20 @@
 
 namespace ast_graph {
 
-template<typename factory, typename outer_parser_factory>
+template<typename factory, typename parser_factory>
 struct vertex_evaluator {
 	using vertex = ast_vertex<factory>;
-	using vertex_expr = std::decay_t<decltype(vertex_expression(std::declval<outer_parser_factory>()))>;
-	using qvertex = details::query_graph<outer_parser_factory, vertex_expr>::qvertex;
+	using vertex_expr = std::decay_t<decltype(vertex_expression(std::declval<parser_factory>()))>;
+	using qgraph = details::query_graph<parser_factory, vertex_expr>;
+	using qvertex = qgraph::qvertex;
 
 	factory f;
-	outer_parser_factory* pf;
+	parser_factory* pf;
 	const vertex* input;
 
 	constexpr bool operator()(const qvertex& q) const { return visit(*this, q.data); }
 	constexpr bool operator()(const qvertex::emb_expr& q) const {
-		return (bool)(solve_vertex(*pf, f, q, input));
+		return (bool)(solve_vertex(*pf, q, input));
 	}
 	constexpr bool operator()(const qvertex::own_expr& q) const {
 		bool result = true;
@@ -50,6 +51,60 @@ struct vertex_evaluator {
 		auto value = input->field(q.field);
 		return visit([&](const auto& v){return value==v;}, q.value);
 	}
+};
+
+template<typename factory, typename outer_parser_factory>
+struct path_evaluator {
+	using evertex = vertex_evaluator<factory, outer_parser_factory>;
+	using qgraph = evertex::qgraph;
+	using qedge = details::query_edge<factory>;
+	using vertex = evertex::vertex;
+	using holder = decltype(mk_vec<const vertex*>(std::declval<factory>()));
+	using graph_type = common_graph<factory>;
+
+	factory f;
+	outer_parser_factory pf;
+	const graph_type* graph;
+	holder cur_input;
+	holder output;
+
+	constexpr bool check_edge(const qedge& q) {
+		return true;
+	}
+
+	template<typename... types>
+	constexpr auto operator()(const qgraph::template variant<types...>& v) { return visit(*this, v); }
+	constexpr auto operator()(const qgraph::add& ) { return __LINE__; }
+	constexpr auto operator()(const qgraph::sub& ) { return __LINE__; }
+	constexpr auto operator()(const qgraph::qvertex& q) {
+		auto cur = std::move(cur_input);
+		auto cur_input = mk_vec<const vertex*>(f);
+		for(auto& i:cur) {
+			if(vertex_evaluator{f, &pf, i}(q)) cur_input.emplace_back(i);
+		}
+		return __LINE__;
+	}
+	constexpr auto operator()(const qgraph::path& q) {
+		visit([this](const auto& q){
+			if constexpr (requires{ (*this)(q); }) return (*this)(q);
+			else return __LINE__;
+		}, *q.start);
+		for(auto& i:q.tail) if(!(*this)(i)) break;
+		return __LINE__;
+	}
+	constexpr bool operator()(const qgraph::path_end& q) {
+		if(!check_edge(q.edge)) return false;
+		(*this)(*q.vertex);
+		return true;
+	}
+};
+
+template<typename factory, typename outer_parser_factory>
+struct graph_evaluator {
+	using evertex = vertex_evaluator<factory, outer_parser_factory>;
+	using vertex = evertex::vertex;
+
+	factory f;
 };
 
 /* use cases:
