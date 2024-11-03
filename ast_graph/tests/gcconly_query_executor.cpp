@@ -66,6 +66,8 @@ using data_type = factory::data_type;
 using graph_type = decltype(ast_graph::mk_graph(factory{}, test_data::test_fields{}));
 
 struct parser_factory : factory {
+	using vertex_expression_parsed_type = fake_emb_expr_variant;
+
 	data_type env;
 	fake_emb_expr jiexpr;
 
@@ -74,6 +76,10 @@ struct parser_factory : factory {
 		return visit([](const auto& v){
 			return data_type{(bool)v};
 		}, expr);
+	}
+	template<typename parser>
+	constexpr friend auto create_vertex_parser(const parser_factory& f) {
+		return create_parser<parser>(f.jiexpr);
 	}
 };
 

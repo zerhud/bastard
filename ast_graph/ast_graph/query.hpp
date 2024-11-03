@@ -64,7 +64,7 @@ struct query_vertex {
 	struct by_field_value { string_t field; own_literal value; };
 	using own_expr = vec<variant<by_type_and_name, by_field_value, by_name>>;
 
-	using emb_expr = embedded::parsed_expression;
+	using emb_expr = typename factory::vertex_expression_parsed_type;
 
 	int arg_number=0;
 	variant<emb_expr,own_expr> data;
@@ -72,7 +72,7 @@ struct query_vertex {
 	template<typename gh, template<auto>class th=gh::template tmpl>
 	constexpr static auto mk_parser(auto&& emb_expr_parser) {
 		constexpr auto bool_parser = as<true>(gh::template lit<"true">)|as<false>(gh::template lit<"false">);
-		auto ep = create_parser<gh>(emb_expr_parser);
+		auto ep = create_vertex_parser<gh>(emb_expr_parser);
 		auto op =
 				  (gh::quoted_string >> th<':'>::_char >> ++gh::quoted_string)
 				| (gh::quoted_string >> th<'='>::_char >> ++(gh::int_ | gh::fp | gh::quoted_string | bool_parser))
@@ -102,7 +102,7 @@ struct query_graph {
 	struct expr;
 	using fwd_ast = factory::template ast_forwarder<expr>;
 
-	using qvertex = query_vertex<factory, vertex_expr>;
+	using qvertex = query_vertex<factory, factory>;
 
 	struct binary{ fwd_ast left; fwd_ast right; };
 	struct path_end {
@@ -125,14 +125,14 @@ struct query_graph {
 	expr data;
 
 	template<typename gh, template<auto>class th=gh::template tmpl>
-	constexpr static auto mk_parser(const auto& df, const auto& vertex_solver) {
+	constexpr static auto mk_parser(const auto& df) {
 		auto fwd = [&df](auto& v){ return mk_fwd(df, v); };
 		return rv([&df](auto& v){ return mk_result(df, std::move(v)); }
 			, check<path>( gh::rv_lreq++ >> +(query_edge<factory>::template mk_parser<gh>() >> ++gh::rv_rreq(fwd)) )
 			, ( cast<binary>( gh::rv_lreq++ >> th<'+'>::_char >> gh::rv_rreq(fwd) )
 			  | cast<binary>( gh::rv_lreq++ >> th<'-'>::_char >> gh::rv_rreq(fwd) )
 			  )
-			, check<qvertex>(qvertex::template mk_parser<gh>(vertex_solver))
+			, check<qvertex>(qvertex::template mk_parser<gh>(df))
 			, rv_result(th<'('>::_char >> gh::rv_req >> th<')'>::_char)
 		);
 	}
@@ -146,9 +146,8 @@ constexpr auto parse_from(const parser_factory& pf, auto&& src) {
 	using vertex_expr = std::decay_t<decltype(vertex_expression(std::declval<parser_factory>()))>;
 	using parser = parser_factory::parser;
 	details::query_graph<parser_factory, vertex_expr> result;
-	const auto& vs = vertex_expression(pf);
 	parse(
-			result.template mk_parser<parser>(pf, vs),
+			result.template mk_parser<parser>(pf),
 			+parser::space,
 			parser::make_source(std::forward<decltype(src)>(src)),
 			result.data);

@@ -19,22 +19,22 @@ struct inner_vertex_expr : std::variant<int, bool>{
 	constexpr friend auto& create(inner_vertex_expr& v) { return v.emplace<ind>(); }
 };
 
-struct vertex_solver {
-	using parsed_expression = inner_vertex_expr;
+struct vertex_solver { };
+
+struct factory : tests::factory{
+	using vertex_expression_parsed_type = inner_vertex_expr;
 
 	template<typename gh, template<auto>class th=gh::template tmpl>
-	constexpr friend auto create_parser(const vertex_solver&) {
+	constexpr friend auto create_vertex_parser(const factory&) {
 		return gh::int_ | as<true>(th<'t'>::_char);
 	}
 };
-
-struct factory : tests::factory{ };
 
 using data = absd::data<factory>;
 
 using parser = ascip<std::tuple, factory>;
 using qedge = ast_graph::details::query_edge<factory>;
-using qgraph = ast_graph::details::query_graph<factory, vertex_solver>;
+using qgraph = ast_graph::details::query_graph<factory, factory>;
 using vertex = qgraph::qvertex;
 
 int main(int,char**) {
@@ -57,32 +57,32 @@ int main(int,char**) {
 	}() == 7 );
 	static_assert( []{
 		qgraph r1;
-		return parse(qgraph::mk_parser<parser>(factory{}, vertex_solver{}), +parser::space, parser::make_source("{{1}}->{{}}->({{}}+3{{}})"), r1.data);
+		return parse(qgraph::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{{1}}->{{}}->({{}}+3{{}})"), r1.data);
 	}() == 25 );
 	static_assert( []{
 		vertex r;
-		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{}"), r);
+		parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{}"), r);
 		return get<1>(r.data).size();
 	}() == 0, "empty braces is the empty vector in result" );
 	static_assert( []{
 		vertex r;
-		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{{}}"), r);
+		parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{{}}"), r);
 		return holds_alternative<bool>(get<0>(r.data)) + 2*(get<bool>(get<0>(r.data))==true);
 	}() == 3, "empty braces is the bool value true in result" );
 
 	static_assert( []{
 		vertex r;
-		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{'name'}"), r);
+		parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{'name'}"), r);
 		return (get<1>(r.data).size()==1) + 2*(get<2>(get<1>(r.data)[0]).name == "name");
 	}() == 3, "empty braces is the bool value true in result" );
 	static_assert( []{
 		vertex r;
-		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{'type':'name'}"), r);
+		parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{'type':'name'}"), r);
 		return (get<1>(r.data).size()==1) + 2*(get<0>(get<1>(r.data)[0]).name == "name") + 4*(get<0>(get<1>(r.data)[0]).type == "type");
 	}() == 7, "empty braces is the bool value true in result" );
 	static_assert( []{
 		vertex r;
-		parse(vertex::mk_parser<parser>(vertex_solver{}), +parser::space, parser::make_source("{'field'='value'}"), r);
+		parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{'field'='value'}"), r);
 		return (get<1>(r.data).size()==1) + 2*(get<1>(get<1>(r.data)[0]).field == "field") + 4*(get<2>(get<1>(get<1>(r.data)[0]).value) == "value");
 	}() == 7, "empty braces is the bool value true in result" );
 
