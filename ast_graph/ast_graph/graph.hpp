@@ -118,13 +118,11 @@ struct vertex_holder {
 	}
 };
 
-template<typename factory, typename _node_type> struct graph_view ;
-template<typename factory, typename _vertex_type>
-struct graph_holder {
-	using view_type = graph_view<factory, _vertex_type>;
-	using vertex_type = _vertex_type;
+template<typename factory>
+struct common_graph {
 	using vertex_interface = ast_vertex<factory>;
 	using string_view = typename factory::string_view;
+
 	struct link {
 		string_view name{};
 		const vertex_interface* parent = nullptr;
@@ -132,17 +130,40 @@ struct graph_holder {
 	};
 
 	using link_holder = decltype(mk_vec<link>(std::declval<factory>()));
-	using vertex_holder = decltype(mk_vec<vertex_type>(std::declval<factory>()));
-	using data_type  = typename factory::data_type;
 
-	constexpr graph_holder(const factory& f)
-	: f(f)
+	constexpr common_graph() requires requires{factory{};} : common_graph(factory{}) {}
+	constexpr common_graph(factory f)
+	: f(std::move(f))
 	, edges(mk_vec<link>(this->f))
-	, vertices(mk_vec<vertex_type>(this->f))
 	{}
 
 	factory f;
 	link_holder edges;
+
+	constexpr auto links_of(const vertex_interface* parent) const {
+		link_holder ret = mk_vec<link>(this->f);
+		for(auto& e:edges) if(e.parent == parent) ret.emplace_back(e);
+		return ret;
+	}
+};
+
+template<typename factory, typename _node_type> struct graph_view ;
+template<typename factory, typename _vertex_type>
+struct graph_holder : common_graph<factory> {
+	using common_type = common_graph<factory>;
+	using link = common_type::link;
+	using vertex_interface = common_type::vertex_interface;
+
+	using view_type = graph_view<factory, _vertex_type>;
+	using vertex_type = _vertex_type;
+	using vertex_holder = decltype(mk_vec<vertex_type>(std::declval<factory>()));
+	using data_type  = typename factory::data_type;
+
+	constexpr graph_holder(const factory& f)
+	: common_type(std::move(f))
+	, vertices(mk_vec<vertex_type>(this->f))
+	{}
+
 	vertex_holder vertices;
 
 	constexpr auto size() const { return vertices.size(); }
@@ -150,6 +171,12 @@ struct graph_holder {
 	constexpr const auto& root() const { return vertices.front(); }
 	constexpr auto create_empty_view() const { view_type v( *this ); return v; }
 	constexpr auto create_view() const { view_type v( *this ); v.include_all(); return v; }
+	constexpr auto create_vertices_view() const {
+		auto ret = mk_vec<const vertex_interface*>(this->f);
+		for(auto& v:vertices) ret.emplace_back(v.base);
+		return ret;
+	}
+
 	constexpr friend void reserve_vertex_count(graph_holder& h, auto sz) { h.vertices.reserve(sz); }
 	constexpr friend auto& create_vertex(graph_holder& h, auto&&... args) {
 		return h.vertices.emplace_back(std::forward<decltype(args)>(args)...);
@@ -157,11 +184,6 @@ struct graph_holder {
 
 	constexpr friend auto& create_ast_link( graph_holder& h, auto&& name, const auto* parent, const auto* child) {
 		return h.edges.emplace_back( std::forward<decltype(name)>(name), parent, child );
-	}
-	constexpr auto links_of(const vertex_interface* parent) const {
-		link_holder ret = mk_vec<link>(f);
-		for(auto& e:edges) if(e.parent == parent) ret.emplace_back(e);
-		return ret;
 	}
 };
 
