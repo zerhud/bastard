@@ -39,11 +39,6 @@ struct test_fields {
 
 } // namespace test_data
 
-struct factory : tests::factory {
-	using data_type = absd::data<factory>;
-	using parser = ascip<std::tuple>;
-};
-
 struct fake_emb_expr_variant : std::variant<bool, int>{};
 template<typename type>
 constexpr auto& create(fake_emb_expr_variant& v){
@@ -56,42 +51,39 @@ struct fake_emb_expr {
 	parsed_expression data;
 
 	template<typename gh>
-	constexpr friend auto create_parser(const fake_emb_expr&) {
+	constexpr static auto create_parser() {
 		constexpr auto bp = (as<true>(gh::template lit<"true">) | as<false>(gh::template lit<"false">));
 		return use_variant_result(bp) | gh::int_;
 	}
 };
 
-using data_type = factory::data_type;
-using graph_type = decltype(ast_graph::mk_graph(factory{}, test_data::test_fields{}));
-
-struct parser_factory : factory {
+struct parser_factory : tests::factory {
+	using data_type = absd::data<parser_factory>;
+	using parser = ascip<std::tuple>;
 	using vertex_expression_parsed_type = fake_emb_expr_variant;
 
-	data_type env;
-	fake_emb_expr jiexpr;
-
-	constexpr friend const auto& vertex_expression(const parser_factory& f) { return f.jiexpr; }
-	constexpr friend auto solve_vertex(parser_factory& self, const auto& expr, const auto* graph) {
+	constexpr friend auto solve_vertex(const parser_factory&, const auto& expr, const auto* vertex) {
 		return visit([](const auto& v){
 			return data_type{(bool)v};
 		}, expr);
 	}
 	template<typename parser>
 	constexpr friend auto create_vertex_parser(const parser_factory& f) {
-		return create_parser<parser>(f.jiexpr);
+		return fake_emb_expr::create_parser<parser>();
 	}
 };
 
+using data_type = parser_factory::data_type;
+using graph_type = decltype(ast_graph::mk_graph(parser_factory{}, test_data::test_fields{}));
+
 template<typename test>
 struct test_fixture : test {
-	factory f;
 	parser_factory pf;
 	test_data::test_fields src_st;
-	graph_type graph = ast_graph::mk_graph(f, src_st);
+	graph_type graph = ast_graph::mk_graph(pf, src_st);
 
 	constexpr test_fixture& recreate() {
-		graph = ast_graph::mk_graph(f, src_st);
+		graph = ast_graph::mk_graph(pf, src_st);
 		return *this;
 	}
 
@@ -123,15 +115,15 @@ struct test_fixture : test {
 	constexpr auto operator()() { return (*this)(*this); }
 };
 
-using vertex_evaluator = ast_graph::vertex_evaluator<factory, parser_factory>;
-using path_evaluator = ast_graph::path_evaluator<factory, parser_factory>;
+using vertex_evaluator = ast_graph::vertex_evaluator<parser_factory>;
+using path_evaluator = ast_graph::path_evaluator<parser_factory, parser_factory>;
 
 static_assert( test_fixture{[](auto& f){
 	auto parsed = ast_graph::parse_from(f.pf, "{}");
 	auto& qv = get<2>(parsed.data);
 	return
-	   vertex_evaluator{f.f, &f.pf, f.graph.root().base}(qv) +
-	2*(vertex_evaluator{f.f, &f.pf, f.graph.links_of(f.graph.root().base)[0].child}(qv))
+	   vertex_evaluator{f.pf, f.graph.root().base}(qv) +
+	2*(vertex_evaluator{f.pf, f.graph.links_of(f.graph.root().base)[0].child}(qv))
 	;
 }}() == 3 );
 
@@ -140,8 +132,8 @@ static_assert( test_fixture{[](auto& f){
 	auto parsed = ast_graph::parse_from(f.pf, "{'test'}");
 	auto& qv = get<2>(parsed.data);
 	return
-	    (vertex_evaluator{f.f, &f.pf, f.first_named()}(qv)==true) +
-	  2*(vertex_evaluator{f.f, &f.pf, f.first_leaf()}(qv)==false)
+	    (vertex_evaluator{f.pf, f.first_named()}(qv)==true) +
+	  2*(vertex_evaluator{f.pf, f.first_leaf()}(qv)==false)
 	;
 }}() == 3, "can find field by name");
 static_assert( test_fixture{[](auto& f){
@@ -149,8 +141,8 @@ static_assert( test_fixture{[](auto& f){
 	auto parsed = ast_graph::parse_from(f.pf, "{'test_type':'test_name'}");
 	auto& qv = get<2>(parsed.data);
 	return
-	    (vertex_evaluator{f.f, &f.pf, f.first_named()}(qv)==true) +
-	  2*(vertex_evaluator{f.f, &f.pf, f.first_leaf()}(qv)==false)
+	    (vertex_evaluator{f.pf, f.first_named()}(qv)==true) +
+	  2*(vertex_evaluator{f.pf, f.first_leaf()}(qv)==false)
 	  ;
 }}() == 3, "can find field by name and type if present");
 static_assert( test_fixture{[](auto& f){
@@ -158,8 +150,8 @@ static_assert( test_fixture{[](auto& f){
 	auto parsed = ast_graph::parse_from(f.pf, "{'test_data::variant_leaf_with_name':'test'}");
 	auto& qv = get<2>(parsed.data);
 	return
-	    (vertex_evaluator{f.f, &f.pf, f.first_named()}(qv)==true) +
-	  2*(vertex_evaluator{f.f, &f.pf, f.first_leaf()}(qv)==false)
+	    (vertex_evaluator{f.pf, f.first_named()}(qv)==true) +
+	  2*(vertex_evaluator{f.pf, f.first_leaf()}(qv)==false)
 	;
 }}() == 3, "can find field by name and type using the class name as type name");
 static_assert( test_fixture{[](auto& f){
@@ -167,8 +159,8 @@ static_assert( test_fixture{[](auto& f){
 	auto parsed = ast_graph::parse_from(f.pf, "{'ff'=3}");
 	auto& qv = get<2>(parsed.data);
 	return
-	  (vertex_evaluator{f.f, &f.pf, f.first_named()}(qv)==false) +
-	2*(vertex_evaluator{f.f, &f.pf, f.first_leaf()}(qv)==true)
+	  (vertex_evaluator{f.pf, f.first_named()}(qv)==false) +
+	2*(vertex_evaluator{f.pf, f.first_leaf()}(qv)==true)
 	;
 }}() == 3, "can find field by field value");
 static_assert( test_fixture{[](auto& f){
@@ -178,8 +170,8 @@ static_assert( test_fixture{[](auto& f){
 	auto& qt = get<2>(parsed_true.data);
 	auto& qf = get<2>(parsed_false.data);
 	return
-	  (vertex_evaluator{f.f, &f.pf, f.first_named()}(qf)==false) +
-	2*(vertex_evaluator{f.f, &f.pf, f.first_named()}(qt)==true)
+	  (vertex_evaluator{f.pf, f.first_named()}(qf)==false) +
+	2*(vertex_evaluator{f.pf, f.first_named()}(qt)==true)
 	;
 }}() == 3 );
 

@@ -50,7 +50,7 @@ struct query_edge {
 	}
 };
 
-template<typename factory, typename embedded>
+template<typename factory>
 struct query_vertex {
 	using string_t = factory::string_t;
 	using integer_t = factory::integer_t;
@@ -70,9 +70,9 @@ struct query_vertex {
 	variant<emb_expr,own_expr> data;
 
 	template<typename gh, template<auto>class th=gh::template tmpl>
-	constexpr static auto mk_parser(auto&& emb_expr_parser) {
+	constexpr static auto mk_parser(auto&& df) {
 		constexpr auto bool_parser = as<true>(gh::template lit<"true">)|as<false>(gh::template lit<"false">);
-		auto ep = create_vertex_parser<gh>(emb_expr_parser);
+		auto ep = create_vertex_parser<gh>(df);
 		auto op =
 				  (gh::quoted_string >> th<':'>::_char >> ++gh::quoted_string)
 				| (gh::quoted_string >> th<'='>::_char >> ++(gh::int_ | gh::fp | gh::quoted_string | bool_parser))
@@ -102,7 +102,7 @@ struct query_graph {
 	struct expr;
 	using fwd_ast = factory::template ast_forwarder<expr>;
 
-	using qvertex = query_vertex<factory, factory>;
+	using qvertex = query_vertex<factory>;
 
 	struct binary{ fwd_ast left; fwd_ast right; };
 	struct path_end {
@@ -143,7 +143,6 @@ struct query_graph {
 template<typename parser_factory>
 constexpr auto parse_from(const parser_factory& pf, auto&& src) {
 	//TODO: throws on parser error
-	using vertex_expr = std::decay_t<decltype(vertex_expression(std::declval<parser_factory>()))>;
 	using parser = parser_factory::parser;
 	details::query_graph<parser_factory> result;
 	parse(
