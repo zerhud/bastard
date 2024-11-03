@@ -94,7 +94,7 @@ struct query_vertex {
 	}
 };
 
-template<typename factory, typename vertex_expr>
+template<typename factory>
 struct query_graph {
 	template<typename type> using vec = decltype(mk_vec<type>(factory{}));
 	template<typename... list> using variant = factory::template variant<list...>;
@@ -145,7 +145,7 @@ constexpr auto parse_from(const parser_factory& pf, auto&& src) {
 	//TODO: throws on parser error
 	using vertex_expr = std::decay_t<decltype(vertex_expression(std::declval<parser_factory>()))>;
 	using parser = parser_factory::parser;
-	details::query_graph<parser_factory, vertex_expr> result;
+	details::query_graph<parser_factory> result;
 	parse(
 			result.template mk_parser<parser>(pf),
 			+parser::space,

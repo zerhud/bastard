@@ -18,7 +18,7 @@ template<typename factory, typename parser_factory>
 struct vertex_evaluator {
 	using vertex = ast_vertex<factory>;
 	using vertex_expr = std::decay_t<decltype(vertex_expression(std::declval<parser_factory>()))>;
-	using qgraph = details::query_graph<parser_factory, vertex_expr>;
+	using qgraph = details::query_graph<parser_factory>;
 	using qvertex = qgraph::qvertex;
 
 	factory f;
@@ -124,7 +124,7 @@ struct query_executor {
 	using graph_view = decltype(std::declval<graph_type>().create_view());
 	using parser = typename factory::parser;
 	using vertex_expr = std::decay_t<decltype(vertex_expression(std::declval<parser_factory>()))>;
-	using qgraph = details::query_graph<factory, vertex_expr>;
+	using qgraph = details::query_graph<factory>;
 	using qvertex = qgraph::qvertex;
 	using vertex_type = typename graph_type::vertex_type;
 
