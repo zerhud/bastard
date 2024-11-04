@@ -116,7 +116,8 @@ struct test_fixture : test {
 };
 
 using vertex_evaluator = ast_graph::vertex_evaluator<parser_factory>;
-using path_evaluator = ast_graph::path_evaluator<parser_factory>;
+template<typename... types>
+using path_evaluator = ast_graph::path_evaluator<types...>;
 
 static_assert( test_fixture{[](auto& f){
 	auto parsed = ast_graph::parse_from(f.pf, "{}");
@@ -185,40 +186,43 @@ static_assert( test_fixture{[](auto& f){
 }}() == 3, "can find field by name and type if present");
 static_assert( test_fixture{[](auto&f){
 	auto parsed = ast_graph::parse_from(f.pf, "{'field_1'=1}");
-	path_evaluator e{f.pf, &f.graph, f.graph.create_vertices_view()};
+	path_evaluator e{f.pf, &f.graph, f.graph.create_view()};
 	e(parsed);
 	return e.output.size();
 }}() == 1 );
 static_assert( test_fixture{[](auto&f){
 	f.create_named("test");
 	auto parsed = ast_graph::parse_from(f.pf, "{'field_1'=1}+{'test'}");
-	path_evaluator e{f.pf, &f.graph, f.graph.create_vertices_view()};
+	path_evaluator e{f.pf, &f.graph, f.graph.create_view()};
 	e(parsed);
 	return e.output.size();
 }}() == 2 );
-/*
+static_assert( test_fixture{[](auto&f){
+	f.create_named("test");
+	auto parsed = ast_graph::parse_from(f.pf, "{}-{'test'}");
+	path_evaluator e{f.pf, &f.graph, f.graph.create_view()};
+	e(parsed);
+	return e.output.size();
+}}() == 3 );
 static_assert( test_fixture{[](auto&f){
 	auto parsed = ast_graph::parse_from(f.pf, "{'field_1'=1}->{}");
-	path_evaluator e{f.pf, &f.graph, f.graph.create_vertices_view()};
+	path_evaluator e{f.pf, &f.graph, f.graph.create_view()};
 	e(parsed);
 	return e.output.size();
 }}() == 2, "can get node and it's child" );
-*/
-/*
 static_assert( test_fixture{[](auto& f){
 	f.create_named("test");
 	auto parsed = ast_graph::parse_from(f.pf, "{'field_1'=1}-->{'test'}");
 	auto& qp = get<0>(parsed.data);
-	path_evaluator e{f.pf, &f.graph, f.graph.create_vertices_view()};
-	//return e(qp);
+	path_evaluator e{f.pf, &f.graph, f.graph.create_view()};
+	e(qp);
 	return e.output.size();
 }}() == 4 );
-*/
 
 int main(int,char**) {
 	auto r = test_fixture{[](auto&f){
 		auto parsed = ast_graph::parse_from(f.pf, "{'field_1'=1}->{}");
-		path_evaluator e{f.pf, &f.graph, f.graph.create_vertices_view()};
+		path_evaluator e{f.pf, &f.graph, f.graph.create_view()};
 		e(parsed);
 		return e.output.size();
 	}}();

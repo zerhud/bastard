@@ -17,8 +17,12 @@ namespace tests {
 struct common_factory {
 	template<typename _t> struct _type_c { using type = _t; };
 	template<typename type> constexpr static auto mk_set_type() {
-		if consteval { return _type_c<std::vector<type>>{}; }
-		else { return _type_c<std::unordered_set<type>>{}; }
+		// can't use unordered_set due it has no constexpr ctor
+		// should to be return _type_c<std::unordered_set<type>>{};
+		//
+		// can't check by consteval: an inconsistent deduction return
+		// type if call in static_assert and in rt test
+		return _type_c<std::vector<type>>{};
 	}
 };
 

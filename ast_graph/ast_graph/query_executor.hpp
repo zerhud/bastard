@@ -53,23 +53,29 @@ struct vertex_evaluator {
 	}
 };
 
-template<typename factory>
+template<typename factory, typename graph_type>
 struct path_evaluator {
 	using evertex = vertex_evaluator<factory>;
 	using qgraph = evertex::qgraph;
 	using qedge = details::query_edge<factory>;
 	using vertex = evertex::vertex;
 	using holder = decltype(mk_vec<const vertex*>(std::declval<factory>()));
-	using graph_type = common_graph<factory>;
+	using graph_view = decltype(std::declval<graph_type>().create_view());
 
 	factory f;
 	const graph_type* graph;
-	holder cur_input;
-	holder output;
-	holder cur_chain;
+	graph_view cur_input;
+	graph_view output;
 
 	int cur_deep{0};
 	int cur_match{0};
+
+	constexpr path_evaluator(factory f, const graph_type* graph, graph_view input)
+	: f(std::move(f))
+	, graph(graph)
+	, cur_input(std::move(input))
+	, output(graph->create_empty_view())
+	{}
 
 	template<auto line>
 	constexpr void debug() const {
@@ -78,77 +84,61 @@ struct path_evaluator {
 		}
 	}
 
-	constexpr bool check_edge(const qedge& q, int iter, const vertex* par, holder& out) const {
-		auto links = graph->links_of(par);
-		for(auto& link:links) {}
-		return true;
-	}
-	constexpr bool check_edge(const qedge& q) {
-		debug<__LINE__>();
-		for(auto& i:cur_input) {
-			auto cur_out = mk_vec<const vertex*>(f);
-			if(check_edge(q, 0, i, cur_out)) for(auto& v:cur_out) output.emplace_back(v);
-		}
-		debug<__LINE__>();
-		return true;
-	}
-
-	constexpr int operator()(const qgraph& q) {
-		debug<__LINE__>();
-		return (*this)(q.data);
-	}
+	constexpr auto operator()(const qgraph& q) { return (*this)(q.data); }
 	template<typename... types>
-	constexpr int operator()(const qgraph::template variant<types...>& v) {
-		//v.foo();
-		debug<__LINE__>();
-		return visit(*this, v);
+	constexpr auto operator()(const qgraph::template variant<types...>& v) { return visit(*this, v); }
+	constexpr int operator()(const qgraph::add& q) {
+		visit(*this, *q.left);
+		auto left = output;
+		visit(*this, *q.right);
+		output += left;
+		return __LINE__;
 	}
-	constexpr int operator()(const qgraph::add& ) { debug<__LINE__>(); return __LINE__; }
-	constexpr int operator()(const qgraph::sub& ) { debug<__LINE__>(); return __LINE__; }
+	constexpr int operator()(const qgraph::sub& q) {
+		visit(*this, *q.right);
+		auto right = output;
+		visit(*this, *q.left);
+		output -= right;
+		return __LINE__;
+	}
 	constexpr int operator()(const qgraph::qvertex& q) {
-		debug<__LINE__>();
-		for(auto& i:cur_input) {
-			if(vertex_evaluator{f, i}(q)) {
-				output.emplace_back(i);
-			}
+		output = graph->create_empty_view();
+		for(auto& i:cur_input.vertices) {
+			if(vertex_evaluator{f, i}(q)) output.add_vertex(i);
 		}
-		debug<__LINE__>();
 		return __LINE__;
 	}
 	constexpr int operator()(const qgraph::path& q) {
-		debug<__LINE__>();
-		// make input
-		(*this)(*q.start);
-		cur_input = std::move(output);
-		output = mk_vec<const vertex*>(f);
-		debug<__LINE__>();
-		for(auto& vertex:cur_input) {
-			cur_deep = 0;
-			cur_match = 0;
-			cur_chain.clear();
-			for(auto& i:q.tail) if(!check_path_end(i, vertex)) break;
-		}
+		visit(*this, *q.start);
+		auto matched = std::move(output);
+		output = graph->create_empty_view();
+		check_path_end(q.tail.begin(), q.tail.end(), matched);
 		return __LINE__;
 	}
-	constexpr bool check_path_end(const qgraph::path_end& q, const vertex* cur_parent) {
-		/*
-		if(-1 < q.edge.max_deep && q.edge.max_deep < ++cur_deep) return false;
-		path_evaluator eval{ f, graph, cur_input };
-		eval(*q.vertex);
-		auto next_layer = std::move(eval.output);
-		if(next_layer.empty()) return false;
-		cur_chain.emplace_back(cur_parent);
-		*/
-		return false;
+	constexpr void check_path_end(auto pos, auto end, graph_view src) {
+		for(auto& v:src.vertices) {
+			if(check_path_end(pos, end, v)) output.add_vertex(v);
+		}
 	}
-	constexpr bool operator()(const qgraph::path_end& q) {
-		debug<__LINE__>();
-		debug<__LINE__>();
-		if(!check_edge(q.edge)) return false;
-		debug<__LINE__>();
-		(*this)(*q.vertex);
-		debug<__LINE__>();
-		return true;
+	constexpr bool check_path_end(auto pos, auto end, const vertex* parent) {
+		if(pos==end) return true;
+		bool result = false;
+		auto& cur_info = *pos;
+		pos += 1;
+		path_evaluator matched{ f, graph, cur_input };
+		matched(*cur_info.vertex);
+		for(auto& target:matched.output.vertices)
+			result |= check_path_end(pos, end, cur_info, parent, target);
+		return result;
+	}
+	constexpr bool check_path_end(auto pos, auto end, const qgraph::path_end& info, const vertex* parent, const vertex* child) {
+		auto path = graph->path(parent, child);
+		if(!path.empty() && check_path_end(pos, end, child)) {
+			//TODO: check path with the info parameter
+			output.add_vertex(child);
+			return true;
+		}
+		return false;
 	}
 };
 
