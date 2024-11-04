@@ -189,8 +189,8 @@ static_assert( test_fixture{[](auto& f){
 	   c0_1.empty() +
 	2* (root_con.size() == 1) +
 	4* (g.path(root, c0).size() == 2) +
-	8* (g.path(root, c1)[0] == c1) +
-	16*(g.path(root, c1)[1] == con)
+	8* (g.path(root, c1)[0].child == c1) +
+	16*(g.path(root, c1)[1].child == con)
 	;
 }}() == 31 );
 

@@ -122,7 +122,6 @@ template<typename factory>
 struct common_graph {
 	using vertex_interface = ast_vertex<factory>;
 	using string_view = typename factory::string_view;
-	using vertex_vec = decltype(mk_vec<const vertex_interface*>(std::declval<factory>()));
 
 	struct link {
 		string_view name{};
@@ -147,18 +146,18 @@ struct common_graph {
 		return ret;
 	}
 
-	constexpr bool path(vertex_vec& result, const vertex_interface* from, const vertex_interface* to) const {
+	constexpr bool path(link_holder& result, const vertex_interface* from, const vertex_interface* to) const {
 		for(const auto& e:edges) {
 			if(e.parent != from) continue;
 			if(e.child == to || path(result, e.child, to)) {
-				result.emplace_back(e.child);
+				result.emplace_back(e);
 				return true;
 			}
 		}
 		return false;
 	}
-	constexpr vertex_vec path(const vertex_interface* from, const vertex_interface* to) const {
-		auto ret = mk_vec<const vertex_interface*>(f);
+	constexpr link_holder path(const vertex_interface* from, const vertex_interface* to) const {
+		auto ret = mk_vec<link>(f);
 		path(ret, from, to);
 		return ret;
 	}
