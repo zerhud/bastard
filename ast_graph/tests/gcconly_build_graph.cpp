@@ -171,6 +171,29 @@ static_assert( test_fixture{[](auto& f){
 	return v.size() == orig_size-1;
 }}() == true, "test operator-=" );
 
+static_assert( test_fixture{[](auto& f){
+	f.mk_test_fields(2);
+	f.src.leafs[1].ff = 3;
+	f.src.leafs[0].ff = 3;
+	f.src.leafs[0].vl.template emplace<1>().v2f = 7;
+
+	auto[ g, v ] = f.mk_test_graph();
+	auto* root = g.root().base;
+	auto* con = g.links_of(root)[0].child;
+	auto c0 = g.links_of(con)[0].child;
+	auto c1 = g.links_of(con)[1].child;
+
+	auto c0_1 = g.path(c0, c1);
+	auto root_con = g.path(root, con);
+	return
+	   c0_1.empty() +
+	2* (root_con.size() == 1) +
+	4* (g.path(root, c0).size() == 2) +
+	8* (g.path(root, c1)[0] == c1) +
+	16*(g.path(root, c1)[1] == con)
+	;
+}}() == 31 );
+
 int main(int,char**) {
 	auto src = fixture{}.create_test_fields(2);
 	auto g = ast_graph::mk_graph(inner_factory{}, src);
