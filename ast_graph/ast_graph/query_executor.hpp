@@ -135,7 +135,7 @@ struct path_evaluator {
 		auto path = graph->path(parent, child);
 		if(!path.empty() && check_path_end(pos, end, child)) {
 			//TODO: check path with the info parameter
-			output.add_vertex(child);
+			for(auto& part:path) output.add_vertex(part.child);
 			return true;
 		}
 		return false;
