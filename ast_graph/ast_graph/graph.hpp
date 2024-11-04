@@ -194,6 +194,17 @@ struct graph_holder : common_graph<factory> {
 		return ret;
 	}
 
+	constexpr void subtree_of(auto& result, const vertex_interface* root) const {
+		auto links = this->links_of(root);
+		result.add_vertex(root);
+		for(auto& link:links) subtree_of(result, link.child);
+	}
+	constexpr auto subtree_of(const vertex_interface* root) const {
+		auto ret = create_empty_view();
+		subtree_of(ret, root);
+		return ret;
+	}
+
 	constexpr friend void reserve_vertex_count(graph_holder& h, auto sz) { h.vertices.reserve(sz); }
 	constexpr friend auto& create_vertex(graph_holder& h, auto&&... args) {
 		return h.vertices.emplace_back(std::forward<decltype(args)>(args)...);

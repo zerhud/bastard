@@ -194,6 +194,23 @@ static_assert( test_fixture{[](auto& f){
 	;
 }}() == 31 );
 
+static_assert(test_fixture{[](auto& f){
+	f.mk_test_fields(2);
+	auto[g,v] = f.mk_test_graph();
+	auto* root = g.root().base;
+	auto* con = g.links_of(root)[0].child;
+	auto c0 = g.links_of(con)[0].child;
+	auto c1 = g.links_of(con)[1].child;
+
+	auto subtree = g.subtree_of(con);
+	return
+	  (subtree.size() == 5) +
+	2*(subtree.ast_links_of(con).size() == 2) +
+	4*(subtree.ast_links_of(c0).size() == 1) +
+	8*(subtree.ast_links_of(c1).size() == 1)
+	;
+}}() == 15);
+
 int main(int,char**) {
 	auto src = fixture{}.create_test_fields(2);
 	auto g = ast_graph::mk_graph(inner_factory{}, src);
