@@ -46,6 +46,11 @@ int main(int,char**) {
 	}() == 7 );
 	static_assert( []{
 		qedge r;
+		parse(qedge::mk_parser<parser>(), +parser::space, parser::make_source("-2->"), r);
+		return (r.stop_on_match==-1) + 2*(r.max_deep==2) + 4*(r.name.empty());
+	}() == 7 );
+	static_assert( []{
+		qedge r;
 		parse(qedge::mk_parser<parser>(), +parser::space, parser::make_source("-[test]->"), r);
 		return (r.name=="test");
 	}() == true );
