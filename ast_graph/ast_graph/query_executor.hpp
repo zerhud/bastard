@@ -84,36 +84,33 @@ struct path_evaluator {
 		}
 	}
 
-	constexpr auto operator()(const qgraph& q) { return (*this)(q.data); }
-	template<typename... types>
-	constexpr auto operator()(const qgraph::template variant<types...>& v) { return visit(*this, v); }
-	constexpr int operator()(const qgraph::add& q) {
+	constexpr auto& operator()(const qgraph& q) { (*this)(q.data); return *this; }
+	template<typename... types> constexpr auto operator()(const qgraph::template variant<types...>& v) {
+		return visit(*this, v);
+	}
+	constexpr void operator()(const qgraph::add& q) {
 		visit(*this, *q.left);
 		auto left = output;
 		visit(*this, *q.right);
 		output += left;
-		return __LINE__;
 	}
-	constexpr int operator()(const qgraph::sub& q) {
+	constexpr void operator()(const qgraph::sub& q) {
 		visit(*this, *q.right);
 		auto right = output;
 		visit(*this, *q.left);
 		output -= right;
-		return __LINE__;
 	}
-	constexpr int operator()(const qgraph::qvertex& q) {
+	constexpr void operator()(const qgraph::qvertex& q) {
 		output = graph->create_empty_view();
 		for(auto& i:cur_input.vertices) {
 			if(vertex_evaluator{f, i}(q)) output.add_vertex(i);
 		}
-		return __LINE__;
 	}
-	constexpr int operator()(const qgraph::path& q) {
+	constexpr void operator()(const qgraph::path& q) {
 		visit(*this, *q.start);
 		auto matched = std::move(output);
 		output = graph->create_empty_view();
 		check_path_end(q.tail.begin(), q.tail.end(), matched);
-		return __LINE__;
 	}
 	constexpr void check_path_end(auto pos, auto end, graph_view src) {
 		for(auto& v:src.vertices) {
