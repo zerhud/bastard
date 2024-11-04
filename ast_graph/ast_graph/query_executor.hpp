@@ -133,12 +133,15 @@ struct path_evaluator {
 	}
 	constexpr bool check_path_end(auto pos, auto end, const qgraph::path_end& info, const vertex* parent, const vertex* child) {
 		auto path = graph->path(parent, child);
-		if(!path.empty() && check_path_end(pos, end, child)) {
-			//TODO: check path with the info parameter
+		if(check_path_end(info, path) && check_path_end(pos, end, child)) {
 			for(auto& part:path) output.add_vertex(part.child);
 			return true;
 		}
 		return false;
+	}
+	constexpr bool check_path_end(const qgraph::path_end& info, const auto& path) const {
+		if(!info.edge.name.empty()) for(auto& p:path) if(p.name != info.edge.name) return false;
+		return !path.empty() && (info.edge.max_deep < 0 || info.edge.max_deep==path.size());
 	}
 };
 

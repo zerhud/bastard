@@ -218,6 +218,22 @@ static_assert( test_fixture{[](auto& f){
 	e(qp);
 	return e.output.size();
 }}() == 4 );
+static_assert( test_fixture{[](auto& f){
+	f.create_named("test");
+	auto parsed = ast_graph::parse_from(f.pf, "{'field_1'=1}->{'test'}");
+	auto& qp = get<0>(parsed.data);
+	path_evaluator e{f.pf, &f.graph, f.graph.create_view()};
+	e(qp);
+	return e.output.size();
+}}() == 0 );
+static_assert( test_fixture{[](auto& f){
+	f.create_named("test");
+	auto parsed = ast_graph::parse_from(f.pf, "{'field_1'=1}-['leafs']->{}-2->{'test'}");
+	auto& qp = get<0>(parsed.data);
+	path_evaluator e{f.pf, &f.graph, f.graph.create_view()};
+	e(qp);
+	return e.output.size();
+}}() == 4 );
 
 int main(int,char**) {
 	auto r = test_fixture{[](auto&f){
