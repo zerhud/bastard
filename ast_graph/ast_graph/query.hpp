@@ -34,7 +34,6 @@ namespace details{
 template<typename factory>
 struct query_edge {
 	using string_t = typename factory::string_t;
-	int stop_on_match = -1; //TODO: remove this field?
 	int max_deep = 1;
 	string_t name;
 
@@ -43,16 +42,16 @@ struct query_edge {
 		constexpr auto query_edge_name_parser = lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_)) | gh::quoted_string;
 		// the parser's order is:
 		// -[name]->
-		// -[1:1:name]->
+		// -[1:name]->
 		// ->
 		// -->
 		// -2->
 		return 
-		 ( as<-1>(th<'-'>::_char)++ >> as<1>(th<'['>::_char)++ >> query_edge_name_parser >> gh::template lit<"]->"> )
-		|( gh::template lit<"-["> >> -gh::int_ >> th<':'>::_char++ >> -gh::int_ >> th<':'>::_char++ >> query_edge_name_parser >> gh::template lit<"]->"> )
-		|( th<'-'>::_char++ >> as<1>(th<'>'>::_char) )
-		|( th<'-'>::_char++ >> as<-1>(th<'-'>::_char) >> th<'>'>::_char )
-		|( th<'-'>::_char++ >> gh::int_ >> gh::template lit<"->"> )
+		 ( th<'-'>::_char >> as<1>(th<'['>::_char)++ >> query_edge_name_parser >> gh::template lit<"]->"> )
+		|( gh::template lit<"-["> >> -gh::int_ >> th<':'>::_char++ >> query_edge_name_parser >> gh::template lit<"]->"> )
+		|( th<'-'>::_char >> as<1>(th<'>'>::_char)++ )
+		|( th<'-'>::_char >> as<-1>(th<'-'>::_char)++ >> th<'>'>::_char )
+		|( th<'-'>::_char >> gh::int_++ >> gh::template lit<"->"> )
 		;
 	}
 };
