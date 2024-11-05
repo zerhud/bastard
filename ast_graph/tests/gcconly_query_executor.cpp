@@ -236,12 +236,5 @@ static_assert( test_fixture{[](auto& f){
 }}() == 4 );
 
 int main(int,char**) {
-	auto r = test_fixture{[](auto&f){
-		auto parsed = ast_graph::parse_from(f.pf, "{'field_1'=1}->{}");
-		path_evaluator e{f.pf, &f.graph, f.graph.create_view()};
-		e(parsed);
-		return e.output.size();
-	}}();
-	std::cout << "we got " << r << std::endl;
 	return 0;
 }
