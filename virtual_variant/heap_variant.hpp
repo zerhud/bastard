@@ -72,7 +72,7 @@ struct heap_variant : base_type {
 		//NOTE: gcc 14 bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=107744
 		//      seems fixed in gcc15
 		static_assert( (std::is_same_v<type, types> + ...) > 0, "the type should to be one of present types" );
-		return dynamic_cast<content_type<type>&>(*v.pointer);
+		return static_cast<content_type<type>&>(*v.pointer);
 	}
 	template<auto ind, typename cur_self_type>
 	friend constexpr auto&& get(cur_self_type&& v) requires std::is_base_of_v<self_type, std::decay_t<cur_self_type>> {
