@@ -9,6 +9,7 @@
  *************************************************************************/
 
 #include "tests/factory.hpp"
+#include "virtual_variant/heap_variant.hpp"
 
 #include "absd.hpp"
 #include "jiexpr.hpp"

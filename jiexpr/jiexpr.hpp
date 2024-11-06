@@ -57,7 +57,7 @@ struct jiexpr {
 		constexpr explicit ternary_op(data_factory) {}
 		constexpr data_type solve(const solve_info& i) const override {
 			if(to_bool<data_type>(i.ops, cond->solve(i))) return left->solve(i);
-			if(right) return right->solve(i);
+			if(right.get()) return right->solve(i);
 			return data_type{i.df};
 		}
 	};
