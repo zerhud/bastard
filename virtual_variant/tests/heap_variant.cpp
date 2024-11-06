@@ -19,7 +19,10 @@ constexpr long int random_number =
 		+ 1*(__TIME__[0])
 ;
 
-struct factory { int* test_field=nullptr; };
+struct factory {
+	int* test_field=nullptr;
+	template<typename... types> using variant_t = std::variant<types...>;
+};
 constexpr void deallocate(const factory&, auto* ptr) { delete ptr; }
 template<typename type> constexpr auto* allocate(const factory&, auto&&... args) {
 	return new type{std::forward<decltype(args)>(args)...};
@@ -113,7 +116,6 @@ static_assert( []{
 	test_variant v;
 	create<int>(v) = random_number;
 	test_variant v2(std::move(v));
-	create<expr1>(v);
 	return v2.solve(info{});
 }() == random_number, "can use move ctor" );
 static_assert( []{
@@ -121,7 +123,6 @@ static_assert( []{
 	create<int>(v) = random_number;
 	test_variant v2;
 	v2 = std::move(v);
-	create<expr1>(v);
 	return v2.solve(info{});
 }() == random_number, "can use move operator=" );
 

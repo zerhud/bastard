@@ -28,9 +28,13 @@ struct heap_variant : base_type {
 	}
 
 	template<typename type> using content_type = decltype(mk_content_type<type>())::type;
+	using holder_t = factory::template variant_t<content_type<types>...>;
 
 	constexpr heap_variant() : heap_variant(factory{}) {}
-	constexpr heap_variant(factory f) : f(std::move(f)) {
+	constexpr explicit heap_variant(factory f)
+	: f(std::move(f))
+	, holder(allocate<holder_t>(this->f, content_type<__type_pack_element<0, types...>>(this->f)))
+	{
 		create<0>(*this);
 	}
 	constexpr ~heap_variant() noexcept {
@@ -42,21 +46,23 @@ struct heap_variant : base_type {
 	constexpr heap_variant& operator=(const heap_variant&) =delete ;
 
 	constexpr heap_variant(heap_variant&& other) noexcept
-	: pointer(other.pointer) {
+	: pointer(other.pointer), holder(std::move(other.holder)) {
 		other.pointer = nullptr;
+		other.holder = nullptr;
 	}
 	constexpr heap_variant& operator=(heap_variant&& other) noexcept {
 		dispose();
 		pointer = other.pointer;
+		holder = std::move(other.holder);
 		other.pointer = nullptr;
+		other.holder = nullptr;
 		return *this;
 	}
 
 	template<typename type>
 	friend constexpr auto& create(heap_variant& v) {
 		static_assert( (std::is_same_v<type, types> + ...) > 0, "the type should to be one of present types" );
-		v.dispose();
-		auto* ptr = allocate<content_type<type>>(v.f, v.f);
+		auto* ptr = &v.holder->template emplace<content_type<type>>(v.f);
 		v.pointer = ptr;
 		v.shift_index<type>();
 		if constexpr (std::is_base_of_v<base_type, type>) return *ptr;
@@ -72,7 +78,7 @@ struct heap_variant : base_type {
 		//NOTE: gcc 14 bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=107744
 		//      seems fixed in gcc15
 		static_assert( (std::is_same_v<type, types> + ...) > 0, "the type should to be one of present types" );
-		return static_cast<content_type<type>&>(*v.pointer);
+		return get<content_type<type>>(*v.holder);
 	}
 	template<auto ind, typename cur_self_type>
 	friend constexpr auto&& get(cur_self_type&& v) requires std::is_base_of_v<self_type, std::decay_t<cur_self_type>> {
@@ -91,9 +97,9 @@ struct heap_variant : base_type {
 	template<typename type, typename cur_self_type>
 	friend constexpr auto first_index_of(cur_self_type&&) requires std::is_base_of_v<self_type, std::decay_t<cur_self_type>> {
 		static_assert( ((std::is_base_of_v<type, types>||std::is_same_v<type,types>) + ... ) > 0, "there is no such type" );
-		size_t ind=0;
-		(void)( ((std::is_base_of_v<type, types>||std::is_same_v<type,types>)||(++ind,false)) || ... );
-		return ind;
+		size_t i=0;
+		(void)( ((std::is_base_of_v<type, types>||std::is_same_v<type,types>)||(++i,false)) || ... );
+		return i;
 	}
 
 	factory f;
@@ -107,8 +113,9 @@ protected:
 		ind = index_of<type>();
 	}
 	constexpr auto dispose() {
-		deallocate(f, pointer);
+		if(holder) deallocate(f, holder);
 	}
 	size_t ind{0};
 	base_type* pointer{nullptr};
+	holder_t* holder{nullptr};
 };
