@@ -11,14 +11,20 @@
 
 #include "jinja.hpp"
 
+struct test_expr : std::variant<int, bool> {
+	constexpr static auto mk_parser() {
+		using p = ascip<std::tuple>;
+		return p::int_ | (as<true>(p::template lit<"true">)|as<false>(p::template lit<"false">));
+	}
+};
+
 struct factory : tests::factory {
 	using parser = ascip<std::tuple>;
+	using jinja_expression = test_expr;
 };
-using tjinja = jinja<factory>;
 
 using parser = factory::parser;
 
-static_assert( (tjinja{factory{}}, 1), "can create" ) ;
 static_assert( parse(jinja_details::content<factory>::mk_parser(), parser::make_source("ab%! ^(\\<<<%")) == 10 );
 static_assert( []{
 	jinja_details::content<factory> r;
@@ -45,6 +51,15 @@ static_assert( []{
 	8*(p2==16) + 16*r2.begin.trim
 	;
 }() == 31 );
+static_assert( []{
+	jinja_details::expression_operator<factory> r1;
+	auto p1 = parse(r1.mk_parser(), +parser::space, parser::make_source("<= 3 =>"), r1);
+	return (p1 == 7) + 2*(get<0>(r1.expr)==3);
+}() == 3 );
+
+static_assert( []{
+	return 1;
+}() );
 
 int main(int,char**) {
 	return 0;
