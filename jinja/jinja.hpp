@@ -11,17 +11,9 @@
 #include <utility>
 
 #include "jinja/common.hpp"
+#include "jinja/operators.hpp"
 
 namespace jinja_details {
-
-template<typename factory>
-struct execution_context {};
-
-template<typename factory>
-struct base_jinja_element {
-	virtual ~base_jinja_element() noexcept =default ;
-	virtual void execute(execution_context<factory>& ctx) const =0 ;
-};
 
 template<typename factory>
 struct content : base_jinja_element<factory> {
@@ -35,49 +27,6 @@ struct content : base_jinja_element<factory> {
 	constexpr static auto mk_parser() {
 		using bp = base_parser<factory>;
 		return lexeme( fnum<0>(parser::nop) >> +(parser::any - bp::mk_check_parser()) );
-	}
-};
-template<typename factory>
-struct comment_operator : base_jinja_element<factory> {
-	using parser = factory::parser;
-	using string_type = factory::string_t;
-
-	constexpr static auto struct_fields_count() { return 3; }
-	trim_info<factory> begin;
-	string_type value;
-	trim_info<factory> end;
-
-	constexpr void execute(execution_context<factory>& ctx) const override { }
-
-	constexpr static auto mk_parser() {
-		using bp = base_parser<factory>;
-		constexpr auto end = trim_info<factory>::mk_parser() >> bp::mk_comment_end();
-		return
-		   lexeme(bp::mk_comment_begin() >> trim_info<factory>::mk_parser())++
-		>> *(parser::any - end)
-		>> ++lexeme(end);
-	}
-};
-
-template<typename factory>
-struct expression_operator : base_jinja_element<factory> {
-	using parser = factory::parser;
-	using expr_type = factory::jinja_expression;
-
-	constexpr static auto struct_fields_count() { return 3; }
-	trim_info<factory> begin;
-	expr_type expr;
-	trim_info<factory> end;
-
-	constexpr void execute(execution_context<factory>& ctx) const override { }
-
-	constexpr static auto mk_parser() {
-		using bp = base_parser<factory>;
-		return
-		   lexeme(bp::mk_expr_begin() >> trim_info<factory>::mk_parser())++
-		>> expr_type::mk_parser()
-		>> ++lexeme(trim_info<factory>::mk_parser() >> bp::mk_expr_end())
-		;
 	}
 };
 

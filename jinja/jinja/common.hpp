@@ -34,4 +34,13 @@ struct trim_info {
 	}
 };
 
+template<typename factory>
+struct execution_context {};
+
+template<typename factory>
+struct base_jinja_element {
+	virtual ~base_jinja_element() noexcept =default ;
+	virtual void execute(execution_context<factory>& ctx) const =0 ;
+};
+
 } // namespace jinja_details
