@@ -19,10 +19,13 @@ template<typename factory>
 struct content : base_jinja_element<factory> {
 	using string_type = factory::string_t;
 	using parser = factory::parser;
+	using context_type = base_jinja_element<factory>::context_type;
 
 	string_type value;
 
-	constexpr void execute(execution_context<factory>& ctx) const override { }
+	constexpr void execute(context_type& ctx) const override {
+		ctx.append_content(value);
+	}
 
 	constexpr static auto mk_parser() {
 		using bp = base_parser<factory>;
@@ -33,14 +36,14 @@ struct content : base_jinja_element<factory> {
 template<typename factory>
 struct named_block : base_jinja_element<factory> {
 	using base = base_jinja_element<factory>;
+	using context_type = base_jinja_element<factory>::context_type;
 	using p = factory::parser;
 
 	constexpr static auto mk_content_holder(const factory& f) {
 		return mk_vec<const base*>(f);
 	}
-	//using content_type = decltype();
 
-	constexpr void execute(execution_context<factory>& ctx) const override { }
+	constexpr void execute(context_type& ctx) const override { }
 
 	constexpr static auto struct_fields_count() { return 4; }
 	trim_info<factory> begin_left, begin_right;

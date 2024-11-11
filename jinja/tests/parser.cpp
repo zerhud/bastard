@@ -18,12 +18,21 @@ struct test_expr : std::variant<int, bool> {
 	}
 };
 
+struct test_context ;
+
 struct factory : tests::factory {
 	using parser = ascip<std::tuple>;
 	using jinja_expression = test_expr;
+	using jinja_context = test_context;
+};
+using parser = factory::parser;
+struct test_context {
+	factory f;
+	constexpr void append_content(const auto& ){}
+	constexpr void append_output(const auto&, auto&&, const auto&){}
 };
 
-using parser = factory::parser;
+constexpr auto jinja_to_string(const factory&, const test_expr&) { return std::string{}; }
 
 static_assert( parse(jinja_details::content<factory>::mk_parser(), parser::make_source("ab%! ^(\\<<<%")) == 10 );
 static_assert( []{
@@ -56,10 +65,6 @@ static_assert( []{
 	auto p1 = parse(r1.mk_parser(), +parser::space, parser::make_source("<= 3 =>"), r1);
 	return (p1 == 7) + 2*(get<0>(r1.expr)==3);
 }() == 3 );
-
-static_assert( []{
-	return 1;
-}() );
 
 int main(int,char**) {
 	return 0;

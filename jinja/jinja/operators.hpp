@@ -8,6 +8,8 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
+#include "common.hpp"
+
 namespace jinja_details {
 
 template<typename factory>
@@ -20,7 +22,7 @@ struct comment_operator : base_jinja_element<factory> {
 	string_type value;
 	trim_info<factory> end;
 
-	constexpr void execute(execution_context<factory>& ctx) const override { }
+	constexpr void execute(base_jinja_element<factory>::context_type&) const override { }
 
 	constexpr static auto mk_parser() {
 		using bp = base_parser<factory>;
@@ -36,13 +38,16 @@ template<typename factory>
 struct expression_operator : base_jinja_element<factory> {
 	using parser = factory::parser;
 	using expr_type = factory::jinja_expression;
+	using context_type = base_jinja_element<factory>::context_type;
 
 	constexpr static auto struct_fields_count() { return 3; }
 	trim_info<factory> begin;
 	expr_type expr;
 	trim_info<factory> end;
 
-	constexpr void execute(execution_context<factory>& ctx) const override { }
+	constexpr void execute(context_type& ctx) const override {
+		ctx.append_output(begin, jinja_to_string(ctx.f, expr), end);
+	}
 
 	constexpr static auto mk_parser() {
 		using bp = base_parser<factory>;
