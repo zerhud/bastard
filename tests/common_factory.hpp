@@ -35,6 +35,9 @@ constexpr void deallocate(const common_factory& f, auto* ptr) {
 	delete ptr;
 }
 
+template<typename type> constexpr auto mk_ptr(const common_factory&) {
+	return std::unique_ptr<type>{};
+}
 constexpr auto mk_ptr(const common_factory&, auto d) {
 	return std::make_unique<decltype(d)>( std::move(d) );
 }

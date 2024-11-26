@@ -26,11 +26,10 @@ struct comment_operator : base_jinja_element<factory> {
 
 	constexpr static auto mk_parser() {
 		using bp = base_parser<factory>;
-		constexpr auto end = trim_info<factory>::mk_parser() >> bp::mk_comment_end();
+		constexpr auto end = lexeme(trim_info<factory>::mk_parser() >> bp::mk_comment_end());
 		return
-				lexeme(bp::mk_comment_begin() >> trim_info<factory>::mk_parser())++
-						>> *(parser::any - end)
-						>> ++lexeme(end);
+			   lexeme(bp::mk_comment_begin() >> trim_info<factory>::mk_parser())++
+			>> *(parser::any - end) >> ++end;
 	}
 };
 
@@ -52,10 +51,10 @@ struct expression_operator : base_jinja_element<factory> {
 	constexpr static auto mk_parser() {
 		using bp = base_parser<factory>;
 		return
-				lexeme(bp::mk_expr_begin() >> trim_info<factory>::mk_parser())++
-						>> expr_type::mk_parser()
-						>> ++lexeme(trim_info<factory>::mk_parser() >> bp::mk_expr_end())
-				;
+			   lexeme(bp::mk_expr_begin() >> trim_info<factory>::mk_parser())++
+			>> use_seq_result(skip(++expr_type::mk_parser()
+			>> ++lexeme(trim_info<factory>::mk_parser() >> bp::mk_expr_end())))
+		;
 	}
 };
 

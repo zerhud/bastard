@@ -66,6 +66,36 @@ static_assert( []{
 	return (p1 == 7) + 2*(get<0>(r1.expr)==3);
 }() == 3 );
 
+static_assert( []{
+	jinja_details::named_block<factory> r1;
+	auto p1 = parse(r1.mk_parser(), +parser::space, parser::make_source("<%+ block foo %><% endblock +%>"), r1);
+	return (p1==31) +
+	+ 2*(r1.name == "foo")
+	+ 4*r1.begin_left.trim
+	+ 8*r1.end_right.trim
+	;
+}() == 15, "can parse empty block" );
+static_assert( []{
+	jinja_details::named_block<factory> r1;
+	auto p1 = parse(r1.mk_parser(), +parser::space, parser::make_source("<%block foo%> ba<%endblock%>"), r1);
+	return (p1==28)
+	+ 2*(r1.name=="foo")
+	+ 4*(r1.holder.size()==1)
+	+ 8*(static_cast<const jinja_details::content<factory>*>(r1.holder[0].get())->value==" ba")
+	;
+}() == 15, "can parse block with content" );
+static_assert( []{
+	jinja_details::named_block<factory> r1;
+	auto p1 = parse(r1.mk_parser(), +parser::space, parser::make_source("<% block foo%> ba<#cm t#> <= 3 =><%endblock%>"), r1);
+	return (p1==45)
+	+ 2*(r1.holder.size()==4)
+	+ 4*(static_cast<const jinja_details::content<factory>*>(r1.holder[0].get())->value==" ba")
+	+ 8*(static_cast<const jinja_details::comment_operator<factory>*>(r1.holder[1].get())->value=="cm t")
+	+ 16*(static_cast<const jinja_details::content<factory>*>(r1.holder[2].get())->value==" ")
+	+ 32*(get<0>(static_cast<const jinja_details::expression_operator<factory>*>(r1.holder[3].get())->expr)==3)
+	;
+}() == 63, "can parse block as content->comment->content" );
+
 int main(int,char**) {
 	return 0;
 }

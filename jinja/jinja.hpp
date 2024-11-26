@@ -36,18 +36,56 @@ struct content : base_jinja_element<factory> {
 template<typename factory>
 struct named_block : base_jinja_element<factory> {
 	using base = base_jinja_element<factory>;
+	using string_t = decltype(mk_str(std::declval<factory>()));
 	using context_type = base_jinja_element<factory>::context_type;
 	using p = factory::parser;
+	template<auto s> using th = p::template tmpl<s>;
 
 	constexpr static auto mk_content_holder(const factory& f) {
-		return mk_vec<const base*>(f);
+		using ptr_t = decltype(mk_ptr<const base>(f));
+		return mk_vec<ptr_t>(f);
 	}
+
+	using holder_type = decltype(mk_content_holder(std::declval<factory>()));
 
 	constexpr void execute(context_type& ctx) const override { }
 
-	constexpr static auto struct_fields_count() { return 4; }
-	trim_info<factory> begin_left, begin_right;
-	trim_info<factory> end_left, end_right;
+	constexpr static auto struct_fields_count() { return 7; }
+	factory f;
+	trim_info<factory> begin_left, end_left;
+	string_t name;
+	holder_type holder;
+	trim_info<factory> begin_right, end_right;
+
+	constexpr named_block() : named_block(factory{}) {}
+	constexpr explicit named_block(factory f)
+	: f(std::move(f))
+#ifdef __clang__
+	//TODO:GCC15: remove ifdef when gcc bug will be fixed (cannot compile for some reason the parser.cpp test)
+	, name(mk_str(this->f))
+#endif
+	, holder(mk_content_holder(this->f))
+	{}
+
+	constexpr static auto mk_parser() {
+		using bp = base_parser<factory>;
+		auto content_parser = content<factory>::mk_parser();
+		auto comment_parser = comment_operator<factory>::mk_parser();
+		auto expression_parser = expression_operator<factory>::mk_parser();
+		constexpr auto trim_parser = trim_info<factory>::mk_parser();
+		constexpr auto ident = lexeme(p::alpha >> *(p::alpha | p::d10 | th<'_'>::char_));
+		return
+		   ++lexeme(bp::mk_block_begin() >> trim_parser)++
+		>> p::template lit<"block">++ >> ident >> --trim_parser >> use_seq_result(lexeme(fnum<3>(bp::mk_block_end())
+		>> *fnum<4>(
+		        expression_parser([](auto& v){auto* ptr = new expression_operator<factory>{}; v.reset(ptr); return ptr;})
+		      | comment_parser([](auto& v){auto* ptr = new comment_operator<factory>{}; v.reset(ptr); return ptr;})
+		      | content_parser([](auto& v){auto* ptr = new content<factory>{}; v.reset(ptr); return ptr;})
+			)
+		>> bp::mk_block_begin() >> fnum<5>(trim_parser)))
+		>> p::template lit<"endblock"> >> fnum<6>(trim_parser) >> bp::mk_block_end()
+		;
+	}
 };
 
 } // namespace jinja_details
