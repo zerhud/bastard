@@ -11,11 +11,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1732485733,
-        "narHash": "sha256-ysyFZ1s2iosKLzkO6+TpO887D0VtMobVsSUIo4+V5d0=",
+        "lastModified": 1732624525,
+        "narHash": "sha256-JIcDeN9LskATic0Q8Y1bYFjjSDW/FgGFBFltaYqk/sQ=",
         "owner": "zerhud",
         "repo": "ascip",
-        "rev": "527c3a66b2301b0be8edda5789e3dae81e6a3f33",
+        "rev": "d70db8001dd5befb2446d1947e98f94855f20e32",
         "type": "github"
       },
       "original": {
