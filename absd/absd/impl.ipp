@@ -25,7 +25,7 @@ constexpr auto data<factory>::inner_mk(const factory_t& f, auto&& _v, auto&& ...
 
 	constexpr bool is_callable = details::is_specialization_of<val_type, details::callable2>;
 
-	auto arr = details::mk_te_array<self_type>(f, counter_maker < details::origin<val_type> > {std::move(v)});
+	auto arr = details::mk_te_array<self_type>(f, details::counter_maker < details::origin<val_type> > {std::move(v)});
 	auto arr_obj = details::mk_te_object<self_type>(f, std::move(arr));
 	return details::mk_te_callable<is_callable, self_type>(f, std::move(arr_obj));
 }

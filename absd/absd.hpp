@@ -90,7 +90,7 @@ struct data {
 		self_type ret{f};
 		auto inner = inner_mk(f, std::forward<decltype(_v)>(_v), std::forward<decltype(args)>(args)...);
 
-		constexpr bool is_counter_maker = details::is_specialization_of<decltype(inner), counter_maker>;
+		constexpr bool is_counter_maker = details::is_specialization_of<decltype(inner), details::counter_maker>;
 		static_assert( !is_counter_maker || requires{ self_type{std::move(inner.orig_val())}; }, "cannot create absd data from the object" );
 		if constexpr (is_counter_maker) return self_type{std::move(inner.orig_val())};
 		else mk_ptr_and_assign(ret, f, std::move(inner));
@@ -141,14 +141,6 @@ private:
 			holder = typename factory_t::empty_t{};
 		}
 	}
-
-	template<typename type>
-	struct counter_maker : type {
-		details::inner_counter counter;
-		constexpr explicit counter_maker(auto&&... args) : type(std::forward<decltype(args)>(args)...) {}
-		constexpr decltype(details::inner_counter::ref_counter) increase_counter() override { return counter.increase_counter(); }
-		constexpr decltype(details::inner_counter::ref_counter) decrease_counter() override { return counter.decrease_counter(); }
-	};
 
 	constexpr void copy_multi_pointers(const auto& other) noexcept {
 		multi_callable = other.multi_callable;

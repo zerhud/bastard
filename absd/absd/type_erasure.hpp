@@ -41,19 +41,12 @@ struct multiobject_tag : counter_interface {
 };
 
 template<typename type>
-struct counter_maker : inner_counter, type {
-	constexpr counter_maker(auto&&... args) : type(std::forward<decltype(args)>(args)...) {}
-	constexpr decltype(inner_counter::ref_counter) increase_counter() override { return inner_counter::increase_counter(); }
-	constexpr decltype(inner_counter::ref_counter) decrease_counter() override { return inner_counter::decrease_counter(); }
+struct counter_maker : type {
+	details::inner_counter counter;
+	constexpr explicit counter_maker(auto&&... args) : type(std::forward<decltype(args)>(args)...) {}
+	constexpr decltype(details::inner_counter::ref_counter) increase_counter() override { return counter.increase_counter(); }
+	constexpr decltype(details::inner_counter::ref_counter) decrease_counter() override { return counter.decrease_counter(); }
 };
-template<typename data_type, typename from, typename type>
-constexpr static data_type mk_coutner_and_assign(const auto& f, auto&& v) {
-	data_type ret{f};
-	auto tmp = f.mk_ptr(counter_maker<type>(std::forward<decltype(v)>(v)));
-	ret.assign(static_cast<from*>(tmp.get()));
-	tmp.release();
-	return ret;
-}
 
 template<typename val_type>
 struct origin : details::multiobject_tag {
