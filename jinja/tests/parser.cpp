@@ -73,8 +73,9 @@ static_assert( []{
 	+ 2*(r1.name == "foo")
 	+ 4*r1.begin_left.trim
 	+ 8*r1.end_right.trim
+	+ 16*(r1.holder.size()==0)
 	;
-}() == 15, "can parse empty block" );
+}() == 31, "can parse empty block" );
 static_assert( []{
 	jinja_details::named_block<factory> r1;
 	auto p1 = parse(r1.mk_parser(), +parser::space, parser::make_source("<%block foo%> ba<%endblock%>"), r1);

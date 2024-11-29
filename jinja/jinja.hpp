@@ -67,7 +67,22 @@ struct named_block : base_jinja_element<factory> {
 	, holder(mk_content_holder(this->f))
 	{}
 
+	template<template<typename>class type>
+	constexpr static auto mk_ptr_maker(const factory& f) {
+		auto make_type = [f]{
+			if constexpr(requires{new type<factory>{f};}) return new type<factory>{f};
+			else return new type<factory>{};
+		};
+		return [make_type](auto& v){
+			auto* ptr = make_type();
+			v.reset(ptr);
+			return ptr;
+		};
+	}
 	constexpr static auto mk_parser() {
+		return mk_parser(factory{});
+	}
+	constexpr static auto mk_parser(factory f) {
 		using bp = base_parser<factory>;
 		auto content_parser = content<factory>::mk_parser();
 		auto comment_parser = comment_operator<factory>::mk_parser();
@@ -78,9 +93,9 @@ struct named_block : base_jinja_element<factory> {
 		   ++lexeme(bp::mk_block_begin() >> trim_parser)++
 		>> p::template lit<"block">++ >> ident >> --trim_parser >> use_seq_result(lexeme(fnum<3>(bp::mk_block_end())
 		>> *fnum<4>(
-		        expression_parser([](auto& v){auto* ptr = new expression_operator<factory>{}; v.reset(ptr); return ptr;})
-		      | comment_parser([](auto& v){auto* ptr = new comment_operator<factory>{}; v.reset(ptr); return ptr;})
-		      | content_parser([](auto& v){auto* ptr = new content<factory>{}; v.reset(ptr); return ptr;})
+		        expression_parser(mk_ptr_maker<expression_operator>(f))
+		      | comment_parser(mk_ptr_maker<comment_operator>(f))
+		      | content_parser(mk_ptr_maker<content>(f))
 			)
 		>> bp::mk_block_begin() >> fnum<5>(trim_parser)))
 		>> p::template lit<"endblock"> >> fnum<6>(trim_parser) >> bp::mk_block_end()
