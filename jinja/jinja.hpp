@@ -42,7 +42,7 @@ struct named_block : base_jinja_element<factory> {
 	template<auto s> using th = p::template tmpl<s>;
 
 	constexpr static auto mk_content_holder(const factory& f) {
-		using ptr_t = decltype(mk_ptr<const base>(f));
+		using ptr_t = decltype(mk_empty_ptr<const base>(f));
 		return mk_vec<ptr_t>(f);
 	}
 
@@ -69,14 +69,13 @@ struct named_block : base_jinja_element<factory> {
 
 	template<template<typename>class type>
 	constexpr static auto mk_ptr_maker(const factory& f) {
-		auto make_type = [f]{
-			if constexpr(requires{new type<factory>{f};}) return new type<factory>{f};
-			else return new type<factory>{};
-		};
-		return [make_type](auto& v){
-			auto* ptr = make_type();
-			v.reset(ptr);
-			return ptr;
+		using rt = type<factory>;
+		return [&f](auto& v){
+			v = [&f]{
+				if constexpr(requires{rt{f};}) return mk_ptr<rt>(f, f);
+				else return mk_ptr<rt>(f);
+			}();
+			return const_cast<rt*>(static_cast<const rt*>(v.get()));
 		};
 	}
 	constexpr static auto mk_parser() {

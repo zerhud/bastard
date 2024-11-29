@@ -26,19 +26,13 @@ struct common_factory {
 	}
 };
 
-template<typename type>
-constexpr auto* allocate(const common_factory& f, auto&&... args) {
-	return new type{ std::forward<decltype(args)>(args)... };
+template<typename type> constexpr auto mk_ptr(const common_factory&, auto&&... args) {
+	return std::make_unique<type>(std::forward<decltype(args)>(args)...);
 }
-
-constexpr void deallocate(const common_factory& f, auto* ptr) {
-	delete ptr;
-}
-
-template<typename type> constexpr auto mk_ptr(const common_factory&) {
+template<typename type> constexpr auto mk_empty_ptr(const common_factory&) {
 	return std::unique_ptr<type>{};
 }
-constexpr auto mk_ptr(const common_factory&, auto d) {
+constexpr auto mk_ptr_from_obj(const common_factory&, auto d) {
 	return std::make_unique<decltype(d)>( std::move(d) );
 }
 
