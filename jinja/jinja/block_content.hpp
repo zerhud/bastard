@@ -13,6 +13,8 @@
 
 namespace jinja_details {
 
+template<typename factory> struct named_block;
+
 template<typename factory>
 struct block_content : base_jinja_element<factory> {
 	using p = factory::parser;
@@ -60,11 +62,12 @@ struct block_content : base_jinja_element<factory> {
 		auto content_parser = content<factory>::mk_parser();
 		auto comment_parser = comment_operator<factory>::mk_parser();
 		auto expression_parser = expression_operator<factory>::mk_parser();
+		//auto block_parser = named_block<factory>::mk_parser();
 		constexpr auto trim_parser = trim_info<factory>::mk_parser();
 		return lexeme(
 		   trim_parser++ >> bp::mk_block_end()
 		>> *(
-		       expression_parser(mk_ptr_maker<expression_operator>(f))
+		      expression_parser(mk_ptr_maker<expression_operator>(f))
 		    | comment_parser(mk_ptr_maker<comment_operator>(f))
 		    | content_parser(mk_ptr_maker<content>(f))
 		)
