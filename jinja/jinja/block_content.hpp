@@ -13,12 +13,8 @@
 
 namespace jinja_details {
 
-template<typename factory> struct named_block;
-
 template<typename factory>
 struct block_content : base_jinja_element<factory> {
-	using p = factory::parser;
-	template<auto s> using th = p::template tmpl<s>;
 	using base = base_jinja_element<factory>;
 	using context_type = base_jinja_element<factory>::context_type;
 
@@ -42,38 +38,10 @@ struct block_content : base_jinja_element<factory> {
 	constexpr auto& operator[](auto ind) const { return holder[ind]; }
 
 	constexpr explicit block_content(factory f)
-			: holder(mk_content_holder(f))
-			, f(std::move(f))
+		: holder(mk_content_holder(f))
+		, f(std::move(f))
 	{}
 
-	template<template<typename>class type>
-	constexpr static auto mk_ptr_maker(const factory& f) {
-		using rt = type<factory>;
-		return [&f](auto& v){
-			v = [&f]{
-				if constexpr(requires{rt{f};}) return mk_ptr<rt>(f, f);
-				else return mk_ptr<rt>(f);
-			}();
-			return const_cast<rt*>(static_cast<const rt*>(v.get()));
-		};
-	}
-	constexpr static auto mk_parser(factory f) {
-		using bp = base_parser<factory>;
-		auto content_parser = content<factory>::mk_parser();
-		auto comment_parser = comment_operator<factory>::mk_parser();
-		auto expression_parser = expression_operator<factory>::mk_parser();
-		//auto block_parser = named_block<factory>::mk_parser();
-		constexpr auto trim_parser = trim_info<factory>::mk_parser();
-		return lexeme(
-		   trim_parser++ >> bp::mk_block_end()
-		>> *(
-		      expression_parser(mk_ptr_maker<expression_operator>(f))
-		    | comment_parser(mk_ptr_maker<comment_operator>(f))
-		    | content_parser(mk_ptr_maker<content>(f))
-		)
-		>> ++trim_parser >> bp::mk_block_begin()
-		);
-	}
 };
 
 } // namespace jinja_details
