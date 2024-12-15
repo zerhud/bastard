@@ -3,7 +3,7 @@
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    ascip.url = "github:zerhud/ascip/e5331fea6796462ee9eeddd959cdcfd282b734d1";
+    ascip.url = "github:zerhud/ascip";
     ascip.inputs = {
       nixpkgs.follows = "nixpkgs";
       cppbm.follows = "cppbm";

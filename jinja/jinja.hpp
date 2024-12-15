@@ -44,13 +44,15 @@ constexpr auto mk_content_parser(factory f) {
     auto expression_parser = expression_operator<factory>::mk_parser();
     auto block_parser = named_block<factory>::mk_parser();
     constexpr auto trim_parser = trim_info<factory>::mk_parser();
+	//TODO: remove skip() for block_parser - it should to be in block parser
+	//      but we cannot do it now for some compile issue with glvalue
     return lexeme(
        trim_parser++ >> bp::mk_block_end()
     >> *(
           expression_parser(mk_ptr_maker<expression_operator>(f))
         | comment_parser(mk_ptr_maker<comment_operator>(f))
         | content_parser(mk_ptr_maker<content>(f))
-        | block_parser(mk_ptr_maker<named_block>(f))
+        | skip(block_parser(mk_ptr_maker<named_block>(f)))
     )
     >> ++trim_parser >> bp::mk_block_begin()
     );
