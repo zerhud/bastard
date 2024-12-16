@@ -43,6 +43,7 @@ constexpr auto mk_content_parser(factory f) {
     auto comment_parser = comment_operator<factory>::mk_parser();
     auto expression_parser = expression_operator<factory>::mk_parser();
     auto block_parser = named_block<factory>::mk_parser();
+    auto macro_parser = macro_block<factory>::mk_parser();
     constexpr auto trim_parser = trim_info<factory>::mk_parser();
 	//TODO: remove skip() for block_parser - it should to be in block parser
 	//      but we cannot do it now for some compile issue with glvalue
@@ -53,6 +54,7 @@ constexpr auto mk_content_parser(factory f) {
         | comment_parser(mk_ptr_maker<comment_operator>(f))
         | content_parser(mk_ptr_maker<content>(f))
         | skip(block_parser(mk_ptr_maker<named_block>(f)))
+        | skip(macro_parser(mk_ptr_maker<macro_block>(f)))
     )
     >> ++trim_parser >> bp::mk_block_begin()
     );

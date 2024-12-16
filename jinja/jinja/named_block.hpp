@@ -13,14 +13,14 @@
 
 namespace jinja_details {
 
-template<typename factory>
-struct named_block : element_with_name<factory> {
+template<typename factory, typename crtp>
+struct block_with_params : element_with_name<factory> {
 	using base =  element_with_name<factory>;
-	using string_t = base::string_t;
-	using context_type = base::context_type;
-	using p = factory::parser;
+	using string_t = typename base::string_t;
+	using context_type = typename base::context_type;
+	using p = typename factory::parser;
 	template<auto s> using th = p::template tmpl<s>;
-	using expr_type = factory::jinja_expression;
+	using expr_type = typename factory::jinja_expression;
 
 	struct parameter {
 		string_t name;
@@ -40,8 +40,8 @@ struct named_block : element_with_name<factory> {
 	block_content<factory> holder;
 	trim_info<factory> end_right;
 
-	constexpr named_block() : named_block(factory{}) {}
-	constexpr explicit named_block(factory f)
+	constexpr block_with_params() : block_with_params(factory{}) {}
+	constexpr explicit block_with_params(factory f)
 	: f(std::move(f))
 #ifdef __clang__
 	//TODO:GCC15: remove ifdef when gcc bug will be fixed (cannot compile for some reason the parser.cpp test)
@@ -62,12 +62,27 @@ struct named_block : element_with_name<factory> {
 		//TODO: we cannot wrap the result in skip() here for some reason (error with glvalue)
 		return
 		++lexeme(bp::mk_block_begin() >> trim_parser)
-		>> p::template lit<"block"> >> ++ident++
+		>> crtp::keyword_open()++ >> ident++
 		>> -(th<'(' >::_char >> -((ident++ >> -(th<'='>::_char >> expr_parser)) % ',') >> th<')'>::_char)
 		>> ++p::template req<1>
-		>> p::template lit<"endblock">
-		>> ++trim_parser >> bp::mk_block_end()
+		>> crtp::keyword_close() >> ++trim_parser >> bp::mk_block_end()
 		;
 	}
 };
+
+template<typename factory>
+struct named_block : block_with_params<factory, named_block<factory>> {
+	using base = block_with_params<factory, named_block>;
+	using p = typename base::p;
+	consteval static auto keyword_open() { return base::p::template lit<"block">; }
+	consteval static auto keyword_close() { return base::p::template lit<"endblock">; }
+};
+
+template<typename factory>
+struct macro_block : block_with_params<factory, macro_block<factory>> {
+	using base = block_with_params<factory, macro_block>;
+	consteval static auto keyword_open() { return base::p::template lit<"macro">; }
+	consteval static auto keyword_close() { return base::p::template lit<"endmacro">; }
+};
+
 } // namespace jinja_details

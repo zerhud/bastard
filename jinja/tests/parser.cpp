@@ -28,6 +28,7 @@ struct factory : tests::factory {
 
 using jinja_content = jinja_details::content<factory>;
 using jinja_block = jinja_details::named_block<factory>;
+using jinja_macro = jinja_details::macro_block<factory>;
 
 using parser = factory::parser;
 struct test_context {
@@ -103,6 +104,16 @@ static_assert( [] {
 	+ 32*(static_cast<const jinja_block*>(r2.holder[1].get())->parameters.size() == 0)
 	;
 }() == 63, "can parse blocks with parameters" );
+static_assert( []{
+	jinja_details::template_block<factory> r1;
+	const auto p1 = parse( r1.mk_parser(factory{}), +parser::space,
+	parser::make_source("<% template tmpl %><% macro name %> <% endmacro %><%endtemplate%>"), r1);
+	return (p1==65)
+	+ 2*(r1.holder.size() == 1)
+	+ 4*(static_cast<const jinja_macro*>(r1.holder[0].get())->name() == "name")
+	+ 8*(static_cast<const jinja_macro*>(r1.holder[0].get())->size() == 1)
+	;
+}() == 15, "can parser template with macros" );
 
 int main(int,char**) {
 	return 0;
