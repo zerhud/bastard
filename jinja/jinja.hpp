@@ -15,6 +15,7 @@
 #include "jinja/operators.hpp"
 #include "jinja/named_block.hpp"
 #include "jinja/block_content.hpp"
+#include "jinja/set_block.hpp"
 
 namespace jinja_details {
 
@@ -44,6 +45,7 @@ constexpr auto mk_content_parser(factory f) {
     auto expression_parser = expression_operator<factory>::mk_parser();
     auto block_parser = named_block<factory>::mk_parser();
     auto macro_parser = macro_block<factory>::mk_parser();
+    auto set_block_parser = set_block<factory>::mk_parser();
     constexpr auto trim_parser = trim_info<factory>::mk_parser();
 	//TODO: remove skip() for block_parser - it should to be in block parser
 	//      but we cannot do it now for some compile issue with glvalue
@@ -55,6 +57,8 @@ constexpr auto mk_content_parser(factory f) {
         | content_parser(mk_ptr_maker<content>(f))
         | skip(block_parser(mk_ptr_maker<named_block>(f)))
         | skip(macro_parser(mk_ptr_maker<macro_block>(f)))
+        | skip(macro_parser(mk_ptr_maker<macro_block>(f)))
+        | skip(set_block_parser(mk_ptr_maker<set_block>(f)))
     )
     >> ++trim_parser >> bp::mk_block_begin()
     );
@@ -70,6 +74,9 @@ struct template_block : element_with_name<factory> {
 
 	constexpr const string_t& name() const override { return _name; }
 	constexpr void execute(context_type& ctx) const override { }
+
+	constexpr auto size() const { return holder.size(); }
+	constexpr auto& operator[](auto ind) const { return holder[ind]; }
 
 	constexpr static auto make_holder(const factory& f) {
 		using ptr_type = decltype(mk_empty_ptr<const base>(f));

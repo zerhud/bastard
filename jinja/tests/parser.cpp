@@ -11,10 +11,14 @@
 
 #include "jinja.hpp"
 
-struct test_expr : std::variant<int, bool> {
+using namespace std::literals;
+
+struct test_expr : std::variant<std::string, int, bool> {
+	using p = ascip<std::tuple>;
+	template<auto s> using th = p::template tmpl<s>;
 	constexpr static auto mk_parser() {
-		using p = ascip<std::tuple>;
-		return p::int_ | (as<true>(p::template lit<"true">)|as<false>(p::template lit<"false">));
+		constexpr auto ident = lexeme(p::alpha >> *(p::alpha | p::d10 | th<'_'>::char_));
+		return ident | p::int_ | (as<true>(p::template lit<"true">)|as<false>(p::template lit<"false">));
 	}
 };
 
@@ -29,6 +33,7 @@ struct factory : tests::factory {
 using jinja_content = jinja_details::content<factory>;
 using jinja_block = jinja_details::named_block<factory>;
 using jinja_macro = jinja_details::macro_block<factory>;
+using jinja_set_b = jinja_details::set_block<factory>;
 
 using parser = factory::parser;
 struct test_context {
@@ -68,7 +73,7 @@ static_assert( []{
 static_assert( []{
 	jinja_details::expression_operator<factory> r1;
 	const auto p1 = parse(r1.mk_parser(), +parser::space, parser::make_source("<= 3 =>"), r1);
-	return (p1 == 7) + 2*(get<0>(r1.expr)==3);
+	return (p1 == 7) + 2*(get<1>(r1.expr)==3);
 }() == 3 );
 
 
@@ -114,6 +119,16 @@ static_assert( []{
 	+ 8*(static_cast<const jinja_macro*>(r1.holder[0].get())->size() == 1)
 	;
 }() == 15, "can parser template with macros" );
+
+static_assert( [] {
+	jinja_details::template_block<factory> r1;
+	auto src = "<%template t%><%set name%>cnt<%endset%><%endtemplate%>"sv;
+	const auto p1 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source(src), r1);
+	return (p1==src.size())
+	+ 2*(static_cast<const jinja_set_b&>(*r1[0]).name() == "name")
+	+ 4*(get<0>(static_cast<const jinja_set_b&>(*r1[0]).handler) == "name")
+	;
+}() == 7 );
 
 int main(int,char**) {
 	return 0;
