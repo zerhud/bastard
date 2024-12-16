@@ -89,6 +89,20 @@ static_assert( []{
 	+ 64*(static_cast<const jinja_content&>(*static_cast<const jinja_block&>(*r1.holder[1])[0]).value == " ")
 	;
 }() == 127, "can parser template with blocks" );
+static_assert( [] {
+	jinja_details::template_block<factory> r1, r2;
+	const auto p1 = parse( r1.mk_parser(factory{}), +parser::space,
+	parser::make_source("<% template tmpl %> <% block name(p=1,r=2) %> <% endblock %> <%endtemplate%>"), r1);
+	const auto p2 = parse( r1.mk_parser(factory{}), +parser::space,
+	parser::make_source("<% template tmpl %> <% block name() %> <% endblock %> <%endtemplate%>"), r2);
+	return (p1==76)
+	+ 2*(r1.holder.size() == 3)
+	+ 4*(static_cast<const jinja_block*>(r1.holder[1].get())->parameters.size() == 2)
+	+ 8*(static_cast<const jinja_block*>(r1.holder[1].get())->parameters[0].name == "p")
+	+ 16*(p2==69)
+	+ 32*(static_cast<const jinja_block*>(r2.holder[1].get())->parameters.size() == 0)
+	;
+}() == 63, "can parse blocks with parameters" );
 
 int main(int,char**) {
 	return 0;
