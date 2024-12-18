@@ -26,9 +26,13 @@ template<typename type, typename key_type>
 concept has_contains = requires(const type& obj, key_type key){ obj.contains(key); };
 template<typename type, typename data_type>
 concept as_object =
-		   requires(const type& v, data_type key){ v.at(key); v.size(); }
+		   requires(type& v, data_type key){ v.at(key); }
+		&& requires(const type& v, data_type key){ v.size(); }
 		&& has_contains<type, data_type>
-		&& ( iteratable<type> || requires(const type& v){ {v.keys()}->iteratable;} )
+		&& ( iteratable<type>
+		   || requires(const type& v){ {v.keys()}->iteratable;}
+		   || requires(const type& v, data_type& d){ {v.keys(d.factory)};}
+		   )
 		;
 template<typename type, typename data_type>
 concept as_array =

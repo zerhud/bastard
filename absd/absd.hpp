@@ -50,6 +50,13 @@ template<typename factory, typename data_type> constexpr auto mk_holder_type() {
 
 namespace absd {
 
+//TODO: implement begin() and end() for data
+//      throw the wrong_interface if cannot iterate
+//      returns iterator:
+//        - operator* returns data
+//        - operators++ move
+//        - the begin() returns iterator with result
+//        - the end() returns data{}
 template<typename _factory>
 struct data {
 	static_assert( noexcept( std::declval<_factory>().deallocate((int*)nullptr) ), "for safety delete allocated objects the deallocate method must to be noexcept" );

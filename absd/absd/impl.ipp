@@ -76,7 +76,7 @@ template<typename _factory>
 constexpr auto data<_factory>::size() const {
 	return visit( [this](const auto& v){
 		if(is_multiptr_obj(v)) return multi_object->size();
-		else if(is_multiptr_arr(v)) return multi_array->size();
+		if(is_multiptr_arr(v)) return multi_array->size();
 		if constexpr(requires{ v.size(); }) return v.size();
 		else if constexpr(requires{ v->size(); }) return v->size();
 		else return sizeof(v); }, holder);
@@ -85,8 +85,14 @@ constexpr auto data<_factory>::size() const {
 template<typename _factory>
 constexpr auto data<_factory>::keys() const {
 	return visit( [this](const auto& v){
-		if(is_multiptr_obj(v)) return multi_object->keys(factory_t{});
-		else return _throw_wrong_interface_error<details::interfaces::keys>();
+		if constexpr(requires{ v.keys(factory_t{}); }) return v.keys(factory);
+		else if constexpr(requires{ v->keys(factory_t{}); }) return v->keys(factory);
+		else if constexpr(requires{ v.keys(); }) return v.keys();
+		else if constexpr(requires{ v->keys(); }) return v->keys();
+		else {
+			if(is_multiptr_obj(v)) return multi_object->keys(factory_t{});
+			return _throw_wrong_interface_error<details::interfaces::keys>();
+		}
 	}, holder);
 }
 
