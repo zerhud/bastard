@@ -9,6 +9,7 @@
  *************************************************************************/
 
 #include <utility>
+#include "context.hpp"
 
 namespace jinja_details {
 
@@ -22,7 +23,7 @@ struct execution_context {
 	}
 };
 
-template<typename t> struct type_c{ using type = t; };
+template<typename t> struct type_c{ using type = t; t operator+()const; };
 template<typename factory>
 constexpr auto mk_context_type() {
 	if constexpr(requires{ typename factory::jinja_context;}) return type_c<typename factory::jinja_context>{};
@@ -55,7 +56,7 @@ struct trim_info {
 
 template<typename factory>
 struct base_jinja_element {
-	using context_type = decltype(mk_context_type<factory>())::type;
+	using context_type = decltype(+mk_context_type<factory>());
 
 	virtual ~base_jinja_element() noexcept =default ;
 	virtual void execute(context_type& ctx) const =0 ;
