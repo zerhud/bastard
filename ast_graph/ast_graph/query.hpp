@@ -139,7 +139,7 @@ struct query_graph {
 			  | cast<binary>( gh::rv_lreq++ >> th<'-'>::_char >> gh::rv_rreq(fwd) )
 			  )
 			, check<qvertex>(qvertex::template mk_parser<gh>(df))
-			, rv_result(th<'('>::_char >> gh::rv_req >> th<')'>::_char)
+			, rv_result(th<'('>::_char >> th<0>::rv_req >> th<')'>::_char)
 		);
 	}
 };

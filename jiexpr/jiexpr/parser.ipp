@@ -26,7 +26,7 @@ constexpr auto jiexpr<data_factory>::_create_parser() const {
 			lexeme(gh::alpha >> *(gh::alpha | gh::d10 | th<'_'>::char_))([](auto& v){return &create<string_t>(v);})
 			- (gh::template lit<"and"> | gh::template lit<"is"> | gh::template lit<"in"> | gh::template lit<"or">);
 	auto var_expr_mk_result = [this](auto& v){result_t r; return v.path.emplace_back(mk_result(df, std::move(r))).get();};
-	auto var_expr_parser = cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> gh::rv_req(var_expr_mk_result) >> th<']'>::_char)));
+	auto var_expr_parser = cast<var_expr<expr_t>>(ident(var_expr_mk_result) >> *((th<'.'>::_char >> ident(var_expr_mk_result)) | (th<'['>::_char >> th<0>::rv_req(var_expr_mk_result) >> th<']'>::_char)));
 	auto fnc_call = var_expr_parser++ >> -(th<'('>::_char >> -(gh::rv_rreq(fwd) % ',') >> th<')'>::_char);
 	return rv([this](auto& v){ return mk_result(df, std::move(v)); }
 			,    ++gh::rv_lreq
@@ -51,15 +51,15 @@ constexpr auto jiexpr<data_factory>::_create_parser() const {
 			  | cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"/"> >> ++gh::rv_rreq(fwd))
 			, cast<binary_op<expr_t>>(gh::rv_lreq >> gh::template lit<"**"> >> ++gh::rv_rreq(fwd))
 			, cast<op_not<expr_t>>(th<'!'>::_char++ >> --gh::rv_rreq(fwd))
-			, th<'['>::_char >> fnum<0>(-((gh::rv_req(fwd)) % ',')) >> th<']'>::_char
-			, th<'{'>::_char >> th<'}'>::_char | th<'{'>::_char >> (gh::rv_req(fwd_emp)++ >> th<':'>::_char >> gh::rv_req(fwd_emp)) % ',' >> th<'}'>::_char
+			, th<'['>::_char >> fnum<0>(-((th<0>::rv_req(fwd)) % ',')) >> th<']'>::_char
+			, th<'{'>::_char >> th<'}'>::_char | th<'{'>::_char >> (th<0>::rv_req(fwd_emp)++ >> th<':'>::_char >> th<0>::rv_req(fwd_emp)) % ',' >> th<'}'>::_char
 			, var_expr_parser
 			, cast<fnc_call_expr<expr_t>>(var_expr_parser++ >> th<'('>::_char >> -(gh::rv_rreq(fwd) % ',') >> th<')'>::_char)
-			, cast<op_eq<expr_t>>(var_expr_parser >> th<'='>::_char >> ++gh::rv_req(fwd))
+			, cast<op_eq<expr_t>>(var_expr_parser >> th<'='>::_char >> ++th<0>::rv_req(fwd))
 			, gh::quoted_string
 			, gh::int_
 			, gh::fp
 			, (as<true>(gh::template lit<"true">)|as<false>(gh::template lit<"false">))
-			, rv_result(th<'('>::_char >> gh::rv_req >> th<')'>::_char)
+			, rv_result(th<'('>::_char >> th<0>::rv_req >> th<')'>::_char)
 	);
 }
