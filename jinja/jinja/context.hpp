@@ -9,6 +9,7 @@
  *************************************************************************/
 
 #include <utility>
+#include "trim_info.hpp"
 
 namespace jinja_details {
 
@@ -114,13 +115,29 @@ private:
 
 template<typename factory>
 struct context {
-    using data = factory::data;
-    using output_type = decltype(mk_vec<data>(std::declval<factory>()));
+	using data = factory::data;
 
-    constexpr explicit context(factory f) : f(std::move(f)), out(mk_vec<data>(this->f)) {}
+	struct out_info {
+		trim_info<factory> before;
+		trim_info<factory> after;
+		data value;
+	};
 
-    factory f;
-    output_type out;
+	constexpr static auto mk_output(const factory& f) {
+		return mk_vec<out_info>(f);
+	}
+
+	using output_type = decltype(mk_output(std::declval<factory>()));
+	constexpr explicit context(factory f) : f(std::move(f)), out(mk_output(this->f)) {}
+
+	constexpr context& operator()(trim_info<factory> left, data content, trim_info<factory> right) {
+		out.emplace_back(out_info{std::move(left), std::move(right), std::move(content)});
+		return *this;
+	}
+
+	factory f;
+	environment<factory> env;
+	output_type out;
 };
 
 } // namespace jinja_details

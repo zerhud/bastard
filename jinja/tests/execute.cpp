@@ -161,7 +161,7 @@ static_assert( [] {
 	+ 8*(v4==17)
 	+ 16*(v5==7)
 	;
-}() == 31 );
+}() == 31, "can override variables" );
 
 static_assert( []{
 	using op_type = jinja_details::content<factory>;

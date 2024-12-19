@@ -9,6 +9,7 @@
  *************************************************************************/
 
 #include <utility>
+#include "trim_info.hpp"
 #include "context.hpp"
 
 namespace jinja_details {
@@ -42,15 +43,6 @@ struct base_parser {
 	constexpr static auto mk_expr_end() { return p::template lit<"=>">; }
 	constexpr static auto mk_check_parser() {
 		return t<'<'>::char_ >> (t<'%'>::char_ | t<'#'>::char_ | t<'='>::char_);
-	}
-};
-template<typename factory>
-struct trim_info {
-	using p = factory::parser;
-	int shift{0};
-	bool trim{false};
-	constexpr static auto mk_parser() {
-		return -p::int_++ >> -as<true>(p::template char_<'+'>);
 	}
 };
 
