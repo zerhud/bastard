@@ -14,21 +14,11 @@
 
 namespace jinja_details {
 
-template<typename factory>
-struct execution_context {
-	using content_holder = decltype(mk_vec<decltype(mk_str(std::declval<factory>()))>(std::declval<factory>()));
-
-	content_holder holder;
-	constexpr void append_output(const auto& value) {
-		holder.emplace_back(std::forward<decltype(value)>(value));
-	}
-};
-
 template<typename t> struct type_c{ using type = t; t operator+()const; };
 template<typename factory>
 constexpr auto mk_context_type() {
 	if constexpr(requires{ typename factory::jinja_context;}) return type_c<typename factory::jinja_context>{};
-	else return type_c<execution_context<factory>>{};
+	else return type_c<context<factory>>{};
 }
 
 template<typename factory>
@@ -49,6 +39,7 @@ struct base_parser {
 template<typename factory>
 struct base_jinja_element {
 	using context_type = decltype(+mk_context_type<factory>());
+	using data_type =  typename context_type::data_type;
 
 	virtual ~base_jinja_element() noexcept =default ;
 	virtual void execute(context_type& ctx) const =0 ;

@@ -14,14 +14,15 @@ namespace jinja_details {
 
 template<typename factory>
 struct content : base_jinja_element<factory> {
-	using string_type = factory::string_t;
-	using parser = factory::parser;
-	using context_type = base_jinja_element<factory>::context_type;
+	using string_type = typename factory::string_t;
+	using data_type = typename base_jinja_element<factory>::data_type;
+	using parser = typename factory::parser;
+	using context_type = typename base_jinja_element<factory>::context_type;
 
 	string_type value;
 
 	constexpr void execute(context_type& ctx) const override {
-		ctx.append_content(value);
+		ctx(data_type{value});
 	}
 
 	constexpr static auto mk_parser() {

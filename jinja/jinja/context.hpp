@@ -115,12 +115,12 @@ private:
 
 template<typename factory>
 struct context {
-	using data = factory::data;
+	using data_type = typename environment<factory>::data_type;
 
 	struct out_info {
 		trim_info<factory> before;
 		trim_info<factory> after;
-		data value;
+		data_type value;
 	};
 
 	constexpr static auto mk_output(const factory& f) {
@@ -130,8 +130,12 @@ struct context {
 	using output_type = decltype(mk_output(std::declval<factory>()));
 	constexpr explicit context(factory f) : f(std::move(f)), out(mk_output(this->f)) {}
 
-	constexpr context& operator()(trim_info<factory> left, data content, trim_info<factory> right) {
-		out.emplace_back(out_info{std::move(left), std::move(right), std::move(content)});
+	constexpr context& operator()(data_type content) {
+		out.emplace_back(out_info{.value=std::move(content)});
+		return *this;
+	}
+	constexpr context& operator()(trim_info<factory> before, data_type content, trim_info<factory> after) {
+		out.emplace_back(out_info{std::move(before), std::move(after), std::move(content)});
 		return *this;
 	}
 
