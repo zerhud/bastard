@@ -47,4 +47,15 @@ struct variant_workaround_factory : factory {
 #endif
 };
 
+template<typename...> struct test_type_list{};
+template<typename... types> struct extra_data_types_factory : factory {
+	using extra_types = test_type_list<types...>;
+	constexpr extra_data_types_factory() : extra_data_types_factory(factory{}) {}
+	constexpr explicit extra_data_types_factory(const factory& f) : factory(f) {}
+};
+template<typename... types, typename factory> constexpr auto mk_data_type(const factory& f, auto&&... args) {
+	using ft = extra_data_types_factory<types...>;
+	return typename factory::template data_type<ft>{ft(f), std::forward<decltype(args)>(args)...};
+}
+
 } // namespace tests

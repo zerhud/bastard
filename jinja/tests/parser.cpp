@@ -8,6 +8,7 @@
 
 #include "tests/factory.hpp"
 #include <ascip.hpp>
+#include <absd.hpp>
 /*
 #ifdef __clang__
 #include "ascip_all_clang.hpp"
@@ -29,12 +30,10 @@ struct test_expr : std::variant<std::string, int, bool> {
 	}
 };
 
-struct test_context ;
-
 struct factory : tests::factory {
+	template<typename... types> using data_type = absd::data<types...>;
 	using parser = ascip<std::tuple>;
 	using jinja_expression = test_expr;
-	using jinja_context = test_context;
 };
 
 using jinja_content = jinja_details::content<factory>;
@@ -43,17 +42,12 @@ using jinja_macro = jinja_details::macro_block<factory>;
 using jinja_set_b = jinja_details::set_block<factory>;
 
 using parser = factory::parser;
-struct test_context {
-	factory f;
-	constexpr void append_content(const auto& ){}
-	constexpr void append_output(const auto&, auto&&, const auto&){}
-};
 
 constexpr auto jinja_to_string(const factory&, const test_expr&) { return std::string{}; }
 
 static_assert( parse(jinja_details::content<factory>::mk_parser(), parser::make_source("ab%! ^(\\<<<%")) == 10 );
 static_assert( []{
-	jinja_details::content<factory> r;
+	jinja_details::content<factory> r{factory{}};
 	auto p = parse(r.mk_parser(), parser::make_source("\\%<<#"), r);
 	return (p == 3) + 2*(r.value == "\\%<");
 }() == 3, "content parser test" );
@@ -69,7 +63,7 @@ static_assert( []{
 	;
 }() == 511, "trim info parser teset");
 static_assert( []{
-	jinja_details::comment_operator<factory> r1, r2;
+	jinja_details::comment_operator<factory> r1{factory{}}, r2{factory{}};
 	const auto p1 = parse(r1.mk_parser(), parser::make_source("<# <% <= foo +#>"), r1);
 	const auto p2 = parse(r1.mk_parser(), parser::make_source("<#+ <% <= foo #>"), r2);
 	return
@@ -78,7 +72,7 @@ static_assert( []{
 	;
 }() == 31, "comment operator parser teset" );
 static_assert( []{
-	jinja_details::expression_operator<factory> r1;
+	jinja_details::expression_operator<factory> r1{ factory{} };
 	const auto p1 = parse(r1.mk_parser(), +parser::space, parser::make_source("<= 3 =>"), r1);
 	return (p1 == 7) + 2*(get<1>(r1.expr)==3);
 }() == 3, "expression operator parser test" );

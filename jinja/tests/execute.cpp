@@ -51,19 +51,9 @@ struct test_expr : std::variant<int, bool> {
 struct factory : tests::factory {
 	using parser = ascip<std::tuple>;
 	using jinja_expression = test_expr;
-//	using jinja_context = test_context;
 	using data = absd::data<factory>;
+	template<typename... types> using data_type = absd::data<types...>;
 };
-
-template<typename... types> struct extra_types_data_factory : factory {
-	using extra_types = test_type_list<types...>;
-	constexpr extra_types_data_factory() : extra_types_data_factory(factory{}) {}
-	constexpr explicit extra_types_data_factory(const factory& f) : factory(f) {}
-};
-template<typename... types> constexpr auto mk_data_type(const factory& f, auto&&... args) {
-	using ft = extra_types_data_factory<types...>;
-	return absd::data<ft>{ft(f), std::forward<decltype(args)>(args)...};
-}
 
 using parser = factory::parser;
 using jinja_env = jinja_details::environment<factory>;
@@ -163,7 +153,7 @@ static_assert( [] {
 
 static_assert( []{
 	using op_type = jinja_details::content<factory>;
-	op_type r1;
+	op_type r1{factory{}};
 	parse(r1.mk_parser(), +parser::space, parser::make_source("12 << test_text"), r1);
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
