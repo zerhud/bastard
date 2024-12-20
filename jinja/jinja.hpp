@@ -23,15 +23,12 @@ namespace jinja_details {
 //      the gcc14 will report: use f after end of life.
 //      also we cannot use &f for same reason (clang can)
 //      so we need to create the mk_content_parser and mk_ptr_maker
-//      outside of the block_content class
+//      outside the block_content class
 template<template<typename>class type, typename factory>
 constexpr auto mk_ptr_maker(const factory& f) {
     using rt = type<factory>;
     return [f](auto& v){
-        v = [f]{
-            if constexpr(requires{rt{f};}) return mk_ptr<rt>(f, f);
-            else return mk_ptr<rt>(f);
-        }();
+        v = mk_ptr<rt>(f, f);
         return const_cast<rt*>(static_cast<const rt*>(v.get()));
     };
 }

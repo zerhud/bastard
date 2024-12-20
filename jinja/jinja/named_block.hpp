@@ -74,6 +74,7 @@ template<typename factory>
 struct named_block : block_with_params<factory, named_block<factory>> {
 	using base = block_with_params<factory, named_block>;
 	using p = typename base::p;
+	constexpr explicit named_block(factory f) : base(std::move(f)) {}
 	consteval static auto keyword_open() { return base::p::template lit<"block">; }
 	consteval static auto keyword_close() { return base::p::template lit<"endblock">; }
 };
@@ -81,6 +82,7 @@ struct named_block : block_with_params<factory, named_block<factory>> {
 template<typename factory>
 struct macro_block : block_with_params<factory, macro_block<factory>> {
 	using base = block_with_params<factory, macro_block>;
+	constexpr explicit macro_block(factory f) : base(std::move(f)) {}
 	consteval static auto keyword_open() { return base::p::template lit<"macro">; }
 	consteval static auto keyword_close() { return base::p::template lit<"endmacro">; }
 };
