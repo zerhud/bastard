@@ -14,8 +14,8 @@ namespace jinja_details {
 
 template<typename factory>
 struct comment_operator : base_jinja_element<factory> {
-	using parser = factory::parser;
-	using string_type = factory::string_t;
+	using parser = typename factory::parser;
+	using string_type = typename factory::string_t;
 
 	trim_info<factory> begin;
 	string_type value;
@@ -25,7 +25,7 @@ struct comment_operator : base_jinja_element<factory> {
 
 	constexpr explicit comment_operator(factory f) : f(std::move(f)) {}
 
-	constexpr void execute(base_jinja_element<factory>::context_type&) const override { }
+	constexpr void execute(typename base_jinja_element<factory>::context_type&) const override { }
 
 	constexpr static auto mk_parser() {
 		using bp = base_parser<factory>;
@@ -38,9 +38,9 @@ struct comment_operator : base_jinja_element<factory> {
 
 template<typename factory>
 struct expression_operator : base_jinja_element<factory> {
-	using parser = factory::parser;
-	using expr_type = factory::jinja_expression;
-	using context_type = base_jinja_element<factory>::context_type;
+	using parser = typename factory::parser;
+	using expr_type = typename factory::jinja_expression;
+	using context_type = typename base_jinja_element<factory>::context_type;
 
 	trim_info<factory> begin;
 	expr_type expr;
