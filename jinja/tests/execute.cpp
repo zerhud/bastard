@@ -162,16 +162,14 @@ static_assert( []{
 		2*(ctx.out[0].value == "12 << test_text")
 		;
 }() == 3, "content appended to context");
-/*
 static_assert( []{
 	using op_type = jinja_details::expression_operator<factory>;
-	op_type r1;
+	op_type r1{factory{}};
 	parse(r1.mk_parser(), +parser::space, parser::make_source("<= 3 =>"), r1);
-	op_type::context_type ctx;
+	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
-	return (ctx.holder.size() == 1) + 2*(ctx.holder[0]=="0: '3'");
+	return (ctx.out.size() == 1) + 2*(ctx.out[0].value=="0: '3'");
 }() == 3, "the expression operator appends to context the result of the expression" );
-*/
 
 
 int main(int,char**) {

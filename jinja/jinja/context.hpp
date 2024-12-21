@@ -147,6 +147,10 @@ struct context {
 		return *this;
 	}
 
+	constexpr data_type mk_data(auto&&... args) const {
+		return env.mk_data_inner(std::forward<decltype(args)>(args)...);
+	}
+
 	factory f;
 	environment<factory> env;
 	output_type out;
