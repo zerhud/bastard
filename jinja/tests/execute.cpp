@@ -49,10 +49,11 @@ struct test_expr : std::variant<int, bool> {
 };
 
 struct factory : tests::factory {
+	using extra_types = tests::test_type_list<jinja_details::environment<factory>>;
 	using parser = ascip<std::tuple>;
 	using jinja_expression = test_expr;
-	using data = absd::data<factory>;
-	template<typename... types> using data_type = absd::data<types...>;
+	using data_type = absd::data<factory>;
+	template<typename... types> using data_type_tmpl = absd::data<types...>;
 };
 
 using parser = factory::parser;
@@ -131,18 +132,18 @@ static_assert( [] {
 	data d = env.mk_context_data();
 	auto holder_f1 = env.push_frame();
 	env.add_local(data{"name"}, data{7});
-	auto v1 = (data::integer_t)d[data{"name"}];
+	const auto v1 = (data::integer_t)d[data{"name"}];
 	env.add_local(data{"name"}, data{11});
-	auto v2 = (data::integer_t)d[data{"name"}];
+	const auto v2 = (data::integer_t)d[data{"name"}];
 	auto holder_f2 = env.push_frame();
 	env.add_local(data{"name"}, data{13});
-	auto v3 = (data::integer_t)d[data{"name"}];
+	const auto v3 = (data::integer_t)d[data{"name"}];
 	auto holder_a1 = env.push_area();
 	env.add_local(data{"name"}, data{17});
-	auto v4 = (data::integer_t)d[data{"name"}];
+	const auto v4 = (data::integer_t)d[data{"name"}];
 	env.add_global(data{"glob"}, data{3});
 	env.add_global(data{"glob"}, data{7});
-	auto v5 = (data::integer_t)d[data{"glob"}];
+	const auto v5 = (data::integer_t)d[data{"glob"}];
 	return (v1==7)
 	+ 2*(v2==11)
 	+ 4*(v3==13)
@@ -157,8 +158,7 @@ static_assert( []{
 	parse(r1.mk_parser(), +parser::space, parser::make_source("12 << test_text"), r1);
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
-	return
-		  (ctx.out.size()) +
+	return ctx.out.size() +
 		2*(ctx.out[0].value == "12 << test_text")
 		;
 }() == 3, "content appended to context");

@@ -31,7 +31,8 @@ struct test_expr : std::variant<std::string, int, bool> {
 };
 
 struct factory : tests::factory {
-	template<typename... types> using data_type = absd::data<types...>;
+	using extra_types = tests::test_type_list<jinja_details::environment<factory>>;
+	using data_type = absd::data<factory>;
 	using parser = ascip<std::tuple>;
 	using jinja_expression = test_expr;
 };

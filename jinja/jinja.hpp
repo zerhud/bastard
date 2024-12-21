@@ -112,8 +112,10 @@ struct template_block : element_with_name<factory> {
 
 template<typename factory>
 struct jinja {
-	factory f;
+	using context = jinja_details::context<factory>;
+	using environment = jinja_details::environment<factory>;
 
+	factory f;
 	constexpr jinja() : jinja(factory{}) {}
 	constexpr explicit jinja(factory f) : f(std::move(f)) {}
 };

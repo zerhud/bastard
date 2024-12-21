@@ -38,8 +38,12 @@ constexpr auto mk_graph_node_field_value(const factory&, const list<types...>&) 
 }
 
 template<typename factory>
+constexpr auto mk_data(const factory& f) {
+	return typename factory::data_type{f};
+}
+template<typename factory>
 constexpr auto mk_data(const factory&, std::string_view src) {
-	using dt = factory::data_type;
+	using dt = typename factory::data_type;
 	return dt{ typename dt::string_t{src} };
 }
 template<typename factory>

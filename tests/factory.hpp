@@ -55,7 +55,8 @@ template<typename... types> struct extra_data_types_factory : factory {
 };
 template<typename... types, typename factory> constexpr auto mk_data_type(const factory& f, auto&&... args) {
 	using ft = extra_data_types_factory<types...>;
-	return typename factory::template data_type<ft>{ft(f), std::forward<decltype(args)>(args)...};
+	static_assert( requires{ typename factory::template data_type_tmpl<ft>; }, "the factory type must contain template data_type_tmpl" );
+	return typename factory::template data_type_tmpl<ft>{ft(f), std::forward<decltype(args)>(args)...};
 }
 
 } // namespace tests
