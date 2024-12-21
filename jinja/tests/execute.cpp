@@ -18,8 +18,6 @@ using namespace std::literals;
 
 template<typename...> struct test_type_list {};
 
-struct test_context ;
-
 template<auto base = 10>
 constexpr auto symbols_count(auto v) {
 	unsigned int len = v >= 0 ? 1 : 2;
@@ -37,14 +35,16 @@ constexpr std::string test_to_string(auto v) {
 
 static_assert(symbols_count(0) == 1);
 static_assert(symbols_count(10) == 2);
+static_assert(symbols_count(10'000) == 5);
+static_assert(symbols_count(-10'000) == 6);
 static_assert(symbols_count(-1) == 2);
 static_assert(test_to_string(10) == "10");
 static_assert(test_to_string(-1) == "-1");
 
-struct test_expr : std::variant<int, bool> {
+struct test_expr : std::variant<std::string, int, bool> {
 	constexpr static auto mk_parser() {
 		using p = ascip<std::tuple>;
-		return p::int_ | (as<true>(p::template lit<"true">)|as<false>(p::template lit<"false">));
+		return p::quoted_string | p::int_ | (as<true>(p::template lit<"true">)|as<false>(p::template lit<"false">));
 	}
 };
 
@@ -60,21 +60,18 @@ using parser = factory::parser;
 using jinja_env = jinja_details::environment<factory>;
 using data = jinja_env::data_type;
 
-struct test_context {
-	factory f;
-	std::vector<std::string> holder;
-	constexpr void append_content(auto&& val) {
-		holder.emplace_back(std::forward<decltype(val)>(val));
-	}
-	constexpr void append_output(const auto& left_trim, auto&& val, const auto& right_trim) {
-		holder.emplace_back(std::forward<decltype(val)>(val));
-	}
-};
-
 constexpr std::string jinja_to_string(const factory&, const test_expr& e) {
 	return test_to_string(e.index()) + ": '"
-	+ visit([](int e){ return test_to_string(e); }, e) + "'"
+	+ visit([](auto e) {
+		if constexpr (std::is_same_v<decltype(e), std::string>) return e;
+		else return test_to_string((int)e);
+	}, e) + "'"
 	;
+}
+
+constexpr data jinja_to_data(const factory& f, const auto& env, const auto& data) {
+	if (data.index()==0) return env.at(factory::data_type{get<0>(data)});
+	return visit([](auto& v){return factory::data_type{v};}, data);
 }
 
 static_assert( absd::details::as_object<jinja_env, data>, "for check the reason if we cannot" );
@@ -168,8 +165,21 @@ static_assert( []{
 	parse(r1.mk_parser(), +parser::space, parser::make_source("<= 3 =>"), r1);
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
-	return (ctx.out.size() == 1) + 2*(ctx.out[0].value=="0: '3'");
+	return (ctx.out.size() == 1) + 2*(ctx.out[0].value=="1: '3'");
 }() == 3, "the expression operator appends to context the result of the expression" );
+static_assert( [] {
+	using cnt_type = jinja_details::content<factory>;
+	using op_type = jinja_details::set_block<factory>;
+	op_type r1{factory{}};
+	r1._name = "test_name";
+	r1.handler = test_expr{"test_name"};
+	auto cnt = std::make_unique<cnt_type>(factory{});
+	cnt->value = "test content";
+	r1.holder.holder.emplace_back() = std::move(cnt);
+	op_type::context_type ctx{factory{}};
+	r1.execute(ctx);
+	return ctx.env.size();
+}() == 1, "set block sets local variable" );
 
 
 int main(int,char**) {

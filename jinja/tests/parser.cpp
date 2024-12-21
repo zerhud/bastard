@@ -45,11 +45,15 @@ using jinja_set_b = jinja_details::set_block<factory>;
 using parser = factory::parser;
 
 constexpr auto jinja_to_string(const factory&, const test_expr&) { return std::string{}; }
+constexpr auto jinja_to_data(const factory& f, const auto& env, const auto& data) {
+	if (data.index()==0) return env.at(factory::data_type{get<0>(data)});
+	return visit([](auto& v){return factory::data_type{v};}, data);
+}
 
 static_assert( parse(jinja_details::content<factory>::mk_parser(), parser::make_source("ab%! ^(\\<<<%")) == 10 );
 static_assert( []{
 	jinja_details::content<factory> r{factory{}};
-	auto p = parse(r.mk_parser(), parser::make_source("\\%<<#"), r);
+	const auto p = parse(r.mk_parser(), parser::make_source("\\%<<#"), r);
 	return (p == 3) + 2*(r.value == "\\%<");
 }() == 3, "content parser test" );
 static_assert( []{

@@ -49,9 +49,7 @@ struct environment {
 	using area_type = decltype(mk_vec<frame_type>(std::declval<factory>()));
 	using stack_type = decltype(mk_vec<area_type>(std::declval<factory>()));
 
-	constexpr environment() : environment(factory{}) {
-	}
-
+	constexpr environment() : environment(factory{}) { }
 	constexpr explicit environment(factory f)
 		: f(std::move(f))
 		  , globals(mk_vec<variable>(this->f))
@@ -72,7 +70,6 @@ struct environment {
 		}
 		globals.emplace_back(variable{std::move(name), std::move(d)});
 	}
-
 	constexpr void add_local(data_type name, data_type d) {
 		for (auto& v : cur_frame()) if (v.name == name) {
 			v.value = std::move(d);
@@ -87,28 +84,24 @@ struct environment {
 	constexpr data_type mk_context_data() {
 		return mk_data_inner(this);
 	}
-
 	constexpr data_type mk_data_inner(auto&&... args) const {
 		return mk_data(f, std::forward<decltype(args)>(args)...);
 	}
 
-	constexpr data_type at(data_type key) {
+	constexpr data_type at(data_type key) const {
 		for (auto& v : const_cast<environment*>(this)->cur_frame()) if (v.name == key) return v.value;
 		for (auto& v : globals) if (v.name == key) return v.value;
 		return mk_data_inner();
 	}
-
 	constexpr bool contains(const typename data_type::string_t& key) const {
 		for (auto& v : globals) if (v.name == key) return true;
 		return false;
 	}
-
 	constexpr std::size_t size() const {
 		auto ret = globals.size();
 		for (auto& s : stack) for (auto& a : s) ret += a.size();
 		return ret;
 	}
-
 	constexpr data_type keys(const auto& f) const {
 		data_type ret{f};
 		ret.mk_empty_array();

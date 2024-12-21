@@ -33,7 +33,11 @@ struct set_block : element_with_name<factory> {
 	{}
 
 	constexpr const string_t& name() const override { return _name; }
-	constexpr void execute(context_type& ctx) const override { }
+	constexpr void execute(context_type& ctx) const override {
+		//auto area_holder = ctx.env.push_area();
+		auto data = jinja_to_data(f, ctx.env, handler);
+		ctx.env.add_local(ctx.mk_data(name()), data);
+	}
 
 	constexpr auto size() const { return holder.size(); }
 	constexpr auto& operator[](auto ind) const { return holder[ind]; }
