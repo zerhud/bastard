@@ -24,6 +24,8 @@
 
 namespace tests {
 
+template<typename...> struct test_type_list{};
+
 struct factory
 		: common_factory
 		, absd_factory
@@ -46,17 +48,5 @@ struct variant_workaround_factory : factory {
 	> using virtual_variant_t = virtual_variant<variant_t, base_type, wrapper, types...>;
 #endif
 };
-
-template<typename...> struct test_type_list{};
-template<typename... types> struct extra_data_types_factory : factory {
-	using extra_types = test_type_list<types...>;
-	constexpr extra_data_types_factory() : extra_data_types_factory(factory{}) {}
-	constexpr explicit extra_data_types_factory(const factory& f) : factory(f) {}
-};
-template<typename... types, typename factory> constexpr auto mk_data_type(const factory& f, auto&&... args) {
-	using ft = extra_data_types_factory<types...>;
-	static_assert( requires{ typename factory::template data_type_tmpl<ft>; }, "the factory type must contain template data_type_tmpl" );
-	return typename factory::template data_type_tmpl<ft>{ft(f), std::forward<decltype(args)>(args)...};
-}
 
 } // namespace tests
