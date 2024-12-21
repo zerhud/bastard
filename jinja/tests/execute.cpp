@@ -91,8 +91,8 @@ static_assert( []{
 	parse(r1.mk_parser(), +parser::space, parser::make_source("12 << test_text"), r1);
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
-	return ctx.out.size() +
-		2*(ctx.out[0].value == "12 << test_text")
+	return ctx.cur_output().size() +
+		2*(ctx.cur_output()[0].value == "12 << test_text")
 		;
 }() == 3, "content appended to context");
 static_assert( []{
@@ -101,7 +101,7 @@ static_assert( []{
 	parse(r1.mk_parser(), +parser::space, parser::make_source("<= 3 =>"), r1);
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
-	return (ctx.out.size() == 1) + 2*(ctx.out[0].value=="1: '3'");
+	return (ctx.cur_output().size() == 1) + 2*(ctx.cur_output()[0].value=="1: '3'");
 }() == 3, "the expression operator appends to context the result of the expression" );
 static_assert( [] {
 	using cnt_type = jinja_details::content<factory>;

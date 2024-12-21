@@ -119,24 +119,39 @@ template <typename factory>
 struct context {
 	using data_type = typename environment<factory>::data_type;
 
+	struct out_holder {
+		context* ctx;
+		constexpr explicit out_holder(context& c) : ctx(&c) {
+			ctx->out.emplace_back(mk_output(ctx->f));
+		}
+		constexpr ~out_holder() {
+			if (ctx) ctx->out.pop_back();
+		}
+	};
 	struct out_info {
 		trim_info<factory> before;
 		trim_info<factory> after;
 		data_type value;
 	};
-	constexpr static auto mk_output(const factory& f) {
-		return mk_vec<out_info>(f);
-	}
-	using output_type = decltype(mk_output(std::declval<factory>()));
 
-	constexpr explicit context(factory f) : f(std::move(f)), out(mk_output(this->f)) { }
+	constexpr static auto mk_output(const factory& f) { return mk_vec<out_info>(f); }
+	using output_type = decltype(mk_output(std::declval<factory>()));
+	constexpr static auto mk_out(const factory& f) { return mk_vec<output_type>(f); }
+
+	constexpr explicit context(factory f) : f(std::move(f)), out(mk_out(this->f)) {
+		auto h = catch_output();
+		h.ctx = nullptr;
+	}
+
+	constexpr auto catch_output() { return out_holder(*this); }
+	constexpr const output_type& cur_output() const { return out.back(); }
 
 	constexpr context& operator()(data_type content) {
-		out.emplace_back(out_info{.value = std::move(content)});
+		out.back().emplace_back(out_info{.value = std::move(content)});
 		return *this;
 	}
 	constexpr context& operator()(trim_info<factory> before, data_type content, trim_info<factory> after) {
-		out.emplace_back(out_info{std::move(before), std::move(after), std::move(content)});
+		out.back().emplace_back(out_info{std::move(before), std::move(after), std::move(content)});
 		return *this;
 	}
 
@@ -146,6 +161,7 @@ struct context {
 
 	factory f;
 	environment<factory> env;
-	output_type out;
+private:
+	decltype(mk_out(std::declval<factory>())) out;
 };
 } // namespace jinja_details
