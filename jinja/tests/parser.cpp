@@ -6,49 +6,12 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
-#include "tests/factory.hpp"
-#include <ascip.hpp>
-#include <absd.hpp>
-/*
-#ifdef __clang__
-#include "ascip_all_clang.hpp"
-#else
-#include "ascip_all.hpp"
-#endif
-*/
-
-#include "jinja.hpp"
-
-using namespace std::literals;
-
-struct test_expr : std::variant<std::string, int, bool> {
-	using p = ascip<std::tuple>;
-	template<auto s> using th = p::template tmpl<s>;
-	constexpr static auto mk_parser() {
-		constexpr auto ident = lexeme(p::alpha >> *(p::alpha | p::d10 | th<'_'>::char_));
-		return ident | p::int_ | (as<true>(p::template lit<"true">)|as<false>(p::template lit<"false">));
-	}
-};
-
-struct factory : tests::factory {
-	using extra_types = tests::test_type_list<jinja_details::environment<factory>>;
-	using data_type = absd::data<factory>;
-	using parser = ascip<std::tuple>;
-	using jinja_expression = test_expr;
-};
+#include "factory.hpp"
 
 using jinja_content = jinja_details::content<factory>;
 using jinja_block = jinja_details::named_block<factory>;
 using jinja_macro = jinja_details::macro_block<factory>;
 using jinja_set_b = jinja_details::set_block<factory>;
-
-using parser = factory::parser;
-
-constexpr auto jinja_to_string(const factory&, const test_expr&) { return std::string{}; }
-constexpr auto jinja_to_data(const factory& f, const auto& env, const auto& data) {
-	if (data.index()==0) return env.at(factory::data_type{get<0>(data)});
-	return visit([](auto& v){return factory::data_type{v};}, data);
-}
 
 static_assert( parse(jinja_details::content<factory>::mk_parser(), parser::make_source("ab%! ^(\\<<<%")) == 10 );
 static_assert( []{

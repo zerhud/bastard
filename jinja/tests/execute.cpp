@@ -6,73 +6,9 @@
  * or <http://www.gnu.org/licenses/> for details
  *************************************************************************/
 
-#include "tests/factory.hpp"
-#include <absd/absd.hpp>
-#include "ascip.hpp"
-
-#include "jinja.hpp"
-
-#include <charconv>
+#include "factory.hpp"
 
 using namespace std::literals;
-
-template<typename...> struct test_type_list {};
-
-template<auto base = 10>
-constexpr auto symbols_count(auto v) {
-	unsigned int len = v >= 0 ? 1 : 2;
-	for (auto n = v < 0 ? -v : v; n; ++len, n /= base);
-	return ((len-1)*(v!=0)) + (len*(v==0));
-}
-
-template<auto base = 10>
-constexpr std::string test_to_string(auto v) {
-	std::string ret;
-	ret.resize(symbols_count<base>(v));
-	std::to_chars(ret.data(), ret.data() + ret.size(), v);
-	return ret;
-}
-
-static_assert(symbols_count(0) == 1);
-static_assert(symbols_count(10) == 2);
-static_assert(symbols_count(10'000) == 5);
-static_assert(symbols_count(-10'000) == 6);
-static_assert(symbols_count(-1) == 2);
-static_assert(test_to_string(10) == "10");
-static_assert(test_to_string(-1) == "-1");
-
-struct test_expr : std::variant<std::string, int, bool> {
-	constexpr static auto mk_parser() {
-		using p = ascip<std::tuple>;
-		return p::quoted_string | p::int_ | (as<true>(p::template lit<"true">)|as<false>(p::template lit<"false">));
-	}
-};
-
-struct factory : tests::factory {
-	using extra_types = tests::test_type_list<jinja_details::environment<factory>>;
-	using parser = ascip<std::tuple>;
-	using jinja_expression = test_expr;
-	using data_type = absd::data<factory>;
-	template<typename... types> using data_type_tmpl = absd::data<types...>;
-};
-
-using parser = factory::parser;
-using jinja_env = jinja_details::environment<factory>;
-using data = jinja_env::data_type;
-
-constexpr std::string jinja_to_string(const factory&, const test_expr& e) {
-	return test_to_string(e.index()) + ": '"
-	+ visit([](auto e) {
-		if constexpr (std::is_same_v<decltype(e), std::string>) return e;
-		else return test_to_string((int)e);
-	}, e) + "'"
-	;
-}
-
-constexpr data jinja_to_data(const factory& f, const auto& env, const auto& data) {
-	if (data.index()==0) return env.at(factory::data_type{get<0>(data)});
-	return visit([](auto& v){return factory::data_type{v};}, data);
-}
 
 static_assert( absd::details::as_object<jinja_env, data>, "for check the reason if we cannot" );
 static_assert( jinja_env{}.mk_context_data().is_object(), "context is data object" );
@@ -180,7 +116,6 @@ static_assert( [] {
 	r1.execute(ctx);
 	return ctx.env.size();
 }() == 1, "set block sets local variable" );
-
 
 int main(int,char**) {
 	return 0;
