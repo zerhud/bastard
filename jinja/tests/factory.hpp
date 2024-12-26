@@ -63,6 +63,9 @@ struct factory : tests::factory {
 	using jinja_expression = test_expr;
 	using data_type = absd::data<factory>;
 	template<typename... types> using data_type_tmpl = absd::data<types...>;
+
+	void* test_data = nullptr;
+	data_type(*eval_data_fnc)(const factory& f, const jinja_details::environment<factory>& env, const test_expr& data) = nullptr;
 };
 
 using parser = factory::parser;
@@ -79,6 +82,12 @@ constexpr std::string jinja_to_string(const factory&, const test_expr& e) {
 }
 
 constexpr data jinja_to_data(const factory& f, const auto& env, const auto& data) {
+	if (f.eval_data_fnc) return f.eval_data_fnc(f, env, data);
 	if (data.index()==0) return env.at(factory::data_type{get<0>(data)});
 	return visit([](auto& v){return factory::data_type{v};}, data);
+}
+
+template<typename out_info>
+constexpr data jinja_to_data(const factory& f, const std::vector<out_info>& d) {
+	return data{};
 }

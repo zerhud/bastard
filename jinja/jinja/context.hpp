@@ -143,7 +143,7 @@ struct context {
 		h.ctx = nullptr;
 	}
 
-	constexpr auto catch_output() { return out_holder(*this); }
+	[[nodiscard]] constexpr auto catch_output() { return out_holder(*this); }
 	constexpr const output_type& cur_output() const { return out.back(); }
 
 	constexpr context& operator()(data_type content) {

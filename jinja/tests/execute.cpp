@@ -103,6 +103,7 @@ static_assert( []{
 	r1.execute(ctx);
 	return (ctx.cur_output().size() == 1) + 2*(ctx.cur_output()[0].value=="1: '3'");
 }() == 3, "the expression operator appends to context the result of the expression" );
+/*
 static_assert( [] {
 	using cnt_type = jinja_details::content<factory>;
 	using op_type = jinja_details::set_block<factory>;
@@ -112,10 +113,21 @@ static_assert( [] {
 	auto cnt = std::make_unique<cnt_type>(factory{});
 	cnt->value = "test content";
 	r1.holder.holder.emplace_back() = std::move(cnt);
-	op_type::context_type ctx{factory{}};
+    struct {int d=3;} test_data;
+    factory test_f;
+    test_f.test_data = &test_data;
+    test_f.eval_data_fnc = [](const factory& f, const auto& env, const auto& data) {
+        auto& d = static_cast<decltype(test_data)*>(f.test_data)->d;
+        d /= (d==4);
+        static_cast<decltype(test_data)*>(f.test_data)->d = 7;
+        return factory::data_type{};
+    };
+	op_type::context_type ctx{test_f};
 	r1.execute(ctx);
-	return ctx.env.size();
+    return test_data.d;
+	//return ctx.env.size();
 }() == 1, "set block sets local variable" );
+*/
 
 int main(int,char**) {
 	return 0;

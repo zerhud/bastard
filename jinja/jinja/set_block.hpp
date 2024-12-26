@@ -20,7 +20,7 @@ struct set_block : element_with_name<factory> {
 	using context_type = typename base::context_type;
 	using expr_type = typename factory::jinja_expression;
 	using p = typename factory::parser;
-	template<auto s> using th = p::template tmpl<s>;
+	template<auto s> using th = typename p::template tmpl<s>;
 
 	constexpr set_block() : set_block(factory{}) {}
 	constexpr set_block(factory f)
@@ -34,9 +34,17 @@ struct set_block : element_with_name<factory> {
 
 	constexpr const string_t& name() const override { return _name; }
 	constexpr void execute(context_type& ctx) const override {
-		//auto area_holder = ctx.env.push_area();
-		auto data = jinja_to_data(f, ctx.env, handler);
-		ctx.env.add_local(ctx.mk_data(name()), data);
+		auto data = ctx.mk_data();
+		{
+			auto area_holder = ctx.env.push_area();
+			auto output_holder = ctx.catch_output();
+			holder.execute(ctx);
+			//TODO: ctx.cur_output() returns constant reference, but can move the value out and destroy the frame
+			data = jinja_to_data(f, ctx.cur_output());
+		}
+		auto vn = ctx.mk_data(name());
+		ctx.env.add_local(vn, std::move(data));
+		ctx.env.add_local(vn, jinja_to_data(f, ctx.env, handler));
 	}
 
 	constexpr auto size() const { return holder.size(); }
