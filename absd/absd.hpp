@@ -289,14 +289,23 @@ public:
 
 	[[nodiscard]] constexpr self_type call(auto&& params);
 
+	friend constexpr void modify(auto&& obj, auto&& op) requires std::is_same_v<self_type, std::decay_t<decltype(obj)>> {
+		visit([&]<typename val_type>(val_type& val) {
+			if constexpr(requires{op(obj.factory, val);}) op(obj.factory, val);
+			else if constexpr(requires{op(obj.factory, *val);}) op(obj.factory, *val);
+			else {
+				using err_type = details::interfaces::modify<decltype(op), val_type>;
+				obj.template _throw_wrong_interface_error<err_type>();
+			}
+		}, obj.holder);
+	}
 	[[nodiscard]] friend constexpr auto exec_operation(const self_type& obj, auto&& op) {
 		return visit([&](const auto& val){
 			if constexpr (requires{op(val);}) return self_type{ obj.factory, op(val) };
 			else if constexpr (requires{op(*val);}) return self_type{ obj.factory, op(*val) };
 			else {
 				using err_type = details::interfaces::exec_op<decltype(obj), decltype(obj)>;
-				obj._throw_wrong_interface_error<err_type>();
-				return self_type{obj.factory};
+				return obj.template _throw_wrong_interface_error<err_type>(self_type{obj.factory});
 			}
 		}, obj.holder);
 	}
