@@ -293,10 +293,6 @@ public:
 		visit([&]<typename val_type>(val_type& val) {
 			if constexpr(requires{op(obj.factory, val);}) op(obj.factory, val);
 			else if constexpr(requires{op(obj.factory, *val);}) op(obj.factory, *val);
-			else {
-				using err_type = details::interfaces::modify<decltype(op), val_type>;
-				obj.template _throw_wrong_interface_error<err_type>();
-			}
 		}, obj.holder);
 	}
 	[[nodiscard]] friend constexpr auto exec_operation(const self_type& obj, auto&& op) {

@@ -54,11 +54,12 @@ constexpr void main_test() {
 	static_assert( data{ true } == true, "can compare with value" );
 	static_assert( data{} == data{}, "none is equal to none only" );
 	static_assert( data{} != 1, "none is equal to none only" );
-    static_assert( []{
-        data d{3};
-        modify(d, [](auto&,integer_t& v){ ++v; });
-        return (integer_t)d;
-    }() == 4 );
+	static_assert( []{
+		data d{3}; int str_calls=0;
+		modify(d, [](auto&,integer_t& v){ ++v; });
+		modify(d, [&](auto&,string_t&){ ++str_calls; });
+		return ((integer_t)d==4) + 2*(str_calls==0);
+	}() == 3 );
 }
 
 constexpr std::string test_format(auto&& d) {
