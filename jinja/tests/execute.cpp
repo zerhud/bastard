@@ -8,6 +8,9 @@
 
 #include "factory.hpp"
 
+#include "absd/iostream_op.hpp"
+#include <iostream>
+
 using namespace std::literals;
 
 static_assert( absd::details::as_object<jinja_env, data>, "for check the reason if we cannot" );
@@ -47,7 +50,8 @@ static_assert( [] {
 static_assert( [] {
 	jinja_env env;
 	data d = env.mk_context_data();
-	data::integer_t in_block1=0, in_block2=0;
+	data::integer_t in_block1=0, in_block2=0, in_block2_keys_cnt=0;
+	env.add_global(data{"glob"}, data{3});
 	{
 		auto holder1 = env.push_area();
 		env.add_local(data{"name"}, data{7});
@@ -55,11 +59,12 @@ static_assert( [] {
 			auto holder2 = env.push_area();
 			env.add_local(data{"name"}, data{11});
 			in_block2 = (data::integer_t)d[data{"name"}];
+			in_block2_keys_cnt = env.keys(factory{}).size();
 		}
 		in_block1 = (data::integer_t)d[data{"name"}];
 	}
-	return (in_block1==7) + 2*(in_block2==11);
-}() == 3, "can create variables in area block" );
+	return (in_block1==7) + 2*(in_block2==11) + 4*(in_block2_keys_cnt==2);
+}() == 7, "can create variables in area block" );
 static_assert( [] {
 	jinja_env env;
 	data d = env.mk_context_data();
@@ -84,6 +89,20 @@ static_assert( [] {
 	+ 16*(v5==7)
 	;
 }() == 31, "can override variables" );
+static_assert( [] {
+	jinja_ctx ctx(factory{});
+	data obj;
+	obj.put(data{"key1"}, data{1});
+	obj.put(data{"key2"}, data{3});
+	ctx(data{"a"})(data{"b"})(obj);
+	return ctx.stringify_cur_output();
+}() == "ab{'key1':1,'key2':3}", "stringify_cur_output() turns current output to string");
+static_assert( [] {
+	jinja_ctx ctx(factory{});
+	jinja_details::trim_info<factory> ti{2, true};
+	ctx(ti, data{" space \t"}, ti)(ti, data{" space \t"}, ti);
+	return ctx.stringify_cur_output() ;
+}() == " space space", "stringify_cur_output() trim spaces if required" );
 
 static_assert( []{
 	using op_type = jinja_details::content<factory>;
@@ -103,7 +122,6 @@ static_assert( []{
 	r1.execute(ctx);
 	return (ctx.cur_output().size() == 1) + 2*(ctx.cur_output()[0].value=="1: '3'");
 }() == 3, "the expression operator appends to context the result of the expression" );
-/*
 static_assert( [] {
 	using cnt_type = jinja_details::content<factory>;
 	using op_type = jinja_details::set_block<factory>;
@@ -113,21 +131,10 @@ static_assert( [] {
 	auto cnt = std::make_unique<cnt_type>(factory{});
 	cnt->value = "test content";
 	r1.holder.holder.emplace_back() = std::move(cnt);
-    struct {int d=3;} test_data;
-    factory test_f;
-    test_f.test_data = &test_data;
-    test_f.eval_data_fnc = [](const factory& f, const auto& env, const auto& data) {
-        auto& d = static_cast<decltype(test_data)*>(f.test_data)->d;
-        d /= (d==4);
-        static_cast<decltype(test_data)*>(f.test_data)->d = 7;
-        return factory::data_type{};
-    };
-	op_type::context_type ctx{test_f};
+	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
-    return test_data.d;
-	//return ctx.env.size();
-}() == 1, "set block sets local variable" );
-*/
+	return (ctx.env.size()==1) + 2*(ctx.env.at(data{"test_name"}) == data{"test content"});
+}() == 3 );
 
 int main(int,char**) {
 	return 0;

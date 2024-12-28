@@ -15,6 +15,9 @@ namespace jinja_details {
 template <typename factory>
 struct environment {
 	using data_type = typename factory::data_type;
+	static_assert(
+		requires{ data_type{std::declval<factory>(), std::declval<environment*>()}; },
+		"the environment should to be present as data type" );
 
 	struct variable {
 		data_type name;
@@ -58,6 +61,7 @@ struct environment {
 		tmp.env = nullptr;
 	}
 
+	constexpr const frame_type& cur_frame() const { return const_cast<environment&>(*this).cur_frame(); }
 	constexpr frame_type& cur_frame() {
 		auto& cur_area = stack.at(stack.size() - 1);
 		return cur_area.at(cur_area.size() - 1);
@@ -106,6 +110,7 @@ struct environment {
 		data_type ret{f};
 		ret.mk_empty_array();
 		for (auto& v : globals) ret.push_back(v.name);
+		for (auto& v : cur_frame()) ret.push_back(v.name);
 		return ret;
 	}
 
@@ -145,6 +150,18 @@ struct context {
 
 	[[nodiscard]] constexpr auto catch_output() { return out_holder(*this); }
 	constexpr const output_type& cur_output() const { return out.back(); }
+	constexpr output_type& cur_output() { return out.back(); }
+	constexpr data_type stringify_cur_output() const { return stringify_output(cur_output()); }
+	constexpr data_type stringify_output(const output_type& output) const {
+		auto ret = this->mk_data("");
+		for (auto& item:output) modify(ret, [&](auto&, typename data_type::string_t& v) {
+			if (item.before.trim) trim_right(f, v);
+			if (item.value.is_string()) v+= (typename data_type::string_t)item.value;
+			else v += jinja_to_string(f, item.value);
+			if (item.after.trim) trim_right(f, v);
+		});
+		return ret;
+	}
 
 	constexpr context& operator()(data_type content) {
 		out.back().emplace_back(out_info{.value = std::move(content)});

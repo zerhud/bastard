@@ -11,6 +11,7 @@
 #include "tests/factory.hpp"
 #include <ascip.hpp>
 #include <absd.hpp>
+#include <absd/formatter.hpp>
 /*
 #ifdef __clang__
 #include "ascip_all_clang.hpp"
@@ -22,6 +23,7 @@
 #include "jinja.hpp"
 
 #include <charconv>
+#include <iterator>
 
 using namespace std::literals;
 
@@ -70,6 +72,7 @@ struct factory : tests::factory {
 
 using parser = factory::parser;
 using jinja_env = jinja_details::environment<factory>;
+using jinja_ctx = jinja_details::context<factory>;
 using data = jinja_env::data_type;
 
 constexpr std::string jinja_to_string(const factory&, const test_expr& e) {
@@ -79,6 +82,12 @@ constexpr std::string jinja_to_string(const factory&, const test_expr& e) {
 		else return test_to_string((int)e);
 	}, e) + "'"
 	;
+}
+
+constexpr std::string jinja_to_string(const factory& f, const data& obj) {
+	auto ret = mk_str(f);
+	back_insert_format(back_inserter(ret), obj);;
+	return ret;
 }
 
 constexpr data jinja_to_data(const factory& f, const auto& env, const auto& data) {

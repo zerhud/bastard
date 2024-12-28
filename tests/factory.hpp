@@ -39,6 +39,11 @@ struct factory
 	> using virtual_variant_t = virtual_variant<variant_t, base_type, wrapper, types...>;
 };
 
+constexpr void trim_right(const factory&, factory::string_t& val) {
+	auto is_space = [](auto ch) { return (ch==' ') + (ch=='\f') + (ch == '\n') + (ch == '\r') + (ch == '\t') + (ch == '\v'); };
+	while (!val.empty() && is_space(val.back())) val.pop_back();
+}
+
 struct variant_workaround_factory : factory {
 #ifdef __clang__
 	template<typename... types> using variant_t = tests::variant_clang_bug_workaround<types...>;

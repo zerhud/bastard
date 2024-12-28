@@ -25,7 +25,9 @@ struct block_content : base_jinja_element<factory> {
 
 	using holder_type = decltype(mk_content_holder(std::declval<factory>()));
 
-	constexpr void execute(context_type& ctx) const override { }
+	constexpr void execute(context_type& ctx) const override {
+		for (auto& h:holder) h->execute(ctx);
+	}
 
 	constexpr static auto struct_fields_count() { return 4; }
 

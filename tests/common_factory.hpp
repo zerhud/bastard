@@ -47,6 +47,18 @@ template<typename type> constexpr auto mk_vec(const common_factory&, auto&&... i
 	return ret;
 }
 
+template<typename type> constexpr auto mk_list(const common_factory&) {
+	auto ret = std::vector<type>{};
+	ret.reserve(1000); // for compile time tests
+	return ret;
+}
+
+template<typename type> constexpr auto mk_list(const common_factory& f, auto&&... items) requires (sizeof...(items)>0) {
+	auto ret = mk_list<type>(f);
+	(void)(ret.emplace_back(std::forward<decltype(items)>(items)), ...);
+	return ret;
+}
+
 template<typename type> constexpr auto mk_set(const common_factory& f, auto&&... items) {
 	using set_type = decltype(f.mk_set_type<type>())::type;
 	set_type ret{};

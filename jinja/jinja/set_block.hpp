@@ -39,12 +39,9 @@ struct set_block : element_with_name<factory> {
 			auto area_holder = ctx.env.push_area();
 			auto output_holder = ctx.catch_output();
 			holder.execute(ctx);
-			//TODO: ctx.cur_output() returns constant reference, but can move the value out and destroy the frame
-			data = jinja_to_data(f, ctx.cur_output());
+			data = ctx.stringify_cur_output();
 		}
-		auto vn = ctx.mk_data(name());
-		ctx.env.add_local(vn, std::move(data));
-		ctx.env.add_local(vn, jinja_to_data(f, ctx.env, handler));
+		ctx.env.add_local(ctx.mk_data(name()), std::move(data));
 	}
 
 	constexpr auto size() const { return holder.size(); }
