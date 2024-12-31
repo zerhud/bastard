@@ -29,7 +29,17 @@ static_assert( []{
 	8*(p2==1) + 16*(r2.shift==0) + 32*(r2.trim) +
 	64*(p3==0) + 128*(r3.shift==0) + 256*(!r3.trim)
 	;
-}() == 511, "trim info parser teset");
+}() == 511, "trim info parser test");
+static_assert( [] {
+	jinja_details::shift_info r1, r2, r3;
+	const auto p1 = parse(r1.mk_parser<parser>(), +parser::space, parser::make_source("+3"), r1);
+	const auto p2 = parse(r1.mk_parser<parser>(), +parser::space, parser::make_source("3"), r2);
+	const auto p3 = parse(r1.mk_parser<parser>(), +parser::space, parser::make_source("-3"), r3);
+	return (p1==2) + 2*(p2==1) + 4*(p3==2)
+	+ 8*(!r1.absolute) + 16*r2.absolute + 32*(!r3.absolute)
+	+ 64*(r1.shift==3) + 128*(r2.shift==3) + 256*(r3.shift==-3)
+	;
+}() == 511, "shfit_info parser test" );
 static_assert( []{
 	jinja_details::comment_operator<factory> r1{factory{}}, r2{factory{}};
 	const auto p1 = parse(r1.mk_parser(), parser::make_source("<# <% <= foo +#>"), r1);
