@@ -32,9 +32,10 @@ struct block_with_params : element_with_name<factory> {
 	constexpr const string_t& name() const override { return _name; }
 	constexpr void execute(context_type& ctx) const override { }
 
-	constexpr static auto struct_fields_count() { return 6; }
+	constexpr static auto struct_fields_count() { return 7; }
 	factory f;
 	trim_info<factory> begin_left;
+	shift_info shift_inside;
 	string_t _name;
 	parameters_holder parameters;
 	block_content<factory> holder;
@@ -62,9 +63,10 @@ struct block_with_params : element_with_name<factory> {
 		//TODO: we cannot wrap the result in skip() here for some reason (error with glvalue)
 		return
 		++lexeme(bp::mk_block_begin() >> trim_parser)
+		>> ++-shift_info::mk_parser<p>()
 		>> crtp::keyword_open()++ >> ident++
 		>> -(th<'(' >::_char >> -((ident++ >> -(th<'='>::_char >> expr_parser)) % ',') >> th<')'>::_char)
-		>> ++p::template req<1>
+		>> ++th<1>::req
 		>> crtp::keyword_close() >> ++trim_parser >> bp::mk_block_end()
 		;
 	}

@@ -99,10 +99,23 @@ static_assert( [] {
 }() == "ab{'key1':1,'key2':3}", "stringify_cur_output() turns current output to string");
 static_assert( [] {
 	jinja_ctx ctx(factory{});
-	jinja_details::trim_info<factory> ti{2, true};
-	ctx(ti, data{" space \t"}, ti)(ti, data{" space \t"}, ti);
+	const jinja_details::trim_info<factory> ti{true};
+	ctx(ti, data{" sp\nace \t"}, ti)(ti, data{" space \t"}, ti);
 	return ctx.stringify_cur_output() ;
-}() == " space space", "stringify_cur_output() trim spaces if required" );
+}() == " sp\nace space", "stringify_cur_output() trim spaces if required" );
+static_assert( [] {
+	jinja_ctx ctx(factory{});
+	const jinja_details::shift_info si{2, false};
+	ctx(si)(data{"tes\nt"});
+	return ctx.stringify_cur_output() ;
+}() == "tes\n\t\tt", "stringify_cur_output() shifts new lines with tabs if required" );
+static_assert( [] {
+	jinja_ctx ctx(factory{});
+	const jinja_details::shift_info si{2, false};
+	ctx(si)(data{"tes\nt"});
+	(void)ctx.stringify_cur_output() ;
+	return ctx.stringify_cur_output() ;
+}() == "tes\n\t\tt", "stringify_cur_output() resets shift information on call" );
 
 static_assert( []{
 	using op_type = jinja_details::content<factory>;
@@ -110,8 +123,9 @@ static_assert( []{
 	parse(r1.mk_parser(), +parser::space, parser::make_source("12 << test_text"), r1);
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
-	return ctx.cur_output().size() +
-		2*(ctx.cur_output()[0].value == "12 << test_text")
+	auto [_,_,val] = ctx.cur_output()[0].value();
+	return (ctx.cur_output().size()==1) +
+		2*(val == "12 << test_text")
 		;
 }() == 3, "content appended to context");
 static_assert( []{
@@ -120,7 +134,8 @@ static_assert( []{
 	parse(r1.mk_parser(), +parser::space, parser::make_source("<= 3 =>"), r1);
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
-	return (ctx.cur_output().size() == 1) + 2*(ctx.cur_output()[0].value=="1: '3'");
+	auto [_,_,val] = ctx.cur_output()[0].value();
+	return (ctx.cur_output().size() == 1) + 2*(val=="1: '3'");
 }() == 3, "the expression operator appends to context the result of the expression" );
 static_assert( [] {
 	using cnt_type = jinja_details::content<factory>;

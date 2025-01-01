@@ -28,10 +28,9 @@ struct shift_info {
 template<typename factory>
 struct trim_info {
 	using p = factory::parser;
-	int shift{0};
 	bool trim{false};
 	constexpr static auto mk_parser() {
-		return -p::int_++ >> -as<true>(p::template char_<'+'>);
+		return p::nop++ >> ---as<true>(p::template char_<'+'>);
 	}
 };
 

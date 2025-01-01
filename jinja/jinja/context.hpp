@@ -134,9 +134,28 @@ struct context {
 		}
 	};
 	struct out_info {
-		trim_info<factory> before;
-		trim_info<factory> after;
-		data_type value;
+		struct _value_info {
+			bool trim_before{false};
+			bool trim{false};
+			data_type value;
+		};
+		constexpr static auto mk_value_type() {
+			return typename factory::template variant_t<shift_info, _value_info>{};
+		}
+
+		constexpr explicit out_info(shift_info i) : i(std::move(i)) {}
+		constexpr explicit out_info(data_type v) : i(_value_info{.value=std::move(v)}) {}
+		constexpr explicit out_info(bool b, bool t, data_type v) : i(_value_info{b, t, std::move(v)}) { }
+
+		constexpr auto value() const {
+			return get<1>(i);
+		}
+		constexpr auto* shift() const {
+			if (i.index()!=0) return (const shift_info*)nullptr;
+			else return &get<0>(i);
+		}
+
+		decltype(mk_value_type()) i;
 	};
 
 	constexpr static auto mk_output(const factory& f) { return mk_vec<out_info>(f); }
@@ -153,22 +172,26 @@ struct context {
 	constexpr output_type& cur_output() { return out.back(); }
 	constexpr data_type stringify_cur_output() const { return stringify_output(cur_output()); }
 	constexpr data_type stringify_output(const output_type& output) const {
+		shift = 0;
 		auto ret = this->mk_data("");
 		for (auto& item:output) modify(ret, [&](auto&, typename data_type::string_t& v) {
-			if (item.before.trim) trim_right(f, v);
-			if (item.value.is_string()) v+= (typename data_type::string_t)item.value;
-			else v += jinja_to_string(f, item.value);
-			if (item.after.trim) trim_right(f, v);
+			if (auto* shift = item.shift())
+				this->shift = shift->shift + !shift->absolute * this->shift;
+			else trim_value(item, v);
 		});
 		return ret;
 	}
 
 	constexpr context& operator()(data_type content) {
-		out.back().emplace_back(out_info{.value = std::move(content)});
+		out.back().emplace_back(out_info(std::move(content)));
 		return *this;
 	}
 	constexpr context& operator()(trim_info<factory> before, data_type content, trim_info<factory> after) {
-		out.back().emplace_back(out_info{std::move(before), std::move(after), std::move(content)});
+		out.back().emplace_back(out_info(before.trim, after.trim, std::move(content)));
+		return *this;
+	}
+	constexpr context& operator()(shift_info si) {
+		out.back().emplace_back(si);
 		return *this;
 	}
 
@@ -179,6 +202,25 @@ struct context {
 	factory f;
 	environment<factory> env;
 private:
+	constexpr void trim_value(auto& item, typename data_type::string_t& v) const {
+		auto [before,after,value] = item.value();
+		if (before) trim_right(f, v);
+		if (value.is_string()) v+= shift_value((typename data_type::string_t)value);
+		else v += shift_value(jinja_to_string(f, value));
+		if (after) trim_right(f, v);
+	}
+	constexpr auto shift_value(typename data_type::string_t&& v) const {
+		if (shift<1) return v;
+		//TODO: move algo to factory?
+		auto rep = mk_str(f);
+		rep.resize(shift+1, '\t');
+		rep[0] = '\n';
+		for (auto pos = v.find('\n', 0);pos!=v.npos;pos = v.find('\n', pos+rep.size())) {
+			v.replace(pos, 1, rep);
+		}
+		return v;
+	}
+	mutable int shift{0};
 	decltype(mk_out(std::declval<factory>())) out;
 };
 } // namespace jinja_details

@@ -20,16 +20,11 @@ static_assert( []{
 	return (p == 3) + 2*(r.value == "\\%<");
 }() == 3, "content parser test" );
 static_assert( []{
-	jinja_details::trim_info<factory> r1, r2, r3;
-	const auto p = parse(r1.mk_parser(), parser::make_source("+3+"), r1);
-	const auto p2 = parse(r1.mk_parser(), parser::make_source("+"), r2);
-	const auto p3 = parse(r1.mk_parser(), parser::make_source(" "), r3);
-	return
-	(p==3) + 2*(r1.shift==3) + 4*r1.trim +
-	8*(p2==1) + 16*(r2.shift==0) + 32*(r2.trim) +
-	64*(p3==0) + 128*(r3.shift==0) + 256*(!r3.trim)
-	;
-}() == 511, "trim info parser test");
+	jinja_details::trim_info<factory> r2, r3;
+	const auto p2 = parse(r2.mk_parser(), parser::make_source("+"), r2);
+	const auto p3 = parse(r3.mk_parser(), parser::make_source(" "), r3);
+	return (p2==1) + 2*(r2.trim) + 4*(p3==0) + 8*(!r3.trim) ;
+}() == 15, "trim info parser test");
 static_assert( [] {
 	jinja_details::shift_info r1, r2, r3;
 	const auto p1 = parse(r1.mk_parser<parser>(), +parser::space, parser::make_source("+3"), r1);
@@ -39,7 +34,7 @@ static_assert( [] {
 	+ 8*(!r1.absolute) + 16*r2.absolute + 32*(!r3.absolute)
 	+ 64*(r1.shift==3) + 128*(r2.shift==3) + 256*(r3.shift==-3)
 	;
-}() == 511, "shfit_info parser test" );
+}() == 511, "shift_info parser test" );
 static_assert( []{
 	jinja_details::comment_operator<factory> r1{factory{}}, r2{factory{}};
 	const auto p1 = parse(r1.mk_parser(), parser::make_source("<# <% <= foo +#>"), r1);
