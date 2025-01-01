@@ -17,11 +17,11 @@ struct shift_info {
 	template<typename p, template<auto>class th=p::template tmpl>
 	constexpr static auto mk_parser() {
 		constexpr auto abs_parser = -fnum<0>(as<-1>(th<'-'>::char_)|as<1>(th<'+'>::char_));
-		return add_to_ctx<shift_info>(0,
+		return lexeme(add_to_ctx<shift_info>(0,
 			   abs_parser
 			>> use_seq_result(p::nop([](auto& r){r.absolute=(r.shift==0); r.shift+=(r.shift==0); return &r;}))
 			>> result_from_ctx<shift_info>([](auto& r, auto& tmp){r *= tmp;}, th<10>::uint_)
-		);
+		));
 	}
 };
 
