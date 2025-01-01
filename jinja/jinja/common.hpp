@@ -23,8 +23,8 @@ constexpr auto mk_context_type() {
 
 template<typename factory>
 struct base_parser {
-	using p = factory::parser;
-	template<auto s> using t = p::template tmpl<s>;
+	using p = typename factory::parser;
+	template<auto s> using t = typename p::template tmpl<s>;
 	constexpr static auto mk_block_begin() { return p::template lit<"<%">; }
 	constexpr static auto mk_block_end() { return p::template lit<"%>">; }
 	constexpr static auto mk_comment_begin() { return p::template lit<"<#">; }
