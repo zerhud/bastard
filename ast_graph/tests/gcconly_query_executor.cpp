@@ -59,7 +59,7 @@ struct fake_emb_expr {
 
 struct parser_factory : tests::factory {
 	using data_type = absd::data<parser_factory>;
-	using parser = ascip<std::tuple>;
+	using parser = ascip;
 	using vertex_expression_parsed_type = fake_emb_expr_variant;
 
 	constexpr friend auto solve_vertex(const parser_factory&, const auto& expr, const auto* vertex) {

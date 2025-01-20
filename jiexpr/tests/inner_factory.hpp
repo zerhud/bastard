@@ -20,7 +20,7 @@ struct factory : tests::factory {
 	using data_type = absd::data<factory>;
 };
 
-using parser = ascip<std::tuple>;
+using parser = ascip;
 using absd_data = absd::data<factory>;
 using jiexpr_test = jiexpr<factory>;
 

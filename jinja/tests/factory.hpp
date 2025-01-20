@@ -51,7 +51,7 @@ static_assert(test_to_string(10) == "10");
 static_assert(test_to_string(-1) == "-1");
 
 struct test_expr : std::variant<std::string, int, bool> {
-	using p = ascip<std::tuple>;
+	using p = ascip;
 	template<auto s> using th = p::template tmpl<s>;
 	constexpr static auto mk_parser() {
 		constexpr auto ident = lexeme(p::alpha >> *(p::alpha | p::d10 | th<'_'>::char_));
@@ -61,7 +61,7 @@ struct test_expr : std::variant<std::string, int, bool> {
 
 struct factory : tests::factory {
 	using extra_types = tests::test_type_list<jinja_details::environment<factory>>;
-	using parser = ascip<std::tuple>;
+	using parser = ascip;
 	using jinja_expression = test_expr;
 	using data_type = absd::data<factory>;
 	template<typename... types> using data_type_tmpl = absd::data<types...>;

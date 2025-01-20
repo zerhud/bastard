@@ -32,7 +32,7 @@ struct factory : tests::factory{
 
 using data = absd::data<factory>;
 
-using parser = ascip<std::tuple, factory>;
+using parser = ascip;
 using qedge = ast_graph::details::query_edge<factory>;
 using qgraph = ast_graph::details::query_graph<factory>;
 using vertex = qgraph::qvertex;
