@@ -25,6 +25,19 @@ static_assert( absd_data::mk(0.1).is_float_point() );
 
 namespace object_tests {
 
+template<typename data_type> struct object_without_keys {
+	constexpr data_type at(data_type key) {
+		return data_type{};
+	}
+	constexpr std::size_t size() const { return 1; }
+};
+
+static_assert( absd_data::mk(object_without_keys<absd_data>{}).is_object() );
+static_assert( absd_data::mk(object_without_keys<absd_data>{}).size() == 1 );
+static_assert( absd_data::mk(object_without_keys<absd_data>{})[absd_data{"test"}].is_none() );
+static_assert( absd_data::mk(object_without_keys<absd_data>{}).contains(absd_data{1}) == false );
+static_assert( absd_data::mk(object_without_keys<absd_data>{}).keys().size() == 0 );
+
 template<typename data_type> struct constant_object {
 	using integer_t = data_type::integer_t;
 	data_type m0{3}, m1{4}, empty;

@@ -120,7 +120,10 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 				if constexpr (requires{this->orig_val().is_object();}) return this->orig_val().is_object();
 				else return true;
 			}
-			constexpr bool contains(const data_type& key) const override { return this->orig_val().contains(key); }
+			constexpr bool contains(const data_type& key) const override {
+				if constexpr(requires{this->orig_val().contains(key);}) return this->orig_val().contains(key);
+				else return false;
+			}
 			constexpr data_type at(const data_type& ind) override {
 				if constexpr (requires{ this->orig_val().absd_map_replacer; }) { if(!this->orig_val().contains(ind)) return data_type{}; }
 				return this->orig_val().at(ind);
@@ -141,7 +144,13 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 				ret.mk_empty_array();
 				if constexpr (iteratable<decltype(src.orig_val())>)
 					for (const auto&[k,v]:this->orig_val()) ret.push_back(k);
-				else for(auto& v:this->orig_val().keys()) ret.push_back(data_type{f, std::move(v)});
+				else if constexpr (has_keys<decltype(src.orig_val()), data_type>) {
+					auto keys = [&] {
+						if constexpr (requires{this->orig_val().keys(f);}) return this->orig_val().keys(f);
+						else return this->orig_val().keys();
+					}();
+					for(auto& v:keys) ret.push_back(data_type{f, std::move(v)});
+				}
 				return ret;
 			}
 		};

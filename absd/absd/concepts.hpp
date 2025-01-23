@@ -24,15 +24,12 @@ concept iteratable =
 		requires(const type& v){ v.begin(); v.end(); };
 template<typename type, typename key_type>
 concept has_contains = requires(const type& obj, key_type key){ obj.contains(key); };
+template<typename type, typename key_type>
+concept has_keys = requires(const type& v){ {v.keys()}->iteratable;} || requires(const type& v, key_type& d){ {v.keys(d.factory)};} ;
 template<typename type, typename data_type>
 concept as_object =
 		   requires(type& v, data_type key){ v.at(key); }
 		&& requires(const type& v, data_type key){ v.size(); }
-		&& has_contains<type, data_type>
-		&& ( iteratable<type>
-		   || requires(const type& v){ {v.keys()}->iteratable;}
-		   || requires(const type& v, data_type& d){ {v.keys(d.factory)};}
-		   )
 		;
 template<typename type, typename data_type>
 concept as_array =
