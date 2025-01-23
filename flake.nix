@@ -43,6 +43,7 @@
       stdenv_with_debinfo = pkgs.overrideCC pkgs.gcc14Stdenv gcc_with_debinfo;
       der = pkgs.gcc14Stdenv.mkDerivation {
         name = "jiexpr";
+        NIX_ENFORCE_NO_NATIVE = false;
         buildInputs = with pkgs;[ tref ];
         snitch_header = snitch.out;
         nativeBuildInputs = with pkgs;[gdb clang_19 ninja ascip snitch boost186 (boost-build.override {useBoost = boost186;})];
