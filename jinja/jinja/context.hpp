@@ -128,6 +128,7 @@ struct context {
 		context* ctx;
 		constexpr explicit out_holder(context& c) : ctx(&c) {
 			ctx->out.emplace_back(mk_output(ctx->f));
+			ctx->out2.emplace_back(output_frame(ctx->f));
 		}
 		constexpr ~out_holder() {
 			if (ctx) ctx->out.pop_back();
@@ -143,6 +144,25 @@ struct context {
 			return typename factory::template variant_t<shift_info, _value_info>{};
 		}
 
+		constexpr auto at(const data_type& key) {
+			if (key=="value") return i.index() == 1 ? get<1>(i).value : data_type{};
+			if (key=="trim_before") return i.index() == 1 ? data_type{get<1>(i).trim_before} : data_type{};
+			if (key=="trim_after") return i.index() == 1 ? data_type{get<1>(i).trim} : data_type{};
+			if (key=="shift") return i.index() == 0 ? data_type{(typename data_type::integer_t)get<0>(i).shift} : data_type{};
+			if (key=="absolute") return i.index() == 0 ? data_type{get<0>(i).absolute} : data_type{};
+			return data_type{};
+		}
+		constexpr auto size() const { return 5; }
+		constexpr auto keys(const auto& f) const {
+			auto ret = mk_vec<data_type>(f);
+			ret.emplace_back(data_type{"value"});
+			ret.emplace_back(data_type{"trim_before"});
+			ret.emplace_back(data_type{"trim_after"});
+			ret.emplace_back(data_type{"shift"});
+			ret.emplace_back(data_type{"absolute"});
+			return ret;
+		}
+
 		constexpr explicit out_info(shift_info i) : i(std::move(i)) {}
 		constexpr explicit out_info(data_type v) : i(_value_info{.value=std::move(v)}) {}
 		constexpr explicit out_info(bool b, bool t, data_type v) : i(_value_info{b, t, std::move(v)}) { }
@@ -152,17 +172,31 @@ struct context {
 		}
 		constexpr auto* shift() const {
 			if (i.index()!=0) return (const shift_info*)nullptr;
-			else return &get<0>(i);
+			return &get<0>(i);
 		}
 
 		decltype(mk_value_type()) i;
+	};
+
+	struct output_frame {
+		using records_type = decltype(mk_vec<out_info>(std::declval<factory>()));
+		records_type records;
+
+		constexpr explicit output_frame(const factory& f) : records(mk_vec<out_info>(f)) {}
+
+		constexpr data_type at(records_type::size_type ind) { return data_type::mk(records.at(ind)); }
+		constexpr const data_type at(records_type::size_type ind) const { return data_type::mk(records.at(ind)); }
+		constexpr auto size() const { return records.size(); }
+		constexpr bool contains(const data_type& key)  const {
+			return false;
+		}
 	};
 
 	constexpr static auto mk_output(const factory& f) { return mk_vec<out_info>(f); }
 	using output_type = decltype(mk_output(std::declval<factory>()));
 	constexpr static auto mk_out(const factory& f) { return mk_vec<output_type>(f); }
 
-	constexpr explicit context(factory f) : f(std::move(f)), out(mk_out(this->f)) {
+	constexpr explicit context(factory f) : f(std::move(f)), out(mk_out(this->f)), out2(mk_vec<output_frame>(this->f)) {
 		auto h = catch_output();
 		h.ctx = nullptr;
 	}
@@ -182,16 +216,25 @@ struct context {
 		return ret;
 	}
 
+	constexpr auto extract_output() {
+		auto ret = std::move(out2.back());
+		out2.pop_back();
+		return ret;
+	}
+
 	constexpr context& operator()(data_type content) {
-		out.back().emplace_back(out_info(std::move(content)));
+		out.back().emplace_back(out_info(content));
+		out2.back().records.emplace_back(out_info(std::move(content)));
 		return *this;
 	}
 	constexpr context& operator()(trim_info<factory> before, data_type content, trim_info<factory> after) {
-		out.back().emplace_back(out_info(before.trim, after.trim, std::move(content)));
+		out.back().emplace_back(out_info(before.trim, after.trim, content));
+		out2.back().records.emplace_back(out_info(before.trim, after.trim, std::move(content)));
 		return *this;
 	}
 	constexpr context& operator()(shift_info si) {
 		out.back().emplace_back(si);
+		out2.back().records.emplace_back(si);
 		return *this;
 	}
 
@@ -222,5 +265,6 @@ private:
 	}
 	mutable int shift{0};
 	decltype(mk_out(std::declval<factory>())) out;
+	decltype(mk_vec<output_frame>(std::declval<factory>())) out2;
 };
 } // namespace jinja_details
