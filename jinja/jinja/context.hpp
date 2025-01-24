@@ -114,7 +114,6 @@ struct environment {
 		return ret;
 	}
 
-private:
 	factory f;
 	frame_type globals;
 	stack_type stack;
@@ -127,7 +126,7 @@ struct context {
 	struct out_holder {
 		context* ctx;
 		constexpr explicit out_holder(context& c) : ctx(&c) {
-			ctx->out.emplace_back(output_frame(ctx->f));
+			ctx->out.emplace_back(output_frame(ctx->f, &ctx->env));
 		}
 		constexpr ~out_holder() {
 			if (ctx) ctx->out.pop_back();
@@ -180,14 +179,46 @@ struct context {
 	struct output_frame {
 		using records_type = decltype(mk_vec<out_info>(std::declval<factory>()));
 		records_type records;
+		const environment<factory>* env;
+		mutable int shift = 0;
 
-		constexpr explicit output_frame(const factory& f) : records(mk_vec<out_info>(f)) {}
+		constexpr explicit output_frame(const factory& f, const environment<factory>* env) : records(mk_vec<out_info>(f)), env(env) {}
 
 		constexpr data_type at(records_type::size_type ind) { return data_type::mk(records.at(ind)); }
 		constexpr const data_type at(records_type::size_type ind) const { return data_type::mk(records.at(ind)); }
 		constexpr auto size() const { return records.size(); }
 		constexpr bool contains(const data_type& key)  const {
 			return false;
+		}
+
+		constexpr data_type stringify() const {
+			shift = 0;
+			auto ret = env->mk_data_inner("");
+			for (auto& item:records) modify(ret, [&](auto&, typename data_type::string_t& v) {
+				if (auto* shift = item.shift())
+					this->shift = shift->shift + !shift->absolute * this->shift;
+				else trim_value(item, v);
+			});
+			return ret;
+		}
+	private:
+		constexpr void trim_value(auto& item, typename data_type::string_t& v) const {
+			auto [before,after,value] = item.value();
+			if (before) trim_right(env->f, v);
+			if (value.is_string()) v+= shift_value((typename data_type::string_t)value);
+			else v += shift_value(jinja_to_string(env->f, value));
+			if (after) trim_right(env->f, v);
+		}
+		constexpr auto shift_value(typename data_type::string_t&& v) const {
+			if (shift<1) return v;
+			//TODO: move algo to factory?
+			auto rep = mk_str(env->f);
+			rep.resize(shift+1, '\t');
+			rep[0] = '\n';
+			for (auto pos = v.find('\n', 0);pos!=v.npos;pos = v.find('\n', pos+rep.size())) {
+				v.replace(pos, 1, rep);
+			}
+			return v;
 		}
 	};
 
@@ -203,17 +234,6 @@ struct context {
 	[[nodiscard]] constexpr auto catch_output() { return out_holder(*this); }
 	constexpr const auto& cur_output() const { return out.back(); }
 	constexpr auto& cur_output() { return out.back(); }
-	constexpr data_type stringify_cur_output() const { return stringify_output(cur_output().records); }
-	constexpr data_type stringify_output(const output_type& output) const {
-		shift = 0;
-		auto ret = this->mk_data("");
-		for (auto& item:output) modify(ret, [&](auto&, typename data_type::string_t& v) {
-			if (auto* shift = item.shift())
-				this->shift = shift->shift + !shift->absolute * this->shift;
-			else trim_value(item, v);
-		});
-		return ret;
-	}
 
 	constexpr auto extract_output() {
 		auto ret = std::move(out.back());
@@ -243,25 +263,6 @@ struct context {
 	factory f;
 	environment<factory> env;
 private:
-	constexpr void trim_value(auto& item, typename data_type::string_t& v) const {
-		auto [before,after,value] = item.value();
-		if (before) trim_right(f, v);
-		if (value.is_string()) v+= shift_value((typename data_type::string_t)value);
-		else v += shift_value(jinja_to_string(f, value));
-		if (after) trim_right(f, v);
-	}
-	constexpr auto shift_value(typename data_type::string_t&& v) const {
-		if (shift<1) return v;
-		//TODO: move algo to factory?
-		auto rep = mk_str(f);
-		rep.resize(shift+1, '\t');
-		rep[0] = '\n';
-		for (auto pos = v.find('\n', 0);pos!=v.npos;pos = v.find('\n', pos+rep.size())) {
-			v.replace(pos, 1, rep);
-		}
-		return v;
-	}
-	mutable int shift{0};
 	decltype(mk_vec<output_frame>(std::declval<factory>())) out;
 };
 } // namespace jinja_details
