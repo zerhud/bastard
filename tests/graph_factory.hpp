@@ -47,8 +47,8 @@ constexpr auto mk_data(const factory&, std::string_view src) {
 	return dt{ typename dt::string_t{src} };
 }
 template<typename factory>
-constexpr auto mk_data(const factory&, auto&& src) {
-	return typename factory::data_type{ std::forward<decltype(src)>(src) };
+constexpr auto mk_data(const factory& f, auto&& src) {
+	return factory::data_type::mk(f, std::forward<decltype(src)>(src));
 }
 template<typename factory>
 [[noreturn]] void throw_vertex_not_present_in_graph(const factory&, const auto* vertex, const auto& graph) {

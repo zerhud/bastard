@@ -148,8 +148,11 @@ static_assert( [] {
 	r1.holder.holder.emplace_back() = std::move(cnt);
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
-	return (ctx.env.size()==1) + 2*(ctx.env.at(data{"test_name"}) == data{"test content"});
-}() == 3 );
+	auto result = ctx.env.at(data{"test_name"});
+	return (ctx.env.size()==1) + 2*result.is_array() + 4*(result.size()==1) +
+	8*(result[0][data{"value"}] == data{"test content"})
+	;
+}() == 15 );
 
 int main(int,char**) {
 	return 0;

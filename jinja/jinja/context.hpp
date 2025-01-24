@@ -218,8 +218,10 @@ struct context {
 
 	constexpr auto extract_output() {
 		auto ret = std::move(out2.back());
-		out2.pop_back();
 		return ret;
+	}
+	constexpr auto extract_output_to_data() {
+		return env.mk_data_inner(extract_output());
 	}
 
 	constexpr context& operator()(data_type content) {

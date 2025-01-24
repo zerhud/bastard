@@ -39,7 +39,7 @@ struct set_block : element_with_name<factory> {
 			auto area_holder = ctx.env.push_area();
 			auto output_holder = ctx.catch_output();
 			holder.execute(ctx);
-			data = ctx.stringify_cur_output();
+			data = ctx.extract_output_to_data();
 		}
 		ctx.env.add_local(ctx.mk_data(name()), std::move(data));
 	}
