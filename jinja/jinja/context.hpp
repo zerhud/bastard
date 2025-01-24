@@ -127,8 +127,7 @@ struct context {
 	struct out_holder {
 		context* ctx;
 		constexpr explicit out_holder(context& c) : ctx(&c) {
-			ctx->out.emplace_back(mk_output(ctx->f));
-			ctx->out2.emplace_back(output_frame(ctx->f));
+			ctx->out.emplace_back(output_frame(ctx->f));
 		}
 		constexpr ~out_holder() {
 			if (ctx) ctx->out.pop_back();
@@ -196,15 +195,15 @@ struct context {
 	using output_type = decltype(mk_output(std::declval<factory>()));
 	constexpr static auto mk_out(const factory& f) { return mk_vec<output_type>(f); }
 
-	constexpr explicit context(factory f) : f(std::move(f)), out(mk_out(this->f)), out2(mk_vec<output_frame>(this->f)) {
+	constexpr explicit context(factory f) : f(std::move(f)), out(mk_vec<output_frame>(this->f)) {
 		auto h = catch_output();
 		h.ctx = nullptr;
 	}
 
 	[[nodiscard]] constexpr auto catch_output() { return out_holder(*this); }
-	constexpr const output_type& cur_output() const { return out.back(); }
-	constexpr output_type& cur_output() { return out.back(); }
-	constexpr data_type stringify_cur_output() const { return stringify_output(cur_output()); }
+	constexpr const auto& cur_output() const { return out.back(); }
+	constexpr auto& cur_output() { return out.back(); }
+	constexpr data_type stringify_cur_output() const { return stringify_output(cur_output().records); }
 	constexpr data_type stringify_output(const output_type& output) const {
 		shift = 0;
 		auto ret = this->mk_data("");
@@ -217,7 +216,7 @@ struct context {
 	}
 
 	constexpr auto extract_output() {
-		auto ret = std::move(out2.back());
+		auto ret = std::move(out.back());
 		return ret;
 	}
 	constexpr auto extract_output_to_data() {
@@ -225,18 +224,15 @@ struct context {
 	}
 
 	constexpr context& operator()(data_type content) {
-		out.back().emplace_back(out_info(content));
-		out2.back().records.emplace_back(out_info(std::move(content)));
+		out.back().records.emplace_back(out_info(std::move(content)));
 		return *this;
 	}
 	constexpr context& operator()(trim_info<factory> before, data_type content, trim_info<factory> after) {
-		out.back().emplace_back(out_info(before.trim, after.trim, content));
-		out2.back().records.emplace_back(out_info(before.trim, after.trim, std::move(content)));
+		out.back().records.emplace_back(out_info(before.trim, after.trim, std::move(content)));
 		return *this;
 	}
 	constexpr context& operator()(shift_info si) {
-		out.back().emplace_back(si);
-		out2.back().records.emplace_back(si);
+		out.back().records.emplace_back(si);
 		return *this;
 	}
 
@@ -266,7 +262,6 @@ private:
 		return v;
 	}
 	mutable int shift{0};
-	decltype(mk_out(std::declval<factory>())) out;
-	decltype(mk_vec<output_frame>(std::declval<factory>())) out2;
+	decltype(mk_vec<output_frame>(std::declval<factory>())) out;
 };
 } // namespace jinja_details

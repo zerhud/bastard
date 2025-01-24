@@ -123,7 +123,7 @@ static_assert( []{
 	parse(r1.mk_parser(), +parser::space, parser::make_source("12 << test_text"), r1);
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
-	auto [_,_,val] = ctx.cur_output()[0].value();
+	auto [_,_,val] = ctx.cur_output().records[0].value();
 	return (ctx.cur_output().size()==1) +
 		2*(val == "12 << test_text")
 		;
@@ -134,7 +134,7 @@ static_assert( []{
 	parse(r1.mk_parser(), +parser::space, parser::make_source("<= 3 =>"), r1);
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
-	auto [_,_,val] = ctx.cur_output()[0].value();
+	auto [_,_,val] = ctx.cur_output().records[0].value();
 	return (ctx.cur_output().size() == 1) + 2*(val=="1: '3'");
 }() == 3, "the expression operator appends to context the result of the expression" );
 static_assert( [] {
