@@ -56,16 +56,15 @@ struct set_block : element_with_name<factory> {
 	block_content<factory> holder;
 	trim_info<factory> end_right;
 
-	constexpr static auto mk_parser() {
+	constexpr static auto mk_parser(const auto& f) {
 		using bp = base_parser<factory>;
-		auto expr_parser = expr_type::mk_parser();
 		constexpr auto trim_parser = trim_info<factory>::mk_parser();
 		constexpr auto ident = lexeme(p::alpha >> *(p::alpha | p::d10 | th<'_'>::char_));
 		//TODO: we cannot wrap the result in skip() here for some reason (error with glvalue)
 		return
 		++lexeme(bp::mk_block_begin() >> trim_parser)
 		>> p::template lit<"set">++ >> reparse(ident)++
-		>> expr_type::mk_parser()
+		>> mk_jinja_expression_parser(f)
 		>> ++p::template req<0>
 		>> p::template lit<"endset"> >> ++trim_parser >> bp::mk_block_end()
 		;

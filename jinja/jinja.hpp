@@ -39,10 +39,10 @@ constexpr auto mk_content_parser(factory f) {
 
     auto content_parser = content<factory>::mk_parser();
     auto comment_parser = comment_operator<factory>::mk_parser();
-    auto expression_parser = expression_operator<factory>::mk_parser();
-    auto block_parser = named_block<factory>::mk_parser();
-    auto macro_parser = macro_block<factory>::mk_parser();
-    auto set_block_parser = set_block<factory>::mk_parser();
+    auto expression_parser = expression_operator<factory>::mk_parser(f);
+    auto block_parser = named_block<factory>::mk_parser(f);
+    auto macro_parser = macro_block<factory>::mk_parser(f);
+    auto set_block_parser = set_block<factory>::mk_parser(f);
     constexpr auto trim_parser = trim_info<factory>::mk_parser();
 	//TODO: remove skip() for block_parser - it should to be in block parser
 	//      but we cannot do it now for some compile issue with glvalue
@@ -90,11 +90,12 @@ struct template_block : element_with_name<factory> {
 	, blocks(make_holder(this->f))
 	{}
 
-	constexpr static auto struct_fields_count() { return 4; }
+	constexpr static auto struct_fields_count() { return 5; }
 	factory f;
 	string_t _name;
 	block_content<factory> holder;
 	decltype(make_holder(std::declval<factory>())) blocks;
+	string_t file_name;
 
 	constexpr static auto mk_parser(factory f) {
 		using bp = base_parser<factory>;
@@ -117,4 +118,12 @@ struct jinja {
 	factory f;
 	constexpr jinja() : jinja(factory{}) {}
 	constexpr explicit jinja(factory f) : f(std::move(f)) {}
+
+	constexpr auto parse_file(auto src, auto name) const {
+		auto parser = jinja_details::template_block<factory>::mk_parser(f);
+		jinja_details::template_block<factory> result{f};
+		result.file_name = std::move(name);
+		parse(parser, +factory::parser::space, src, result);
+		return result;
+	}
 };

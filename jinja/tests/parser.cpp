@@ -46,7 +46,7 @@ static_assert( []{
 }() == 31, "comment operator parser teset" );
 static_assert( []{
 	jinja_details::expression_operator<factory> r1{ factory{} };
-	const auto p1 = parse(r1.mk_parser(), +parser::space, parser::make_source("<= 3 =>"), r1);
+	const auto p1 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source("<= 3 =>"), r1);
 	return (p1 == 7) + 2*(get<1>(r1.expr)==3);
 }() == 3, "expression operator parser test" );
 

@@ -131,7 +131,7 @@ static_assert( []{
 static_assert( []{
 	using op_type = jinja_details::expression_operator<factory>;
 	op_type r1{factory{}};
-	parse(r1.mk_parser(), +parser::space, parser::make_source("<= 3 =>"), r1);
+	parse(r1.mk_parser(factory{}), +parser::space, parser::make_source("<= 3 =>"), r1);
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
 	auto [_,_,val] = ctx.cur_output().records[0].value();

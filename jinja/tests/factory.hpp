@@ -53,7 +53,7 @@ static_assert(test_to_string(-1) == "-1");
 struct test_expr : std::variant<std::string, int, bool> {
 	using p = ascip;
 	template<auto s> using th = p::template tmpl<s>;
-	constexpr static auto mk_parser() {
+	constexpr static auto mk_parser(const auto&, int, int) {
 		constexpr auto ident = lexeme(p::alpha >> *(p::alpha | p::d10 | th<'_'>::char_));
 		return ident | p::int_ | (as<true>(p::template lit<"true">)|as<false>(p::template lit<"false">));
 	}
@@ -74,6 +74,10 @@ using parser = factory::parser;
 using jinja_env = jinja_details::environment<factory>;
 using jinja_ctx = jinja_details::context<factory>;
 using data = jinja_env::data_type;
+
+constexpr auto mk_jinja_expression_parser(const factory& f) {
+	return test_expr::mk_parser(f, 1, 1);
+}
 
 constexpr std::string jinja_to_string(const factory&, const test_expr& e) {
 	return test_to_string(e.index()) + ": '"

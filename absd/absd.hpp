@@ -59,6 +59,7 @@ namespace absd {
 //        - the end() returns data{}
 template<typename _factory>
 struct data {
+	//TODO: deallocate is inner class method, use ADL? allocate is ADL method
 	static_assert( noexcept( std::declval<_factory>().deallocate((int*)nullptr) ), "for safety delete allocated objects the deallocate method must to be noexcept" );
 
 	using factory_t = _factory;

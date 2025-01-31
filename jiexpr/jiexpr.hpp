@@ -356,7 +356,7 @@ struct jiexpr {
 	template<typename gh>
 	constexpr friend auto create_parser(const jiexpr& e) { return e.create_parser<gh>(); }
 
-	/*
+	/* TODO:
 	 * - . and [] operators after literal
 	 */
 	template<typename gh>
