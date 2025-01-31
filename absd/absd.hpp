@@ -144,7 +144,7 @@ private:
 
 	constexpr void deallocate(auto* v) {
 		if(v->decrease_counter()==0) {
-			factory_t::deallocate(v);
+			factory.deallocate(v);
 			holder = typename factory_t::empty_t{};
 		}
 	}
