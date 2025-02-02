@@ -20,7 +20,7 @@ struct block_with_params : element_with_name<factory> {
 	using context_type = typename base::context_type;
 	using p = typename factory::parser;
 	template<auto s> using th = p::template tmpl<s>;
-	using expr_type = typename factory::jinja_expression;
+	using expr_type = decltype(mk_jinja_expression(std::declval<factory>()));
 
 	struct parameter {
 		string_t name;

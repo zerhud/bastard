@@ -39,7 +39,7 @@ struct comment_operator : base_jinja_element<factory> {
 template<typename factory>
 struct expression_operator : base_jinja_element<factory> {
 	using parser = typename factory::parser;
-	using expr_type = typename factory::jinja_expression;
+	using expr_type = decltype(mk_jinja_expression(std::declval<factory>()));
 	using context_type = typename base_jinja_element<factory>::context_type;
 
 	trim_info<factory> begin;

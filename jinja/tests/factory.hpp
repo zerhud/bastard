@@ -62,7 +62,6 @@ struct test_expr : std::variant<std::string, int, bool> {
 struct factory : tests::factory {
 	using extra_types = tests::test_type_list<jinja_details::environment<factory>>;
 	using parser = ascip;
-	using jinja_expression = test_expr;
 	using data_type = absd::data<factory>;
 	template<typename... types> using data_type_tmpl = absd::data<types...>;
 
@@ -75,6 +74,7 @@ using jinja_env = jinja_details::environment<factory>;
 using jinja_ctx = jinja_details::context<factory>;
 using data = jinja_env::data_type;
 
+constexpr auto mk_jinja_expression(const factory& f) { return test_expr{}; }
 constexpr auto mk_jinja_expression_parser(const factory& f) {
 	return test_expr::mk_parser(f, 1, 1);
 }

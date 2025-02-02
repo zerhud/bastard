@@ -18,7 +18,7 @@ struct set_block : element_with_name<factory> {
 	using base =  element_with_name<factory>;
 	using string_t = typename base::string_t;
 	using context_type = typename base::context_type;
-	using expr_type = typename factory::jinja_expression;
+	using expr_type = decltype(mk_jinja_expression(std::declval<factory>()));
 	using p = typename factory::parser;
 	template<auto s> using th = typename p::template tmpl<s>;
 

@@ -12,6 +12,12 @@ base = $(basename $(subst tests/,,$(1)))
 all: $(foreach src_file,$(tests_src),$(call base,$(src_file)))
 	@echo -e "\e[7;32mAll Done\e[0m"
 
+-include $(builddir)/cogen_gcc.d
+$(builddir)/cogen_gcc: cogen/main.cpp
+	$(GCC) $(INCLUDES) cogen/main.cpp -o $@
+
+cogen_gcc: $(builddir)/cogen_gcc
+
 force_clang: $(foreach src_file,$(tests_src),$(call base,$(src_file))_force_clang)
 
 define create_test_dir_template
