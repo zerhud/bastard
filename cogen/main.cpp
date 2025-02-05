@@ -83,9 +83,17 @@ constexpr auto mk_result(const std_factory&, auto&& v) {
 	using expr_t = std::decay_t<decltype(v)>;
 	return std::make_unique<expr_t>(std::forward<decltype(v)>(v));
 }
+
+struct jiexpr_abstracter : std_factory::parser::base_parser<jiexpr_abstracter> {
+	decltype(jiexpr<std_factory>{}.create_parser<std_factory::parser>()) p;
+	constexpr auto parse(auto&& ctx, auto src, auto& result) const {
+		return continue_parse(ctx, p, src, result);
+	}
+};
+
 constexpr auto mk_jinja_expression(const std_factory&) { return jiexpr<std_factory>::parsed_expression{}; }
 constexpr auto mk_jinja_expression_parser(const std_factory& f) {
-	return jiexpr<std_factory>{}.create_parser<std_factory::parser>();
+	return jiexpr_abstracter{ {}, jiexpr{f}.create_parser<std_factory::parser>() };
 }
 template<typename interface>
 [[noreturn]] constexpr void throw_wrong_interface_error(const std_factory&) {
