@@ -67,7 +67,7 @@ struct block_with_params : element_with_name<factory> {
 		>> crtp::keyword_open()++
 		>> ident++
 		>> -(th<'(' >::_char >> -((ident++ >> -(th<'='>::_char >> expr_parser)) % ',') >> th<')'>::_char)
-		>> ++th<0>::req
+		>> ++th<0>::rec
 		>> crtp::keyword_close() >> ++trim_parser >> bp::mk_block_end()
 		;
 	}

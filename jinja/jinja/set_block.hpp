@@ -65,7 +65,7 @@ struct set_block : element_with_name<factory> {
 		++lexeme(bp::mk_block_begin() >> trim_parser)
 		>> p::template lit<"set">++ >> reparse(ident)++
 		>> mk_jinja_expression_parser(f)
-		>> ++p::template req<0>
+		>> ++p::template rec<0>
 		>> p::template lit<"endset"> >> ++trim_parser >> bp::mk_block_end()
 		;
 	}
