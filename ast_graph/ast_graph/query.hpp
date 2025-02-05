@@ -134,12 +134,12 @@ struct query_graph {
 	constexpr static auto mk_parser(const auto& df) {
 		auto fwd = [&df](auto& v){ return mk_fwd(df, v); };
 		return rv([&df](auto& v){ return mk_result(df, std::move(v)); }
-			, check<path>( gh::rv_lreq++ >> +(query_edge<factory>::template mk_parser<gh>() >> ++gh::rv_rreq(fwd)) )
-			, ( cast<binary>( gh::rv_lreq++ >> th<'+'>::_char >> gh::rv_rreq(fwd) )
-			  | cast<binary>( gh::rv_lreq++ >> th<'-'>::_char >> gh::rv_rreq(fwd) )
+			, check<path>( gh::rv_lrec++ >> +(query_edge<factory>::template mk_parser<gh>() >> ++gh::rv_rrec(fwd)) )
+			, ( cast<binary>( gh::rv_lrec++ >> th<'+'>::_char >> gh::rv_rrec(fwd) )
+			  | cast<binary>( gh::rv_lrec++ >> th<'-'>::_char >> gh::rv_rrec(fwd) )
 			  )
 			, check<qvertex>(qvertex::template mk_parser<gh>(df))
-			, rv_result(th<'('>::_char >> th<0>::rv_req >> th<')'>::_char)
+			, rv_result(th<'('>::_char >> th<0>::rv_rec >> th<')'>::_char)
 		);
 	}
 };
