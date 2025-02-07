@@ -25,17 +25,17 @@ static_assert( [] {
 }() == 7 );
 static_assert( [] {
 	jinja_ctx c{ factory {} };
-	c(data{"content"});
+	c(data{"content  "});
 	c(jinja_details::trim_info<factory>{true}, data{"trim"}, jinja_details::trim_info<factory>{false});
 	c(jinja_details::shift_info{3, true});
 	auto out = c.extract_output();
 	auto obj = data::mk(out);
-	return (obj.size()==3) + 2*(obj[0][data{"value"}]=="content") + 4*(obj[0][data{"trim_before"}]==false) +
+	return (obj.size()==3) + 2*(obj[0][data{"value"}]=="content  ") + 4*(obj[0][data{"trim_before"}]==false) +
 		8*(obj[1][data{"value"}]=="trim") + 16*(obj[1][data{"trim_before"}]==true) +
-		32*obj[2][data{"value"}].is_none() + 64*(obj[2][data{"shift"}]==3)
+		32*obj[2][data{"value"}].is_none() + 64*(obj[2][data{"shift"}]==3) +
+		64*((data::string_t)obj.call(data{})=="contenttrim"sv)
 	;
 }() == 127 );
 
 int main(int,char**) {
-	return 0;
 }

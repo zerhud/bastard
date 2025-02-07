@@ -201,6 +201,10 @@ struct context {
 			});
 			return ret;
 		}
+
+		constexpr data_type operator()() const {
+			return stringify();
+		}
 	private:
 		constexpr void trim_value(auto& item, typename data_type::string_t& v) const {
 			auto [before,after,value] = item.value();
