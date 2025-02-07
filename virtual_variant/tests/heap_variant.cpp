@@ -32,7 +32,7 @@ struct info { int value{0}; };
 struct base {
 	using factory = struct factory;
 	virtual ~base() noexcept =default ;
-	virtual int solve(const info&) const =0 ;
+	virtual int eval(const info&) const =0 ;
 };
 
 struct expr1_tag {};
@@ -40,13 +40,13 @@ struct expr1 : base, expr1_tag {
 	factory f;
 	constexpr expr1() =default ;
 	constexpr expr1(factory f) : f(f) {}
-	constexpr int solve(const info&) const override { return 3; }
+	constexpr int eval(const info&) const override { return 3; }
 };
 struct expr2 : base {
 	factory f;
 	constexpr expr2() =default ;
 	constexpr expr2(factory f) : f(f) {}
-	constexpr int solve(const info&) const override { return 5; }
+	constexpr int eval(const info&) const override { return 5; }
 };
 
 template<typename type>
@@ -57,7 +57,7 @@ struct wrapper : base {
 	constexpr wrapper() =default ;
 	constexpr wrapper(factory f) : f(f) {}
 
-	constexpr int solve(const info&) const override { return item; }
+	constexpr int eval(const info&) const override { return item; }
 };
 
 struct test_variant : heap_variant<
@@ -68,22 +68,22 @@ struct test_variant : heap_variant<
 			expr1, expr2, int, double>;
 	constexpr test_variant() =default ;
 	constexpr test_variant(factory f) : base_type(std::move(f)) {}
-	constexpr int solve(const info& i) const override { return this->pointer->solve(i);}
+	constexpr int eval(const info& i) const override { return this->pointer->eval(i);}
 };
 
-static_assert( []{test_variant v; return create<expr1>(v).solve(info{});}() == 3 );
+static_assert( []{test_variant v; return create<expr1>(v).eval(info{});}() == 3 );
 static_assert( []{test_variant v; return create<int>(v);}() == 0 );
 static_assert( []{test_variant v; return create<2>(v);}() == 0 );
-static_assert( test_variant{}.solve(info()) == 3 );
+static_assert( test_variant{}.eval(info()) == 3 );
 static_assert( []{
 	test_variant v;
 	auto& e1 = create<0>(v);
-	return (e1.solve(info{}) == 3) + 2*(v.solve(info{}) == 3) ;
+	return (e1.eval(info{}) == 3) + 2*(v.eval(info{}) == 3) ;
 }() == 3 );
 static_assert( []{
 	test_variant v;
 	create<int>(v) = random_number;
-	return v.solve(info{});
+	return v.eval(info{});
 }() == random_number );
 
 static_assert( []{
@@ -116,14 +116,14 @@ static_assert( []{
 	test_variant v;
 	create<int>(v) = random_number;
 	test_variant v2(std::move(v));
-	return v2.solve(info{});
+	return v2.eval(info{});
 }() == random_number, "can use move ctor" );
 static_assert( []{
 	test_variant v;
 	create<int>(v) = random_number;
 	test_variant v2;
 	v2 = std::move(v);
-	return v2.solve(info{});
+	return v2.eval(info{});
 }() == random_number, "can use move operator=" );
 
 int main(int,char**) {

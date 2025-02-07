@@ -62,7 +62,7 @@ struct parser_factory : tests::factory {
 	using parser = ascip;
 	using vertex_expression_parsed_type = fake_emb_expr_variant;
 
-	constexpr friend auto solve_vertex(const parser_factory&, const auto& expr, const auto* vertex) {
+	constexpr friend auto eval_vertex(const parser_factory&, const auto& expr, const auto* vertex) {
 		return visit([](const auto& v){
 			return data_type{(bool)v};
 		}, expr);

@@ -27,7 +27,7 @@ struct vertex_evaluator {
 
 	constexpr bool operator()(const qvertex& q) const { return visit(*this, q.data); }
 	constexpr bool operator()(const qvertex::emb_expr& q) const {
-		return (bool)(solve_vertex(f, q, input));
+		return (bool)(eval_vertex(f, q, input));
 	}
 	constexpr bool operator()(const qvertex::own_expr& q) const {
 		bool result = true;
@@ -204,7 +204,7 @@ struct query_executor {
 	constexpr auto operator()(const qvertex& q) { return visit(*this, q.data); }
 	constexpr auto operator()(const qvertex::emb_expr& q) {
 		for(auto& i:graph.vertices) {
-			if(solve_vertex(*pf, f, q, i.base)) result.add_vertex(&i);
+			if(eval_vertex(*pf, f, q, i.base)) result.add_vertex(&i);
 		}
 		return result;
 	}

@@ -28,9 +28,9 @@ constexpr auto eval(std::string_view src, absd_data& env) {
 	jiexpr_test::operators_executer ops;
 	jiexpr_test ev{};
 	auto parsed = ev.template parse_str<parser>(src);
-	jiexpr_test::solve_info info{};
+	jiexpr_test::eval_info info{};
 	info.env = &env;
-	return parsed.solve(info);
+	return parsed.eval(info);
 }
 
 constexpr auto eval(std::string_view src) {

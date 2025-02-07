@@ -84,7 +84,7 @@ struct parser_factory {
 	factory::jiexpr_test* jiexpr;
 
 	constexpr friend const auto& vertex_expression(const parser_factory& f) { return *f.jiexpr; }
-	constexpr friend auto solve_vertex(parser_factory& self, const auto& f, const auto& expr, const auto* graph) {
+	constexpr friend auto eval_vertex(parser_factory& self, const auto& f, const auto& expr, const auto* graph) {
 		data_type env;
 		self.jiexpr->env = &env;
 		env.mk_empty_object();

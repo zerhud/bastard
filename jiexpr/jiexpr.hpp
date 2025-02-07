@@ -18,7 +18,7 @@
 
 //NOTE: there is a clang bug: https://github.com/llvm/llvm-project/issues/59966
 //      workaround:
-//      1. the solve methods have to be defined after first instantiation
+//      1. the eval methods have to be defined after first instantiation
 //      2. call base class methods via a base class pointer,
 //         but after it clang can't compile and doesn't produce an understandable message
 template< typename data_factory >
@@ -29,15 +29,15 @@ struct jiexpr {
 	using operators_executer = operators_factory;
 	using env_tuner = decltype(jiexpr_details::make_env_tuner<data_factory>())::type;
 
-	struct solve_info {
+	struct eval_info {
 		data_type* env;
 		operators_factory ops;
 		data_factory df;
 		env_tuner tune_env;
 	};
 
-	using op_holder_base = jiexpr_details::expression_base<data_factory, solve_info>;
-	template<typename type> using op_holder_wrapper = jiexpr_details::expression_item_wrapper<data_factory, solve_info, type>;
+	using op_holder_base = jiexpr_details::expression_base<data_factory, eval_info>;
+	template<typename type> using op_holder_wrapper = jiexpr_details::expression_item_wrapper<data_factory, eval_info, type>;
 
 	template<typename expr_t>
 	struct binary_op : op_holder_base {
@@ -55,112 +55,112 @@ struct jiexpr {
 		constexpr static auto struct_fields_count() { return 3; }
 		constexpr ternary_op() =default ;
 		constexpr explicit ternary_op(data_factory) {}
-		constexpr data_type solve(const solve_info& i) const override {
-			if(to_bool<data_type>(i.ops, cond->solve(i))) return left->solve(i);
-			if(right.get()) return right->solve(i);
+		constexpr data_type eval(const eval_info& i) const override {
+			if(to_bool<data_type>(i.ops, cond->eval(i))) return left->eval(i);
+			if(right.get()) return right->eval(i);
 			return data_type{i.df};
 		}
 	};
 	template<typename expr_t> struct op_division : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return int_div<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
+		constexpr data_type eval(const eval_info& i) const override {
+			return int_div<data_type>(i.ops, this->left->eval(i), this->right->eval(i));
 		}
 	};
 	template<typename expr_t> struct op_multiply : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return multiply<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
+		constexpr data_type eval(const eval_info& i) const override {
+			return multiply<data_type>(i.ops, this->left->eval(i), this->right->eval(i));
 		}
 	};
 	template<typename expr_t> struct op_fp_div   : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return fp_div<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
+		constexpr data_type eval(const eval_info& i) const override {
+			return fp_div<data_type>(i.ops, this->left->eval(i), this->right->eval(i));
 		}
 	};
 	template<typename expr_t> struct op_subtract : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return sub<data_type>( i.ops, this->left->solve(i), this->right->solve(i) );
+		constexpr data_type eval(const eval_info& i) const override {
+			return sub<data_type>( i.ops, this->left->eval(i), this->right->eval(i) );
 		}
 	};
 	template<typename expr_t> struct op_addition : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return add<data_type>( i.ops, this->left->solve(i), this->right->solve(i) );
+		constexpr data_type eval(const eval_info& i) const override {
+			return add<data_type>( i.ops, this->left->eval(i), this->right->eval(i) );
 		}
 	};
 	template<typename expr_t> struct op_concat   : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
+		constexpr data_type eval(const eval_info& i) const override {
 			auto left_str = mk_str(i.df);
 			auto right_str = mk_str(i.df);
-			back_insert_format(back_inserter(i.df, left_str), this->left->solve(i));
-			back_insert_format(back_inserter(i.df, right_str), this->right->solve(i));
+			back_insert_format(back_inserter(i.df, left_str), this->left->eval(i));
+			back_insert_format(back_inserter(i.df, right_str), this->right->eval(i));
 			return data_type{ i.df, do_concat(i.ops, std::move(left_str), std::move(right_str)) };
 		}
 	};
 	template<typename expr_t> struct op_power    : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return pow<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
+		constexpr data_type eval(const eval_info& i) const override {
+			return pow<data_type>(i.ops, this->left->eval(i), this->right->eval(i));
 		}
 	};
 
 	template<typename expr_t> struct op_ceq      : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return do_ceq<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
+		constexpr data_type eval(const eval_info& i) const override {
+			return do_ceq<data_type>(i.ops, this->left->eval(i), this->right->eval(i));
 		}
 	};
 	template<typename expr_t> struct op_neq      : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return do_neq<data_type>(i.ops, this->left->solve(i), this->right->solve(i) );
+		constexpr data_type eval(const eval_info& i) const override {
+			return do_neq<data_type>(i.ops, this->left->eval(i), this->right->eval(i) );
 		}
 	};
 	template<typename expr_t> struct op_gt       : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return do_gt<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
+		constexpr data_type eval(const eval_info& i) const override {
+			return do_gt<data_type>(i.ops, this->left->eval(i), this->right->eval(i));
 		}
 	};
 	template<typename expr_t> struct op_lt       : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return do_lt<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
+		constexpr data_type eval(const eval_info& i) const override {
+			return do_lt<data_type>(i.ops, this->left->eval(i), this->right->eval(i));
 		}
 	};
 	template<typename expr_t> struct op_get      : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return do_get<data_type>(i.ops, this->left->solve(i), this->right->solve(i));
+		constexpr data_type eval(const eval_info& i) const override {
+			return do_get<data_type>(i.ops, this->left->eval(i), this->right->eval(i));
 		}
 	};
 	template<typename expr_t> struct op_let      : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return do_let<data_type>(i.ops, this->left->solve(i), this->right->solve(i) );
+		constexpr data_type eval(const eval_info& i) const override {
+			return do_let<data_type>(i.ops, this->left->eval(i), this->right->eval(i) );
 		}
 	};
 	template<typename expr_t> struct op_in       : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return data_type{ i.df, do_in<data_type>(i.ops, this->left->solve(i), this->right->solve(i)) };
+		constexpr data_type eval(const eval_info& i) const override {
+			return data_type{ i.df, do_in<data_type>(i.ops, this->left->eval(i), this->right->eval(i)) };
 		}
 	};
 
 	template<typename expr_t> struct op_and      : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return do_and<data_type>( i.ops, this->left->solve(i), this->right->solve(i) );
+		constexpr data_type eval(const eval_info& i) const override {
+			return do_and<data_type>( i.ops, this->left->eval(i), this->right->eval(i) );
 		}
 	};
 	template<typename expr_t> struct op_or       : binary_op<expr_t> {
 		using binary_op<expr_t>::binary_op;
-		constexpr data_type solve(const solve_info& i) const override {
-			return do_or<data_type>( i.ops, this->left->solve(i), this->right->solve(i) );
+		constexpr data_type eval(const eval_info& i) const override {
+			return do_or<data_type>( i.ops, this->left->eval(i), this->right->eval(i) );
 		}
 	};
 
@@ -169,8 +169,8 @@ struct jiexpr {
 		constexpr static auto struct_fields_count() { return 1; }
 		constexpr op_not() =default ;
 		constexpr explicit op_not(data_factory) {}
-		constexpr data_type solve(const solve_info& i) const override {
-			return negate<data_type>( i.ops, expr->solve(i) );
+		constexpr data_type eval(const eval_info& i) const override {
+			return negate<data_type>( i.ops, expr->eval(i) );
 		}
 	};
 
@@ -180,10 +180,10 @@ struct jiexpr {
 		constexpr static auto struct_fields_count() { return 1; }
 		constexpr list_expr() =default ;
 		constexpr explicit list_expr(data_factory) {}
-		constexpr data_type solve(const solve_info& i) const override {
+		constexpr data_type eval(const eval_info& i) const override {
 			data_type ret{i.df};
 			ret.mk_empty_array();
-			for(auto&& item:list) ret.push_back(item->solve(i));
+			for(auto&& item:list) ret.push_back(item->eval(i));
 			return ret;
 		}
 	};
@@ -194,11 +194,11 @@ struct jiexpr {
 		constexpr static auto struct_fields_count() { return 2; }
 		constexpr dict_expr() =default ;
 		constexpr explicit dict_expr(data_factory) {}
-		constexpr data_type solve(const solve_info& info) const override {
+		constexpr data_type eval(const eval_info& info) const override {
 			data_type ret{info.df};
 			ret.mk_empty_object();
 			for(auto i=0;i<names.size();++i)
-				ret.put(names[i]->solve(info), values.at(i)->solve(info));
+				ret.put(names[i]->eval(info), values.at(i)->eval(info));
 			return ret;
 		}
 	};
@@ -214,10 +214,10 @@ struct jiexpr {
 		constexpr static auto struct_fields_count() { return 1; }
 		constexpr var_expr() =default ;
 		constexpr explicit var_expr(data_factory) {}
-		constexpr data_type solve(const solve_info& info) const override {
-			auto cur = (*info.env)[path.at(0)->solve(info)];
+		constexpr data_type eval(const eval_info& info) const override {
+			auto cur = (*info.env)[path.at(0)->eval(info)];
 			for(auto pos = ++path.begin();pos!=path.end();++pos) {
-				auto key = (*pos)->solve(info);
+				auto key = (*pos)->eval(info);
 				if(key.is_int()) cur = cur[(integer_t)key];
 				else cur = cur[key];
 			}
@@ -237,12 +237,12 @@ struct jiexpr {
 
 		constexpr static auto struct_fields_count() { return 2; }
 		constexpr bool is_eq_operator() const override { return true; }
-		constexpr data_type solve(const solve_info& info) const override {
+		constexpr data_type eval(const eval_info& info) const override {
 			auto cur = *info.env;
 			auto& left = name.path;
-			for(auto i=0;i<left.size()-1;++i) cur = cur[left[i]->solve(info)];
-			data_type key = left[left.size()-1]->solve(info);
-			cur.put(key, value->solve(info));
+			for(auto i=0;i<left.size()-1;++i) cur = cur[left[i]->eval(info)];
+			data_type key = left[left.size()-1]->eval(info);
+			cur.put(key, value->eval(info));
 			return cur[key];
 		}
 	};
@@ -256,12 +256,12 @@ struct jiexpr {
 		constexpr explicit common_fnc_expr(data_factory) {}
 		constexpr static auto struct_fields_count() { return 2; }
 
-		constexpr auto prepare_call(const solve_info& info) const {
-			auto fnc = name.solve(info);
+		constexpr auto prepare_call(const eval_info& info) const {
+			auto fnc = name.eval(info);
 			struct {
 				data_type fnc;
 				data_type env;
-				solve_info info;
+				eval_info info;
 			} ret{ fnc, info.tune_env(*info.env, fnc), info };
 			ret.info.env = &ret.env;
 			return ret;
@@ -269,9 +269,9 @@ struct jiexpr {
 		constexpr auto exec(auto&& ctx, typename data_type::integer_t ind) const {
 			ctx.info.env = &ctx.env;
 			for(auto& param:this->params) {
-				auto solved = param->solve(ctx.info);
+				auto result = param->eval(ctx.info);
 				if( !param->is_eq_operator() )
-					ctx.env.put(data_type{ind++}, std::move(solved));
+					ctx.env.put(data_type{ind++}, std::move(result));
 			}
 			return ctx.fnc.call(ctx.env);
 		}
@@ -281,7 +281,7 @@ struct jiexpr {
 	struct fnc_call_expr : common_fnc_expr<expr_t>, op_holder_base {
 		constexpr fnc_call_expr() =default ;
 		constexpr explicit fnc_call_expr(data_factory f) : common_fnc_expr<expr_t>(std::move(f)) {}
-		constexpr data_type solve(const solve_info& info) const override {
+		constexpr data_type eval(const eval_info& info) const override {
 			return this->exec(this->prepare_call(info), 0);
 		}
 	};
@@ -294,8 +294,8 @@ struct jiexpr {
 		constexpr apply_filter_expr() =default ;
 		constexpr explicit apply_filter_expr(data_factory) {}
 		constexpr static auto struct_fields_count() { return 2; }
-		constexpr data_type solve(const solve_info& info) const override {
-			auto first_param = object->solve(info);
+		constexpr data_type eval(const eval_info& info) const override {
+			auto first_param = object->eval(info);
 			auto prepared = filter.prepare_call(info);
 			prepared.env.put(data_type{0}, first_param);
 			return filter.exec(prepared, 1);
@@ -310,8 +310,8 @@ struct jiexpr {
 		constexpr is_test_expr() =default ;
 		constexpr explicit is_test_expr(data_factory) {}
 		constexpr static auto struct_fields_count() { return 2; }
-		constexpr data_type solve(const solve_info& info) const override {
-			auto first_param = object->solve(info);
+		constexpr data_type eval(const eval_info& info) const override {
+			auto first_param = object->eval(info);
 			auto prepared = test.prepare_call(info);
 			prepared.env.put(data_type{0}, first_param);
 			return to_bool<data_type>(info.ops, test.exec(prepared, 1));

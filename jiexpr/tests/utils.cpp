@@ -26,20 +26,20 @@ struct factory : tests::variant_workaround_factory {
 };
 using data_type = factory::data_type;
 
-struct solve_info {};
+struct eval_info {};
 
-using virtbase = jiexpr_details::expression_base<factory, solve_info>;
-template<typename type> using virt_item_wrapper = jiexpr_details::expression_item_wrapper<factory, solve_info, type>;
+using virtbase = jiexpr_details::expression_base<factory, eval_info>;
+template<typename type> using virt_item_wrapper = jiexpr_details::expression_item_wrapper<factory, eval_info, type>;
 
 struct expr_1 : virtbase {
 	constexpr expr_1() =default ;
 	constexpr explicit expr_1(factory) {}
-	constexpr data_type solve(const solve_info&) const override {return data_type{101};}
+	constexpr data_type eval(const eval_info&) const override {return data_type{101};}
 };
 struct expr_2 : virtbase {
 	constexpr expr_2() =default ;
 	constexpr explicit expr_2(factory) {}
-	constexpr data_type solve(const solve_info&) const override {return data_type{102};}
+	constexpr data_type eval(const eval_info&) const override {return data_type{102};}
 };
 
 using virtvar = jiexpr_details::expression_variant<factory::virtual_variant_t<
@@ -52,23 +52,23 @@ static_assert( []{
 	virtvar v;
 	auto& e1 = create<0>(v);
 	return
-	    (e1.solve(solve_info{}) == data_type{101})
-	+ 2*(v.solve(solve_info{}) == data_type{101})
+	    (e1.eval(eval_info{}) == data_type{101})
+	+ 2*(v.eval(eval_info{}) == data_type{101})
 	;
 }() == 3 );
 static_assert( []{
 	virtvar v;
 	create<int>(v) = random_number;
-	return (data_type::integer_t)v.solve(solve_info{});
+	return (data_type::integer_t)v.eval(eval_info{});
 }() == random_number );
-static_assert( virtvar{}.solve(solve_info()) == data_type{101} );
+static_assert( virtvar{}.eval(eval_info()) == data_type{101} );
 
 static_assert( []{
 	virtvar v;
 	create<int>(v) = random_number;
 	virtvar v2(std::move(v));
 	create<expr_1>(v);
-	return (data_type::integer_t)v2.solve(solve_info{});
+	return (data_type::integer_t)v2.eval(eval_info{});
 }() == random_number, "can use move ctor" );
 
 static_assert( []{
@@ -77,7 +77,7 @@ static_assert( []{
 	virtvar v2;
 	v2 = std::move(v);
 	create<expr_1>(v);
-	return (data_type::integer_t)v2.solve(solve_info{});
+	return (data_type::integer_t)v2.eval(eval_info{});
 }() == random_number, "can use move operator=" );
 
 static_assert( []{
@@ -86,7 +86,7 @@ static_assert( []{
 	f.test_field = &val;
 	virtvar v{f};
 	create<int>(v) = 3;
-	auto d = v.solve(solve_info{});
+	auto d = v.eval(eval_info{});
 	val = 7;
 	return *d.factory.test_field;
 }() == 7, "the factory are passed to resulting data objects" );

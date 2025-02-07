@@ -19,8 +19,6 @@ struct inner_vertex_expr : std::variant<int, bool>{
 	constexpr friend auto& create(inner_vertex_expr& v) { return v.emplace<ind>(); }
 };
 
-struct vertex_solver { };
-
 struct factory : tests::factory{
 	using vertex_expression_parsed_type = inner_vertex_expr;
 
