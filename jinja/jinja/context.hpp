@@ -134,8 +134,8 @@ struct context {
 	};
 	struct out_info {
 		struct _value_info {
-			bool trim_before{false};
-			bool trim{false};
+			bool trim_before:4{false};
+			bool trim:4{false};
 			data_type value;
 		};
 		constexpr static auto mk_value_type() {

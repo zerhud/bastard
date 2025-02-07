@@ -78,13 +78,12 @@ constexpr auto mk_jinja_expression(const factory& f) { return test_expr{}; }
 constexpr auto mk_jinja_expression_parser(const factory& f) {
 	return test_expr::mk_parser(f, 1, 1);
 }
-
-constexpr std::string jinja_to_string(const factory&, const test_expr& e) {
-	return test_to_string(e.index()) + ": '"
+constexpr factory::data_type jinja_expression_eval(const factory&, const test_expr& e) {
+	return factory::data_type{test_to_string(e.index()) + ": '"
 	+ visit([](auto e) {
 		if constexpr (std::is_same_v<decltype(e), std::string>) return e;
 		else return test_to_string((int)e);
-	}, e) + "'"
+	}, e) + "'"}
 	;
 }
 

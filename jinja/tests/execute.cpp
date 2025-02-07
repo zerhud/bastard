@@ -21,9 +21,7 @@ static_assert( []{
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
 	auto [_,_,val] = ctx.cur_output().records[0].value();
-	return (ctx.cur_output().size()==1) +
-		2*(val == "12 << test_text")
-		;
+	return (ctx.cur_output().size()==1) + 2*(val == "12 << test_text") ;
 }() == 3, "content appended to context");
 static_assert( []{
 	using op_type = jinja_details::expression_operator<factory>;
