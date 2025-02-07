@@ -37,17 +37,15 @@ static_assert( [] {
 	using op_type = jinja_details::set_block<factory>;
 	op_type r1{factory{}};
 	r1._name = "test_name";
-	r1.handler = test_expr{"test_name"};
+	r1.handler = test_expr{"test_expr"};
 	auto cnt = std::make_unique<cnt_type>(factory{});
 	cnt->value = "test content";
 	r1.holder.holder.emplace_back() = std::move(cnt);
 	op_type::context_type ctx{factory{}};
 	r1.execute(ctx);
 	auto result = ctx.env.at(data{"test_name"});
-	return (ctx.env.size()==1) + 2*result.is_array() + 4*(result.size()==1) +
-	8*(result[0][data{"value"}] == data{"test content"})
-	;
-}() == 15 );
+	return (ctx.env.size()==1) + 2*result.is_string() + 4*((data::string_t)result == "0: 'test_expr'") ;
+}() == 7 );
 
 int main(int,char**) {
 }

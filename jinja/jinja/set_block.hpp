@@ -42,6 +42,7 @@ struct set_block : element_with_name<factory> {
 			data = ctx.extract_output_to_data();
 		}
 		ctx.env.add_local(ctx.mk_data(name()), std::move(data));
+		ctx.env.add_local(ctx.mk_data(name()), jinja_expression_eval(ctx.f, handler));
 	}
 
 	constexpr auto size() const { return holder.size(); }
