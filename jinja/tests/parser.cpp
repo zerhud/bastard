@@ -97,14 +97,19 @@ static_assert( []{
 }() == 15, "can parser template with macros" );
 
 static_assert( [] {
-	jinja_details::template_block<factory> r1;
+	jinja_details::template_block<factory> r1, r2;
 	auto src = "<%template t%><%set name%>cnt<%endset%><%endtemplate%>"sv;
+	auto src2 = "<%template t%><%set(name)expression%>cnt<%endset%><%endtemplate%>"sv;
 	const auto p1 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source(src), r1);
+	const auto p2 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source(src2), r2);
 	return (p1==src.size())
 	+ 2*(static_cast<const jinja_set_b&>(*r1[0]).name() == "name")
 	+ 4*(get<0>(static_cast<const jinja_set_b&>(*r1[0]).handler) == "name")
+	+ 8*(p2==src2.size())
+	+ 16*(static_cast<const jinja_set_b&>(*r2[0]).name() == "name")
+	+ 32*(get<0>(static_cast<const jinja_set_b&>(*r2[0]).handler) == "expression")
 	;
-}() == 7, "template with set block" );
+}() == 63, "template with set block" );
 
 int main(int,char**) {
 	return 0;

@@ -63,9 +63,10 @@ struct set_block : element_with_name<factory> {
 		//TODO: we cannot wrap the result in skip() here for some reason (error with glvalue)
 		return
 		++lexeme(bp::mk_block_begin() >> trim_parser)
-		>> p::template lit<"set">++ >> reparse(ident)++
+		>> p::template lit<"set">++
+		>> (def(th<'('>::_char) >> ident >> th<')'>::_char | reparse(ident))++
 		>> mk_jinja_expression_parser(f)
-		>> ++p::template rec<0>
+		>> ++th<0>::rec
 		>> p::template lit<"endset"> >> ++trim_parser >> bp::mk_block_end()
 		;
 	}
