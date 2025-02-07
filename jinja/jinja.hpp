@@ -44,6 +44,11 @@ constexpr auto mk_content_parser(factory f) {
     auto macro_parser = macro_block<factory>::mk_parser(f);
     auto set_block_parser = set_block<factory>::mk_parser(f);
     constexpr auto trim_parser = trim_info<factory>::mk_parser();
+	//TODO:
+	//     block: - for, if, call (`call block_name('param')` and `call(params...) block_name('param')`)
+	//     skip filter: use `set(foo) foo|filter` instead
+	//     templates: inheritance, import (import as)
+	//     parser facade (to parse file)
 	//TODO: remove skip() for block_parser - it should to be in block parser
 	//      but we cannot do it now for some compile issue with glvalue
     return lexeme(
