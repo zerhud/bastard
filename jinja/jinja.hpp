@@ -47,6 +47,7 @@ constexpr auto mk_content_parser(factory f) {
 	//TODO:
 	//     block: - for, if, call (`call block_name('param')` and `call(params...) block_name('param')`)
 	//     skip filter: use `set(foo) foo|filter` instead
+	//     call is same as set: `set(foo) foo()` but the call setts caller variable inside the block (may be as parameter)
 	//     templates: inheritance, import (import as)
 	//     parser facade (to parse file)
 	//TODO: remove skip() for block_parser - it should to be in block parser

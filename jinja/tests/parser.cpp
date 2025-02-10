@@ -44,6 +44,11 @@ static_assert( []{
 	8*(p2==16) + 16*r2.begin.trim
 	;
 }() == 31, "comment operator parser teset" );
+static_assert( [] {
+	test_expr r1;
+	const auto p1 = parse(r1.mk_parser(1,1,1), +parser::space, parser::make_source("3"), r1);
+	return (p1==1) + 2*(r1.index()==1);
+}() == 3);
 static_assert( []{
 	jinja_details::expression_operator<factory> r1{ factory{} };
 	const auto p1 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source("<= 3 =>"), r1);
@@ -111,6 +116,4 @@ static_assert( [] {
 	;
 }() == 63, "template with set block" );
 
-int main(int,char**) {
-	return 0;
-}
+int main(int,char**) { }

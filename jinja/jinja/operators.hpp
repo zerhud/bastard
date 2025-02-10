@@ -56,11 +56,12 @@ struct expression_operator : base_jinja_element<factory> {
 
 	constexpr static auto mk_parser(const auto& f) {
 		using bp = base_parser<factory>;
-		return
-			   lexeme(bp::mk_expr_begin() >> trim_info<factory>::mk_parser())++
-			>> use_seq_result(skip(++mk_jinja_expression_parser(f)
-			>> ++lexeme(trim_info<factory>::mk_parser() >> bp::mk_expr_end())))
-		;
+		return skip(
+			   lexeme(bp::mk_expr_begin() >> trim_info<factory>::mk_parser())
+			>> ++mk_jinja_expression_parser(f)
+			>> ++lexeme(trim_info<factory>::mk_parser() >> bp::mk_expr_end())
+			
+		);
 	}
 };
 

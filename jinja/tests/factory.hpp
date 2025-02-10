@@ -16,7 +16,7 @@
 #ifdef __clang__
 #include "ascip_all_clang.hpp"
 #else
-#include "ascip_all.hpp"
+#include "ascip_all_gcc.hpp"
 #endif
 */
 
