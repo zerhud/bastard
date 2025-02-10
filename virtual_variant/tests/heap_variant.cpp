@@ -127,5 +127,4 @@ static_assert( []{
 }() == random_number, "can use move operator=" );
 
 int main(int,char**) {
-	return 0;
 }

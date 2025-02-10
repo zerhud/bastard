@@ -68,5 +68,4 @@ template<typename fp> struct absd_factory : tests::factory {
 int main(int,char**) {
 	main_test<absd_factory<float>>();
 	main_test<absd_factory<double>>();
-	return 0;
 }

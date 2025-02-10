@@ -110,5 +110,4 @@ int main(int,char**) {
 	main_test<absd_factory<float>>();
 	main_test<absd_factory<double>>();
 	wrong_parameter_count_test();
-	return 0;
 }

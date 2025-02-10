@@ -65,7 +65,5 @@ int main(int,char**) {
 
 	static_assert( true == (bool)test_with_env("1+7 is add_filter") );
 	static_assert( false == (bool)test_with_env("1+7 is add_filter(8) ") );
-
-	return 0;
 }
 

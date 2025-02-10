@@ -127,5 +127,4 @@ static_assert( 1 == ast_graph::node<inner_factory,test_with_ptr>{}.list_children
 static_assert( "f2"sv == ast_graph::node<inner_factory,test_with_ptr>{}.list_children()[0] );
 
 int main(int,char**) {
-	return 0;
 }

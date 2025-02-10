@@ -130,6 +130,4 @@ int main(int,char**) {
 
 	test_format<absd::data<absd_factory<float>>>();
 	test_format<absd::data<absd_factory<double>>>();
-
-	return 0;
 }

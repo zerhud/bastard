@@ -92,5 +92,4 @@ static_assert( []{
 }() == 7, "the factory are passed to resulting data objects" );
 
 int main(int,char**) {
-	return 0;
 }

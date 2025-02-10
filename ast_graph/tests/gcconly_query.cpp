@@ -88,6 +88,4 @@ int main(int,char**) {
 		parse(vertex::mk_parser<parser>(factory{}), +parser::space, parser::make_source("{'field'='value'}"), r);
 		return (get<1>(r.data).size()==1) + 2*(get<1>(get<1>(r.data)[0]).field == "field") + 4*(get<2>(get<1>(get<1>(r.data)[0]).value) == "value");
 	}() == 7, "empty braces is the bool value true in result" );
-
-	return 0;
 }

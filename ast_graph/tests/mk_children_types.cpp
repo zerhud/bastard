@@ -80,5 +80,4 @@ static_assert( fold(tref::type_list<int,char>{}, tref::type_list<>{}, [](auto r,
 }) == tref::type_list<int,int,char,int>{} );
 
 int main(int,char**) {
-	return 0;
 }

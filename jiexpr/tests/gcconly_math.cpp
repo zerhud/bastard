@@ -38,6 +38,4 @@ int main(int,char**) {
 	static_assert( 2 == ((absd_data::string_t)eval("1 ~ 1")).size() );
 	static_assert( '1' == ((absd_data::string_t)eval("1 ~ 1"))[0] );
 	static_assert( '1' == ((absd_data::string_t)eval("1 ~ 1"))[1] );
-
-	return 0;
 }

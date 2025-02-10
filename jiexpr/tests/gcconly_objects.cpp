@@ -36,6 +36,4 @@ int main(int,char**) {
 			+ (absd_data::integer_t)env[absd_data{"b"}]
 			;
 	}() );
-
-	return 0;
 }

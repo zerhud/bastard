@@ -124,5 +124,4 @@ void cannot_modify() {
 int main(int,char**) {
 	object_tests::test();
 	object_tests::cannot_modify();
-	return 0;
 }

@@ -39,6 +39,4 @@ int main(int,char**) {
 	static_assert( true == eval("3 if false").is_none() );
 	static_assert( 3 == (absd_data::integer_t)eval("3 if true") );
 	static_assert( 2 == (absd_data::integer_t)eval("3 if false else 2") );
-
-	return 0;
 }

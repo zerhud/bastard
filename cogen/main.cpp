@@ -144,5 +144,4 @@ constexpr absd_data jinja_to_data(const std_factory& f, const std::vector<out_in
 int main(int,char**) {
 	jinja_type j;
 	auto parsed = j.parse_file(ascip::make_source("<% block main %>test<% endblock %>"), "test");
-	return 0;
 }

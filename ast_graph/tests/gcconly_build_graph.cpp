@@ -217,5 +217,4 @@ int main(int,char**) {
 	auto v = g.create_view();
 	std::cout << "debug: " << v.ast_links_of(v.root())[0].name << std::endl;
 	std::cout << "debug: " << v.ast_links_of(v.root())[0].child->debug_info() << std::endl;
-	return 0;
 }

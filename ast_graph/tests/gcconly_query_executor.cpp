@@ -236,5 +236,4 @@ static_assert( test_fixture{[](auto& f){
 }}() == 4 );
 
 int main(int,char**) {
-	return 0;
 }

@@ -142,6 +142,4 @@ int main(int,char**) {
 	ast_graph::absd_object absd_obj{ graph_factory{}, &v };
 	auto data = absd_data::mk(absd_obj);
 	std::cout << "we have ("sv << data.is_array() << ") "sv << to_str( data ) << std::endl;
-
-	return 0;
 }

@@ -147,5 +147,4 @@ static_assert( first_index_of<expr1_tag>(test_variant{}) == 0 );
 static_assert( first_index_of<int>(test_variant{}) == 2 );
 
 int main(int,char**) {
-	return 0;
 }

@@ -83,5 +83,4 @@ void exec_op_test() {
 int main(int,char**) {
 	main_test<absd::data<pointers_test::factory>>();
 	exec_op_test<absd::data<pointers_test::factory>>();
-	return 0;
 }

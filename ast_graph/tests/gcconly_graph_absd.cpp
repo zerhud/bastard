@@ -98,5 +98,4 @@ static_assert( []{
 }() == 3 );
 
 int main(int,char**) {
-	return 0;
 }
