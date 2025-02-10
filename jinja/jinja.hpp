@@ -50,17 +50,15 @@ constexpr auto mk_content_parser(factory f) {
 	//     call is same as set: `set(foo) foo()` but the call setts caller variable inside the block (may be as parameter)
 	//     templates: inheritance, import (import as)
 	//     parser facade (to parse file)
-	//TODO: remove skip() for block_parser - it should to be in block parser
-	//      but we cannot do it now for some compile issue with glvalue
     return lexeme(
        trim_parser++ >> bp::mk_block_end() >> p::seq_enable_recursion
     >> *(
           expression_parser(mk_ptr_maker<expression_operator>(f))
         | comment_parser(mk_ptr_maker<comment_operator>(f))
         | content_parser(mk_ptr_maker<content>(f))
-        | skip(block_parser(mk_ptr_maker<named_block>(f)))
-        | skip(macro_parser(mk_ptr_maker<macro_block>(f)))
-        | skip(set_block_parser(mk_ptr_maker<set_block>(f)))
+        | block_parser(mk_ptr_maker<named_block>(f))
+        | macro_parser(mk_ptr_maker<macro_block>(f))
+        | set_block_parser(mk_ptr_maker<set_block>(f))
     )
     >> ++trim_parser >> bp::mk_block_begin()
     );
