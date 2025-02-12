@@ -75,10 +75,12 @@ using jinja_ctx = jinja_details::context<factory>;
 using data = jinja_env::data_type;
 
 constexpr auto mk_jinja_expression(const factory& f) { return test_expr{}; }
+constexpr auto mk_jinja_expression(const factory& f, bool cond) { return test_expr{cond}; }
 constexpr auto mk_jinja_expression_parser(const factory& f) {
 	return test_expr::mk_parser(f, 1, 1);
 }
 constexpr factory::data_type jinja_expression_eval(const factory&, const test_expr& e) {
+	if (holds_alternative<bool>(e)) return factory::data_type{get<bool>(e)};
 	return factory::data_type{test_to_string(e.index()) + ": '"
 	+ visit([](auto e) {
 		if constexpr (std::is_same_v<decltype(e), std::string>) return e;

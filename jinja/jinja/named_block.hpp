@@ -60,11 +60,10 @@ struct block_with_params : element_with_name<factory> {
 		auto expr_parser = mk_jinja_expression_parser(f);
 		constexpr auto trim_parser = trim_info<factory>::mk_parser();
 		constexpr auto ident = lexeme(p::alpha >> *(p::alpha | p::d10 | th<'_'>::char_));
-		//TODO: we cannot wrap the result in skip() here for some reason (error with glvalue)
 		return skip(
 		++lexeme(bp::mk_block_begin() >> trim_parser)++
 		>> -shift_info::mk_parser<p>()
-		>> crtp::keyword_open()++
+		>> def(crtp::keyword_open())++
 		>> ident++
 		>> -(th<'(' >::_char >> -((ident++ >> -(th<'='>::_char >> expr_parser)) % ',') >> th<')'>::_char)
 		>> ++th<0>::rec

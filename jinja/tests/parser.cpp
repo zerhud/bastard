@@ -106,7 +106,7 @@ static_assert( [] {
 	auto src = "<%template t%><%set name%>cnt<%endset%><%endtemplate%>"sv;
 	auto src2 = "<%template t%><%set(name)expression%>cnt<%endset%><%endtemplate%>"sv;
 	const auto p1 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source(src), r1);
-	const auto p2 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source(src2), r2);
+	const auto p2 = parse(r2.mk_parser(factory{}), +parser::space, parser::make_source(src2), r2);
 	return (p1==src.size())
 	+ 2*(static_cast<const jinja_set_b&>(*r1[0]).name() == "name")
 	+ 4*(get<0>(static_cast<const jinja_set_b&>(*r1[0]).handler) == "name")
@@ -115,5 +115,14 @@ static_assert( [] {
 	+ 32*(get<0>(static_cast<const jinja_set_b&>(*r2[0]).handler) == "expression")
 	;
 }() == 63, "template with set block" );
+
+/*
+static_assert( [] {
+	jinja_details::template_block<factory> r1, r2;
+	auto src1 = "<%template t%><%if 1%>cnt<%else%>e<%endif%><%endtemplate%>"sv;
+	const auto p1 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source(src1), r1);
+	return (p1==src1.size()) + 2*(r1.size()==1);
+}() == 3, "other blocks" );
+*/
 
 int main(int,char**) { }

@@ -16,6 +16,7 @@
 #include "jinja/named_block.hpp"
 #include "jinja/block_content.hpp"
 #include "jinja/set_block.hpp"
+#include "jinja/if_block.hpp"
 
 namespace jinja_details {
 
@@ -44,6 +45,7 @@ constexpr auto mk_content_parser(factory f) {
     auto macro_parser = macro_block<factory>::mk_parser(f);
     auto set_block_parser = set_block<factory>::mk_parser(f);
     constexpr auto trim_parser = trim_info<factory>::mk_parser();
+    auto if_block_parser = if_block<factory>::mk_parser(f);
 	//TODO:
 	//     block: - for, if, call (`call block_name('param')` and `call(params...) block_name('param')`)
 	//     skip filter: use `set(foo) foo|filter` instead
@@ -59,6 +61,7 @@ constexpr auto mk_content_parser(factory f) {
         | block_parser(mk_ptr_maker<named_block>(f))
         | macro_parser(mk_ptr_maker<macro_block>(f))
         | set_block_parser(mk_ptr_maker<set_block>(f))
+        | if_block_parser(mk_ptr_maker<if_block>(f))
     )
     >> ++trim_parser >> bp::mk_block_begin()
     );

@@ -46,6 +46,22 @@ static_assert( [] {
 	auto result = ctx.env.at(data{"test_name"});
 	return (ctx.env.size()==1) + 2*result.is_string() + 4*((data::string_t)result == "0: 'test_expr'") ;
 }() == 7 );
+static_assert( [] {
+	using cnt_type = jinja_details::content<factory>;
+	using op_type =  jinja_details::if_block<factory>;
+	op_type r1{factory{}}, r2{factory{}};
+	r1.condition = test_expr{true};
+	r2.condition = test_expr{false};
+	auto cnt = std::make_unique<cnt_type>(factory{});
+	cnt->value = "test content";
+	r1.holder.holder.emplace_back() = std::make_unique<cnt_type>(*cnt);
+	r2.holder.holder.emplace_back() = std::move(cnt);
+	op_type::context_type ctx1{factory{}}, ctx2{factory{}};
+	r1.execute(ctx1);
+	r2.execute(ctx2);
+	auto [_,_,val] = ctx1.cur_output().records[0].value();
+	return val.is_string() + 2*(val=="test content") + 4*(ctx2.cur_output().size()==0);
+}() == 7 );
 
 int main(int,char**) {
 }
