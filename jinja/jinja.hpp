@@ -54,7 +54,7 @@ constexpr auto mk_content_parser(factory f) {
 	//     parser facade (to parse file)
     return lexeme(
        trim_parser++ >> bp::mk_block_end() >> p::seq_enable_recursion
-    >> *(
+    >> (p::nop >> p::seq_enable_recursion >> *(
           expression_parser(mk_ptr_maker<expression_operator>(f))
         | comment_parser(mk_ptr_maker<comment_operator>(f))
         | content_parser(mk_ptr_maker<content>(f))
@@ -62,7 +62,7 @@ constexpr auto mk_content_parser(factory f) {
         | macro_parser(mk_ptr_maker<macro_block>(f))
         | set_block_parser(mk_ptr_maker<set_block>(f))
         | if_block_parser(mk_ptr_maker<if_block>(f))
-    )
+    ))
     >> ++trim_parser >> bp::mk_block_begin()
     );
 }

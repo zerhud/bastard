@@ -116,13 +116,15 @@ static_assert( [] {
 	;
 }() == 63, "template with set block" );
 
-/*
 static_assert( [] {
 	jinja_details::template_block<factory> r1, r2;
 	auto src1 = "<%template t%><%if 1%>cnt<%else%>e<%endif%><%endtemplate%>"sv;
+	auto src2 = "<%template t%><%if 1%>cnt<%endif%><%endtemplate%>"sv;
 	const auto p1 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source(src1), r1);
-	return (p1==src1.size()) + 2*(r1.size()==1);
-}() == 3, "other blocks" );
-*/
+	const auto p2 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source(src2), r2);
+	auto& ir1 = static_cast<const jinja_details::if_block<factory>&>(*r1[0]);
+	auto& ir2 = static_cast<const jinja_details::if_block<factory>&>(*r2[0]);
+	return (p1==src1.size()) + 2*(ir1.holder.size()==1) + 4*(ir1.else_blocks.size()==1) + 8*(ir2.holder.size()==1) + 16*ir2.else_blocks.empty();
+}() == 31, "other blocks" );
 
 int main(int,char**) { }

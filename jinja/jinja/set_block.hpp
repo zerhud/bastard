@@ -67,7 +67,7 @@ struct set_block : element_with_name<factory> {
 		>> def(p::template lit<"set">)++
 		>> (def(th<'('>::_char) >> ident >> th<')'>::_char | reparse(ident))++
 		>> mk_jinja_expression_parser(f)
-		>> ++th<0>::rec
+		>> ++th<1>::rec
 		>> p::template lit<"endset"> >> ++trim_parser >> bp::mk_block_end()
 		);
 	}

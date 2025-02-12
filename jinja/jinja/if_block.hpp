@@ -27,7 +27,7 @@ template<typename factory> struct if_else_block : base_jinja_element<factory> {
 	constexpr explicit if_else_block(factory f) : f(std::move(f))/*, condition(mk_jinja_expression(this->f), true)*/, holder(this->f) {}
 
 	factory f;
-	trim_info<factory> begin_left;
+	trim_info<factory> left;
 	//expr_type condition;
 	block_content<factory> holder;
 	constexpr static auto struct_fields_count() { return 3; }
@@ -37,18 +37,16 @@ template<typename factory> struct if_else_block : base_jinja_element<factory> {
 		//if (!!result) holder.execute(ctx);
 	}
 
-	/*
 	constexpr static auto mk_parser(const auto& f) {
 		using bp = base_parser<factory>;
 		constexpr auto trim_parser = trim_info<factory>::mk_parser();
 		return skip(
 		   ++lexeme(bp::mk_block_begin() >> trim_parser)
 		>> def(p::template lit<"else">)
-		>> ++bp::mk_block_end()([](auto& v){return &v.left;})
-		>> th<0>::v_rec([](auto& v){return &v.holder;}) //TODO: will it dramatically increase compilation time?
+		>> ++lexeme(trim_parser([](auto& v){return &v.left;}) >> bp::mk_block_end())
+		>> th<0>::rec([](auto& v){return &v.holder;})
 		);
 	}
-	*/
 };
 
 template<typename factory> struct if_block : base_jinja_element<factory> {
@@ -64,16 +62,16 @@ template<typename factory> struct if_block : base_jinja_element<factory> {
 	, condition(mk_jinja_expression(this->f))
 #endif
 	, holder(this->f)
-	//, else_blocks(mk_vec<if_else_block<factory>>(this->f))
+	, else_blocks(mk_vec<if_else_block<factory>>(this->f))
 	{}
 
 	factory f;
 	trim_info<factory> begin_left;
 	expr_type condition;
 	block_content<factory> holder;
-	//decltype(mk_vec<if_else_block<factory>>(std::declval<factory>())) else_blocks;
+	decltype(mk_vec<if_else_block<factory>>(std::declval<factory>())) else_blocks;
 	trim_info<factory> end_right;
-	constexpr static auto struct_fields_count() { return 5; }
+	constexpr static auto struct_fields_count() { return 6; }
 
 	constexpr void execute(context_type& ctx) const override {
 		auto result = jinja_expression_eval(f, condition);
@@ -88,9 +86,11 @@ template<typename factory> struct if_block : base_jinja_element<factory> {
 		   ++lexeme(bp::mk_block_begin() >> trim_parser)
 		>> def(p::template lit<"if">)
 		>> ++mk_jinja_expression_parser(f)
-		>> ++th<0>::rec
-		//>> *if_else_block<factory>::mk_parser(f)
-		>> p::template lit<"endif">
+		>> ++lexeme(trim_parser([](auto& v){return &v.left;}) >> bp::mk_block_end())
+		>> th<0>::rec([](auto& v){return &v.holder;})
+		>> fnum<4>(*if_else_block<factory>::mk_parser(f))
+		>> fnum<3>(lexeme(trim_parser([](auto&v){return &v.right;}) >> bp::mk_block_begin()))
+		>> p::template lit<"endif">++
 		>> ++trim_parser >> bp::mk_block_end()
 		);
 	}
