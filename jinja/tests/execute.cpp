@@ -14,6 +14,12 @@
 using namespace std::literals;
 
 
+using cnt_type = jinja_details::content<factory>;
+constexpr auto make_content(auto&& val) {
+	auto cnt = std::make_unique<cnt_type>(factory{});
+	cnt->value = std::forward<decltype(val)>(val);
+	return cnt;
+}
 static_assert( []{
 	using op_type = jinja_details::content<factory>;
 	op_type r1{factory{}};
@@ -33,7 +39,6 @@ static_assert( []{
 	return (ctx.cur_output().size() == 1) + 2*(val=="1: '3'");
 }() == 3, "the expression operator appends to context the result of the expression" );
 static_assert( [] {
-	using cnt_type = jinja_details::content<factory>;
 	using op_type = jinja_details::set_block<factory>;
 	op_type r1{factory{}};
 	r1._name = "test_name";
@@ -47,7 +52,6 @@ static_assert( [] {
 	return (ctx.env.size()==1) + 2*result.is_string() + 4*((data::string_t)result == "0: 'test_expr'") ;
 }() == 7 );
 static_assert( [] {
-	using cnt_type = jinja_details::content<factory>;
 	using op_type =  jinja_details::if_block<factory>;
 	op_type r1{factory{}}, r2{factory{}};
 	r1.condition = test_expr{true};
@@ -61,7 +65,25 @@ static_assert( [] {
 	r2.execute(ctx2);
 	auto [_,_,val] = ctx1.cur_output().records[0].value();
 	return val.is_string() + 2*(val=="test content") + 4*(ctx2.cur_output().size()==0);
-}() == 7 );
+}() == 7, "else block main part" );
+static_assert( [] {
+	using op_type =  jinja_details::if_block<factory>;
+	op_type r1{factory{}}, r2{factory{}};
+	r1.condition = test_expr{false};
+	r2.condition = test_expr{false};
+	r1.else_blocks.emplace_back(factory{});
+	r2.else_blocks.emplace_back(factory{}).condition = test_expr{false};
+	r2.else_blocks.emplace_back(factory{});
+	r1.else_blocks[0].holder.holder.emplace_back(make_content("r1 test"));
+	r2.else_blocks[0].holder.holder.emplace_back(make_content("r2 fail"));
+	r2.else_blocks[1].holder.holder.emplace_back(make_content("r2 test"));
+	op_type::context_type ctx1{factory{}}, ctx2{factory{}};
+	r1.execute(ctx1);
+	r2.execute(ctx2);
+	auto [_,_,val1] = ctx1.cur_output().records[0].value();
+	auto [_,_,val2] = ctx2.cur_output().records[0].value();
+	return val1.is_string() + 2*(val1=="r1 test") + 4*val2.is_string() + 8*(val2=="r2 test");
+}() == 15 );
 
 int main(int,char**) {
 }

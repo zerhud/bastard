@@ -79,6 +79,7 @@ template<typename factory> struct if_block : base_jinja_element<factory> {
 	constexpr void execute(context_type& ctx) const override {
 		auto result = jinja_expression_eval(f, condition);
 		if (!!result) holder.execute(ctx);
+		else for (auto& eb:else_blocks) if (!!jinja_expression_eval(f, eb.condition)) { eb.holder.execute(ctx); break; }
 	}
 
 	constexpr static auto mk_parser(const auto& f) {
