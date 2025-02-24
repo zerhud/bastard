@@ -8,9 +8,6 @@
 
 #pragma once
 
-#include <tests/factory.hpp>
-#include <tests/factory.hpp>
-
 #include "common.hpp"
 #include "block_content.hpp"
 
@@ -24,27 +21,33 @@ template<typename factory> struct if_else_block : base_jinja_element<factory> {
 	template<auto s> using th = typename p::template tmpl<s>;
 
 	constexpr if_else_block() : if_else_block(factory{}) {}
-	constexpr explicit if_else_block(factory f) : f(std::move(f))/*, condition(mk_jinja_expression(this->f), true)*/, holder(this->f) {}
+	constexpr explicit if_else_block(factory f) : f(std::move(f)), holder(this->f), condition(mk_jinja_expression(this->f, true)) {}
 
 	factory f;
 	trim_info<factory> left;
-	//expr_type condition;
 	block_content<factory> holder;
-	constexpr static auto struct_fields_count() { return 3; }
+	expr_type condition;
+	constexpr static auto struct_fields_count() { return 4; }
 
 	constexpr void execute(context_type& ctx) const override {
-		//auto result = jinja_expression_eval(f, condition);
-		//if (!!result) holder.execute(ctx);
+		auto result = jinja_expression_eval(f, condition);
+		if (!!result) holder.execute(ctx);
 	}
 
 	constexpr static auto mk_parser(const auto& f) {
 		using bp = base_parser<factory>;
 		constexpr auto trim_parser = trim_info<factory>::mk_parser();
+		constexpr auto else_parser =
+		     def(p::template lit<"else">)
+		  >> fnum<2>(lexeme(trim_parser([](auto& v){return &v.left;}) >> bp::mk_block_end()))
+		  >> th<0>::rec([](auto& v){return &v.holder;}) ;
+		constexpr auto elif_parser =
+		     def(p::template lit<"elif">) >> fnum<3>(mk_jinja_expression_parser(f))
+		  >> fnum<2>(lexeme(trim_parser([](auto& v){return &v.left;}) >> bp::mk_block_end()))
+		  >> th<0>::rec([](auto& v){return &v.holder;}) ;
 		return skip(
 		   ++lexeme(bp::mk_block_begin() >> trim_parser)
-		>> def(p::template lit<"else">)
-		>> ++lexeme(trim_parser([](auto& v){return &v.left;}) >> bp::mk_block_end())
-		>> th<0>::rec([](auto& v){return &v.holder;})
+		>> use_seq_result( elif_parser|else_parser )
 		);
 	}
 };
