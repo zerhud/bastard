@@ -60,7 +60,7 @@ struct set_block : element_with_name<factory> {
 	constexpr static auto mk_parser(const auto& f) {
 		using bp = base_parser<factory>;
 		constexpr auto trim_parser = trim_info<factory>::mk_parser();
-		constexpr auto ident = lexeme(p::alpha >> *(p::alpha | p::d10 | th<'_'>::char_));
+		constexpr auto ident = bp::mk_ident_parser();
 		//TODO: we cannot wrap the result in skip() here for some reason (error with glvalue)
 		return skip(
 		++lexeme(bp::mk_block_begin() >> trim_parser)

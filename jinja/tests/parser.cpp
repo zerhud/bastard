@@ -134,4 +134,15 @@ static_assert( [] {
 	;
 }() == 127, "if and else blocks" );
 
+static_assert( [] {
+	jinja_details::template_block<factory> r1, r2;
+	auto src1 = "<%template t%><%for a in arr %>cnt<%endfor%><%endtemplate%>"sv;
+	//auto src2 = "<%template t%><%if 1%>cnt<%endif%><%endtemplate%>"sv;
+	const auto p1 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source(src1), r1);
+	//const auto p2 = parse(r2.mk_parser(factory{}), +parser::space, parser::make_source(src2), r2);
+	//auto& ir1 = static_cast<const jinja_details::for_block<factory>&>(*r1[0]);
+	//auto& ir2 = static_cast<const jinja_details::if_block<factory>&>(*r2[0]);
+	return p1;
+}() == 1023 );
+
 int main(int,char**) { }

@@ -34,6 +34,9 @@ struct base_parser {
 	constexpr static auto mk_check_parser() {
 		return t<'<'>::char_ >> (t<'%'>::char_ | t<'#'>::char_ | t<'='>::char_);
 	}
+	constexpr static auto mk_ident_parser() {
+		return lexeme(p::alpha >> *(p::alpha | p::d10 | p::template char_<'_'>));
+	}
 };
 
 template<typename factory>
