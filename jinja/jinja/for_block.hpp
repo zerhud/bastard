@@ -50,6 +50,7 @@ template<typename factory> struct for_block : base_jinja_element<factory> {
   struct for_expr_holder {
     decltype(mk_for_exprs(std::declval<factory>())) exprs;
     factory f;
+    constexpr static auto struct_fields_count() { return 2; }
     explicit constexpr for_expr_holder(factory f)
     :
 #ifdef __clang__
@@ -57,10 +58,9 @@ template<typename factory> struct for_block : base_jinja_element<factory> {
 #endif
     f(std::move(f))
     {}
-    constexpr static auto struct_fields_count() { return 2; }
-    friend constexpr auto& emplace_back(for_expr_holder& obj) {
-      return obj.exprs.emplace_back(obj.f);
-    }
+    friend constexpr auto& emplace_back(for_expr_holder& obj) { return obj.exprs.emplace_back(obj.f); }
+    constexpr auto size() const { return exprs.size(); }
+    constexpr const auto& operator[](auto&& ind) const { return exprs[std::forward<decltype(ind)>(ind)]; }
   };
 
   factory f;
