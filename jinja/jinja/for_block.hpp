@@ -26,6 +26,7 @@ template<typename factory> struct for_block : base_jinja_element<factory> {
   //, for_exprs(mk_for_exprs(this->f))
     , for_exprs(this->f)
     , holder(this->f)
+    , else_holder(this->f)
   {}
 
   constexpr static auto mk_variables(const factory& f) {
@@ -67,8 +68,9 @@ template<typename factory> struct for_block : base_jinja_element<factory> {
   trim_info<factory> left;
   for_expr_holder for_exprs;
   block_content<factory> holder;
+  block_content<factory> else_holder;
   trim_info<factory> right;
-  constexpr static auto struct_fields_count() { return 5; }
+  constexpr static auto struct_fields_count() { return 6; }
 
   constexpr void execute(context_type& ctx) const override {
   }
@@ -81,7 +83,8 @@ template<typename factory> struct for_block : base_jinja_element<factory> {
        ++lexeme(bp::mk_block_begin() >> trim_parser)
     >> def(p::template lit<"for">)++
     >> (ident % ',' >> p::template lit<"in">++ >> mk_jinja_expression_parser(f)) % ','
-    >> ++th<1>::rec
+    >> ++th<1>::rec++
+    >> -(p::template lit<"else"> >> th<1>::rec)
     >> p::template lit<"endfor"> >> ++trim_parser >> bp::mk_block_end()
     );
   }
