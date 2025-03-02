@@ -23,7 +23,9 @@ template<typename factory> struct for_block : base_jinja_element<factory> {
   constexpr for_block() : for_block(factory{}) {}
   constexpr explicit for_block(factory f)
     : f(std::move(f))
-  //, for_exprs(mk_for_exprs(this->f))
+#ifdef __clang__
+  , for_exprs(mk_for_exprs(this->f))
+#endif
     , for_exprs(this->f)
     , holder(this->f)
     , else_holder(this->f)

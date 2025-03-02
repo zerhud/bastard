@@ -85,5 +85,11 @@ static_assert( [] {
 	return val1.is_string() + 2*(val1=="r1 test") + 4*val2.is_string() + 8*(val2=="r2 test");
 }() == 15 );
 
+static_assert( [] {
+  using op_type =  jinja_details::for_block<factory>;
+  op_type r1{factory{}}, r2{factory{}};
+  return 3;
+}() == 3 );
+
 int main(int,char**) {
 }
