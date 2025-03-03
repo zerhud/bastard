@@ -23,9 +23,6 @@ template<typename factory> struct for_block : base_jinja_element<factory> {
   constexpr for_block() : for_block(factory{}) {}
   constexpr explicit for_block(factory f)
     : f(std::move(f))
-#ifdef __clang__
-  , for_exprs(mk_for_exprs(this->f))
-#endif
     , for_exprs(this->f)
     , holder(this->f)
     , else_holder(this->f)
@@ -75,6 +72,26 @@ template<typename factory> struct for_block : base_jinja_element<factory> {
   constexpr static auto struct_fields_count() { return 6; }
 
   constexpr void execute(context_type& ctx) const override {
+    execute_expr(ctx, 0);
+  }
+  constexpr void execute_expr(context_type& ctx, unsigned expr_ind) const {
+    if (expr_ind == for_exprs.size()) holder.execute(ctx);
+    else iterate_expr(ctx, for_exprs.exprs[expr_ind], expr_ind+1);
+  }
+  constexpr void iterate_expr(context_type& ctx, const for_expr& expr, unsigned expr_ind) const {
+    auto result = jinja_expression_eval(f, expr.expr);
+    using string_t = typename decltype(result)::string_t;
+    if (result.is_string())
+      exec(result, [&](const auto&, const string_t& val) { for (auto& s:val) prepare_ctx(ctx, val, expr_ind); });
+    else if (result.is_array())
+      for (auto i=0;i<result.size();++i) prepare_ctx(ctx, result[i], expr_ind);
+    else if (result.is_object()) {
+      auto keys = result.keys();
+      for (auto i=0;i<keys.size();++i) prepare_ctx(ctx, result[keys[i]], expr_ind);
+    }
+  }
+  constexpr void prepare_ctx(context_type& ctx, auto result, unsigned expr_ind) const {
+    execute_expr(ctx, expr_ind);
   }
 
   constexpr static auto mk_parser(const auto& f) {
