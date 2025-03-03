@@ -60,6 +60,12 @@ constexpr void main_test() {
 		modify(d, [&](auto&,string_t&){ ++str_calls; });
 		return ((integer_t)d==4) + 2*(str_calls==0);
 	}() == 3 );
+	static_assert( []{
+		data d{3}; int str_calls=0, int_calls=0, int_val=0;
+		exec(d, [&](const auto&,const integer_t& v){ int_val=v; ++int_calls; });
+		exec(d, [&](const auto&,const string_t&){ ++str_calls; });
+		return (str_calls==0) + 2*(int_val==3);
+	}() == 3 );
 }
 
 constexpr std::string test_format(auto&& d) {

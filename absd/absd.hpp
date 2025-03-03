@@ -296,6 +296,12 @@ public:
 			else if constexpr(requires{op(obj.factory, *val);}) op(obj.factory, *val);
 		}, obj.holder);
 	}
+	friend constexpr void exec(const auto& obj, auto&& op) requires std::is_same_v<self_type, std::decay_t<decltype(obj)>> {
+		visit([&]<typename val_type>(const val_type& val) {
+			if constexpr(requires{op(obj.factory, val);}) op(obj.factory, val);
+			else if constexpr(requires{op(obj.factory, *val);}) op(obj.factory, *val);
+		}, obj.holder);
+	}
 	[[nodiscard]] friend constexpr auto exec_operation(const self_type& obj, auto&& op) {
 		return visit([&](const auto& val){
 			if constexpr (requires{op(val);}) return self_type{ obj.factory, op(val) };
