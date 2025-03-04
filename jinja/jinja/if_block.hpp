@@ -37,17 +37,11 @@ template<typename factory> struct if_else_block : base_jinja_element<factory> {
 	constexpr static auto mk_parser(const auto& f) {
 		using bp = base_parser<factory>;
 		auto trim_parser = trim_info<factory>::mk_parser();
-		auto else_parser =
-		     def(p::template lit<"else">)
-		  >> fnum<2>(lexeme(trim_parser([](auto& v){return &v.left;}) >> bp::mk_block_end()))
-		  >> th<0>::rec([](auto& v){return &v.holder;}) ;
-		auto elif_parser =
-		     def(p::template lit<"elif">) >> fnum<3>(mk_jinja_expression_parser(f))
-		  >> fnum<2>(lexeme(trim_parser([](auto& v){return &v.left;}) >> bp::mk_block_end()))
-		  >> th<0>::rec([](auto& v){return &v.holder;}) ;
 		return skip(
 		   ++lexeme(bp::mk_block_begin() >> trim_parser)
-		>> use_seq_result( elif_parser|else_parser )
+		>> fnum<3>(p::template lit<"else"> | p::template lit<"elif"> >> mk_jinja_expression_parser(f))
+		>> fnum<2>(lexeme(trim_parser([](auto& v){return &v.left;}) >> bp::mk_block_end()))
+		>> th<0>::rec([](auto& v){return &v.holder;})
 		);
 	}
 };

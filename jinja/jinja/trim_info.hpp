@@ -11,27 +11,25 @@
 namespace jinja_details {
 
 struct shift_info {
-	short shift{0};
-	bool absolute{false};
+  short shift{0};
+  bool absolute{true};
 
-	template<typename p, template<auto>class th=p::template tmpl>
-	constexpr static auto mk_parser() {
-		constexpr auto abs_parser = -fnum<0>(as<-1>(th<'-'>::char_)|as<1>(th<'+'>::char_));
-		return lexeme(add_to_ctx<shift_info>(0,
-			   abs_parser
-			>> use_seq_result(p::nop([](auto& r){r.absolute=(r.shift==0); r.shift+=(r.shift==0); return &r;}))
-			>> result_from_ctx<shift_info>([](auto& r, auto& tmp){r *= tmp;}, th<10>::uint_)
-		));
-	}
+  template <typename p, template<auto>class th=p::template tmpl>
+  constexpr static auto mk_parser() {
+    constexpr auto asb_field_resetter = as<true>(p::nop);
+    constexpr auto abs_field_parser = as<false>(th<'+'>::char_ | th<'-'>::char_);
+    return lexeme(++reparse(abs_field_parser|asb_field_resetter) >> --p::int_);
+  }
 };
 
-template<typename factory>
+template <typename factory>
 struct trim_info {
-	using p = factory::parser;
-	bool trim{false};
-	constexpr static auto mk_parser() {
-		return p::nop++ >> ---as<true>(p::template char_<'+'>);
-	}
+  using p = factory::parser;
+  bool trim{false};
+
+  constexpr static auto mk_parser() {
+    return p::nop++ >> ---as<true>(p::template char_<'+'>);
+  }
 };
 
 } // namespace jinja_details
