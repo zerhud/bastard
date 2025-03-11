@@ -18,6 +18,7 @@
 #include "jinja/set_block.hpp"
 #include "jinja/if_block.hpp"
 #include "jinja/for_block.hpp"
+#include "jinja/call_block.hpp"
 
 namespace jinja_details {
 
@@ -48,15 +49,13 @@ constexpr auto mk_content_parser(factory f) {
     constexpr auto trim_parser = trim_info<factory>::mk_parser();
     auto if_block_parser = if_block<factory>::mk_parser(f);
     auto for_block_parser = for_block<factory>::mk_parser(f);
+    auto call_block_parser = call_block<factory>::mk_parser(f);
 	//TODO:
-	//     block: - for, call (`call block_name('param')` and `call(params...) block_name('param')`)
-	//     skip filter: use `set(foo) foo|filter` instead
-	//     call is same as set: `set(foo) foo()` but the call setts caller variable inside the block (may be as parameter)
 	//     templates: inheritance, import (import as)
 	//     parser facade (to parse file)
     return lexeme(
        trim_parser++ >> bp::mk_block_end() >> p::seq_enable_recursion
-    >> (p::nop >> p::seq_enable_recursion >> *(
+    >> (p::seq_enable_recursion >> *(
           expression_parser(mk_ptr_maker<expression_operator>(f))
         | comment_parser(mk_ptr_maker<comment_operator>(f))
         | content_parser(mk_ptr_maker<content>(f))
@@ -65,6 +64,7 @@ constexpr auto mk_content_parser(factory f) {
         | set_block_parser(mk_ptr_maker<set_block>(f))
         | if_block_parser(mk_ptr_maker<if_block>(f))
         | for_block_parser(mk_ptr_maker<for_block>(f))
+        | call_block_parser(mk_ptr_maker<call_block>(f))
     ))
     >> ++trim_parser >> bp::mk_block_begin()
     );

@@ -95,6 +95,7 @@ struct jiexpr_abstracter : std_factory::parser::base_parser<jiexpr_abstracter> {
 };
 
 constexpr auto mk_jinja_expression(const std_factory&) { return jiexpr<std_factory>::parsed_expression{}; }
+constexpr auto mk_jinja_expression(const std_factory&, bool val) { jiexpr<std_factory>::parsed_expression ret{}; create<bool>(ret) = val; return ret; }
 constexpr auto mk_jinja_expression_parser(const std_factory& f) {
 	return jiexpr_abstracter{ {}, jiexpr{f}.create_parser<std_factory::parser>() };
 }

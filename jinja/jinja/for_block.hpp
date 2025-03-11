@@ -18,8 +18,8 @@ template<typename factory> struct for_block : base_jinja_element<factory> {
   using context_type = base::context_type;
   using expr_type = decltype(mk_jinja_expression(std::declval<factory>()));
   using p = typename factory::parser;
-
   template<auto s> using th = typename p::template tmpl<s>;
+
   constexpr for_block() : for_block(factory{}) {}
   constexpr explicit for_block(factory f)
     : f(std::move(f))
