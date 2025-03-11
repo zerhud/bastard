@@ -101,7 +101,7 @@ template<typename factory> struct for_block : base_jinja_element<factory> {
     return skip(
        ++lexeme(bp::mk_block_begin() >> trim_parser)
     >> def(p::template lit<"for">)++
-    >> (ident % ',' >> p::template lit<"in">++ >> mk_jinja_expression_parser(f)) % ','
+    >> (ident % ',' >> p::template lit<"in">++ >> mk_jinja_expression_parser(f)) % ';'
     >> ++th<1>::rec++
     >> -(p::template lit<"else"> >> th<1>::rec)
     >> p::template lit<"endfor"> >> ++trim_parser >> bp::mk_block_end()

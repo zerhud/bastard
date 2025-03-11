@@ -49,12 +49,12 @@ template<typename factory> struct call_block : base_jinja_element<factory> {
     using bp = base_parser<factory>;
     auto trim_parser = trim_info<factory>::mk_parser();
     constexpr auto ident = bp::mk_ident_parser();
-		auto expr_parser = mk_jinja_expression_parser(f);
+    auto expr_parser = mk_jinja_expression_parser(f);
     return skip(
        ++lexeme(bp::mk_block_begin() >> trim_parser)
     >> def(p::template lit<"call">)++
-		>> -(th<'(' >::_char >> -((ident++ >> -(th<'='>::_char >> expr_parser)) % ',') >> th<')'>::_char)
-		>> ++expr_parser
+    >> -(th<'(' >::_char >> -((ident++ >> -(th<'='>::_char >> expr_parser)) % ',') >> th<')'>::_char)
+    >> ++expr_parser
     >> ++th<1>::rec
     >> p::template lit<"endcall"> >> ++trim_parser >> bp::mk_block_end()
     );
