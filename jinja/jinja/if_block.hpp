@@ -39,7 +39,7 @@ template<typename factory> struct if_else_block : base_jinja_element<factory> {
 		auto trim_parser = trim_info<factory>::mk_parser();
 		return skip(
 		   ++lexeme(bp::mk_block_begin() >> trim_parser)
-		>> fnum<3>(p::template lit<"else"> | p::template lit<"elif"> >> mk_jinja_expression_parser(f))
+		>> fnum<3>(p::template lit<"else"> | use_variant_result(p::template lit<"elif"> >> mk_jinja_expression_parser(f)))
 		>> fnum<2>(lexeme(trim_parser([](auto& v){return &v.left;}) >> bp::mk_block_end()))
 		>> th<0>::rec([](auto& v){return &v.holder;})
 		);

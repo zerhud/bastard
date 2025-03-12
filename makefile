@@ -9,12 +9,14 @@ tests_src := $(shell find . -not -iname heap_variant.cpp -ipath '*/tests/*.cpp' 
 
 base = $(basename $(subst tests/,,$(1)))
 
-all: $(foreach src_file,$(tests_src),$(call base,$(src_file)))
+all: cogen_gcc $(foreach src_file,$(tests_src),$(call base,$(src_file)))
 	@echo -e "\e[7;32mAll Done\e[0m"
 
 -include $(builddir)/cogen_gcc.d
 $(builddir)/cogen_gcc: cogen/main.cpp
-	$(GCC) $(INCLUDES) cogen/main.cpp -o $@
+	$(GCC) -ftemplate-backtrace-limit=0 $(INCLUDES) cogen/main.cpp -o $@
+clean::
+	rm -f $(builddir)/cogen_gcc{,.d}
 
 cogen_gcc: $(builddir)/cogen_gcc
 
