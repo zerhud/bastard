@@ -80,11 +80,11 @@ static_assert( [] {
   parser::make_source("<% template tmpl %> <% block name(p=1,r=2) %> <% endblock %> <%endtemplate%>"), r1);
   const auto p2 = parse( r1.mk_parser(factory{}), +parser::space,
   parser::make_source("<% template tmpl %> <%+ +3 block name() %> <% endblock %> <%endtemplate%>"), r2);
-  return (p1==76)
+  return (p1==76 && p2==73)
   + 2*(r1.holder.size() == 3)
   + 4*(static_cast<const jinja_block*>(r1.holder[1].get())->parameters.size() == 2)
   + 8*(static_cast<const jinja_block*>(r1.holder[1].get())->parameters[0].name == "p")
-  + 16*(p2==73)
+  + 16*(r1.blocks.size()==1)
   + 32*(static_cast<const jinja_block*>(r2.holder[1].get())->parameters.size() == 0)
   + 64*(static_cast<const jinja_block*>(r2.holder[1].get())->shift_inside.shift == 3)
   + 128*static_cast<const jinja_block*>(r2.holder[1].get())->begin_left.trim

@@ -22,6 +22,8 @@
 
 namespace jinja_details {
 
+struct template_holder;
+
 //NOTE: GCC15: GCC_BUG: if named_block will be forward declarated
 //      the gcc14 will report: use f after end of life.
 //      also we cannot use &f for same reason (clang can)
@@ -29,11 +31,11 @@ namespace jinja_details {
 //      outside the block_content class
 template<template<typename>class type, typename factory>
 constexpr auto mk_ptr_maker(const factory& f) {
-    using rt = type<factory>;
-    return [f](auto& v){
-        v = mk_ptr<rt>(f, f);
-        return const_cast<rt*>(static_cast<const rt*>(v.get()));
-    };
+  using rt = type<factory>;
+  return [f](auto& v){
+    v = mk_ptr<rt>(f, f);
+    return const_cast<rt*>((const rt*)v.get());
+  };
 }
 template<typename factory>
 constexpr auto mk_content_parser(factory f) {
@@ -59,8 +61,8 @@ constexpr auto mk_content_parser(factory f) {
         expression_parser(mk_ptr_maker<expression_operator>(f))
       | comment_parser(mk_ptr_maker<comment_operator>(f))
       | content_parser(mk_ptr_maker<content>(f))
-      | block_parser(mk_ptr_maker<named_block>(f))
-      | macro_parser(mk_ptr_maker<macro_block>(f))
+      | from_ctx<template_holder>([](auto& block, auto* tmpl){add_block(*tmpl, &block);}, block_parser)(mk_ptr_maker<named_block>(f))
+      | from_ctx<template_holder>([](auto& block, auto* tmpl){add_block(*tmpl, &block);}, macro_parser)(mk_ptr_maker<macro_block>(f))
       | set_block_parser(mk_ptr_maker<set_block>(f))
       | if_block_parser(mk_ptr_maker<if_block>(f))
       | for_block_parser(mk_ptr_maker<for_block>(f))
@@ -85,8 +87,7 @@ struct template_block : element_with_name<factory> {
   constexpr auto& operator[](auto ind) const { return holder[ind]; }
 
   constexpr static auto make_holder(const factory& f) {
-    using ptr_type = decltype(mk_empty_ptr<const base>(f));
-    return mk_vec<ptr_type>(f);
+    return mk_vec<const base*>(f);
   }
 
   constexpr template_block() : template_block(factory{}) {}
@@ -107,14 +108,17 @@ struct template_block : element_with_name<factory> {
   decltype(make_holder(std::declval<factory>())) blocks;
   string_t file_name;
 
+  friend constexpr void add_block(template_block& tmpl, auto* ptr) { tmpl.blocks.emplace_back(ptr); }
   constexpr static auto mk_parser(factory f) {
     using bp = base_parser<factory>;
     constexpr auto ident = lexeme(p::alpha >> *(p::alpha | p::d10 | th<'_'>::char_));
-    return
-       bp::mk_block_begin() >> p::template lit<"template"> >> ++ident
-    >> ++mk_content_parser(f)
-    >> p::template lit<"endtemplate"> >> bp::mk_block_end()
-    ;
+    return create_in_ctx<template_holder>([](template_block&t){return &t;},
+         bp::mk_block_begin()
+      >> def(lit<"template">(p{}))
+      >> by_ind<1>(ident)
+      >> by_ind<2>(mk_content_parser(f))
+      >> lit<"endtemplate">(p{}) >> bp::mk_block_end()
+    );
   }
 };
 
