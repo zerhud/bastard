@@ -14,55 +14,55 @@ namespace jinja_details {
 
 template<typename factory>
 struct comment_operator : base_jinja_element<factory> {
-	using parser = typename factory::parser;
-	using string_type = typename factory::string_t;
+  using parser = typename factory::parser;
+  using string_type = typename factory::string_t;
 
-	trim_info<factory> begin;
-	string_type value;
-	trim_info<factory> end;
-	factory f;
-	constexpr static auto struct_fields_count() { return 4; }
+  trim_info<factory> begin;
+  string_type value;
+  trim_info<factory> end;
+  factory f;
+  constexpr static auto struct_fields_count() { return 4; }
 
-	constexpr explicit comment_operator(factory f) : f(std::move(f)) {}
+  constexpr explicit comment_operator(factory f) : f(std::move(f)) {}
 
-	constexpr void execute(typename base_jinja_element<factory>::context_type&) const override { }
+  constexpr void execute(typename base_jinja_element<factory>::context_type&) const override { }
 
-	constexpr static auto mk_parser() {
-		using bp = base_parser<factory>;
-		constexpr auto end = lexeme(trim_info<factory>::mk_parser() >> bp::mk_comment_end());
-		return
-			   lexeme(bp::mk_comment_begin() >> trim_info<factory>::mk_parser())++
-			>> *(parser::any - end) >> ++end;
-	}
+  constexpr static auto mk_parser() {
+    using bp = base_parser<factory>;
+    constexpr auto end = lexeme(trim_info<factory>::mk_parser() >> bp::mk_comment_end());
+    return
+         lexeme(bp::mk_comment_begin() >> trim_info<factory>::mk_parser())++
+      >> *(parser::any - end) >> ++end;
+  }
 };
 
 template<typename factory>
 struct expression_operator : base_jinja_element<factory> {
-	using parser = typename factory::parser;
-	using expr_type = decltype(mk_jinja_expression(std::declval<factory>()));
-	using context_type = typename base_jinja_element<factory>::context_type;
+  using parser = typename factory::parser;
+  using expr_type = decltype(mk_jinja_expression(std::declval<factory>()));
+  using context_type = typename base_jinja_element<factory>::context_type;
 
-	trim_info<factory> begin;
-	expr_type expr;
-	trim_info<factory> end;
-	factory f;
-	constexpr static auto struct_fields_count() { return 4; }
+  trim_info<factory> begin;
+  expr_type expr;
+  trim_info<factory> end;
+  factory f;
+  constexpr static auto struct_fields_count() { return 4; }
 
-	constexpr explicit expression_operator(factory f) : f(std::move(f)) {}
+  constexpr explicit expression_operator(factory f) : f(std::move(f)) {}
 
-	constexpr void execute(context_type& ctx) const override {
-		ctx(begin, jinja_expression_eval(ctx.f, expr), end);
-	}
+  constexpr void execute(context_type& ctx) const override {
+    ctx(begin, jinja_expression_eval(ctx.f, expr), end);
+  }
 
-	constexpr static auto mk_parser(const auto& f) {
-		using bp = base_parser<factory>;
-		return skip(
-			   lexeme(bp::mk_expr_begin() >> trim_info<factory>::mk_parser())
-			>> ++mk_jinja_expression_parser(f)
-			>> ++lexeme(trim_info<factory>::mk_parser() >> bp::mk_expr_end())
-			
-		);
-	}
+  constexpr static auto mk_parser(const auto& f) {
+    using bp = base_parser<factory>;
+    return skip(
+         lexeme(bp::mk_expr_begin() >> trim_info<factory>::mk_parser())
+      >> ++mk_jinja_expression_parser(f)
+      >> ++lexeme(trim_info<factory>::mk_parser() >> bp::mk_expr_end())
+
+    );
+  }
 };
 
 } // namespace jinja_details
