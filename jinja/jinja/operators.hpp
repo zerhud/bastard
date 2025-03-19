@@ -60,7 +60,35 @@ struct expression_operator : base_jinja_element<factory> {
          lexeme(bp::mk_expr_begin() >> trim_info<factory>::mk_parser())
       >> ++mk_jinja_expression_parser(f)
       >> ++lexeme(trim_info<factory>::mk_parser() >> bp::mk_expr_end())
+    );
+  }
+};
 
+template<typename factory>
+struct import_operator : base_jinja_element<factory> {
+  using parser = typename factory::parser;
+  using expr_type = decltype(mk_jinja_expression(std::declval<factory>()));
+  using context_type = typename base_jinja_element<factory>::context_type;
+
+  trim_info<factory> begin;
+  expr_type expr_import, expr_as;
+  trim_info<factory> end;
+  factory f;
+
+  constexpr explicit import_operator(factory f) : f(std::move(f)) {}
+
+  constexpr static auto struct_fields_count() { return 5; }
+
+  constexpr void execute(context_type& ctx) const override {
+  }
+
+  constexpr static auto mk_parser(const auto& f) {
+    using bp = base_parser<factory>;
+    return skip(
+         lexeme(bp::mk_block_begin() >> trim_info<factory>::mk_parser())
+      >> def(lit<"import">(parser{})) >> ++mk_jinja_expression_parser(f)
+      >> lit<"as">(parser{}) >> ++mk_jinja_expression_parser(f)
+      >> ++lexeme(trim_info<factory>::mk_parser() >> bp::mk_block_end())
     );
   }
 };

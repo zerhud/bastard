@@ -54,6 +54,11 @@ static_assert( []{
   const auto p1 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source("<= 3 =>"), r1);
   return (p1 == 7) + 2*(get<1>(r1.expr)==3);
 }() == 3, "expression operator parser test" );
+static_assert( [] {
+  jinja_details::import_operator<factory> r1{ factory{} };
+  const auto p1 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source("<% import 1 as 2 %>"), r1);
+  return (p1==19) + 2*(get<1>(r1.expr_as)==2);
+}() == 3 );
 
 
 static_assert( []{

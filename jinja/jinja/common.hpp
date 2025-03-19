@@ -14,6 +14,25 @@
 
 namespace jinja_details {
 
+template<typename factory, typename type> struct vector_with_factory {
+  using vec_type = decltype(mk_vec<type>(std::declval<factory>()));
+
+  factory f;
+  vec_type vec;
+
+  constexpr explicit vector_with_factory(factory f) : f(std::move(f)), vec(mk_vec<type>(this->f)) {}
+
+  constexpr auto size() const { return vec.size(); }
+  constexpr auto& operator[](auto ind) { return vec[ind]; }
+  constexpr const auto& operator[](auto ind) const { return vec[ind]; }
+  friend constexpr auto& emplace_back(vector_with_factory& obj) {
+    return obj.vec.emplace_back(obj.f);
+  }
+  friend constexpr void pop_back(vector_with_factory& obj) {
+    obj.vec.pop_back();
+  }
+};
+
 template<typename t> struct type_c{ using type = t; t operator+()const; };
 template<typename factory>
 constexpr auto mk_context_type() {

@@ -122,6 +122,23 @@ struct template_block : element_with_name<factory> {
   }
 };
 
+template<typename factory>
+struct file {
+  using p = factory::parser;
+
+  factory f;
+  vector_with_factory<factory, import_operator<factory>> imports;
+  vector_with_factory<factory, template_block<factory>> templates;
+  constexpr static auto struct_fields_count() { return 3; }
+
+  constexpr file() : file(factory{}) {}
+  constexpr explicit file(factory f) : f(std::move(f)), imports(this->f), templates(this->f) {}
+
+  constexpr static auto mk_parser(const auto& f) {
+    return +++import_operator<factory>::mk_parser(f) >> +++template_block<factory>::mk_parser(f);
+  }
+};
+
 } // namespace jinja_details
 
 template<typename factory>
