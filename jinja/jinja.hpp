@@ -38,9 +38,8 @@ constexpr auto mk_ptr_maker(const factory& f) {
   };
 }
 template<typename factory>
-constexpr auto mk_content_parser(factory f) {
+constexpr auto mk_content_inner_parser(factory f) {
   using p = factory::parser;
-  using bp = base_parser<factory>;
 
   auto content_parser = content<factory>::mk_parser();
   auto comment_parser = comment_operator<factory>::mk_parser();
@@ -48,16 +47,11 @@ constexpr auto mk_content_parser(factory f) {
   auto block_parser = named_block<factory>::mk_parser(f);
   auto macro_parser = macro_block<factory>::mk_parser(f);
   auto set_block_parser = set_block<factory>::mk_parser(f);
-  constexpr auto trim_parser = trim_info<factory>::mk_parser();
   auto if_block_parser = if_block<factory>::mk_parser(f);
   auto for_block_parser = for_block<factory>::mk_parser(f);
   auto call_block_parser = call_block<factory>::mk_parser(f);
-  //TODO:
-  //     templates: inheritance, import (import as)
-  //     parser facade (to parse file)
-  return lexeme(
-     trim_parser++ >> bp::mk_block_end() >> p::seq_enable_recursion
-  >> (p::seq_enable_recursion >> *(
+
+  return p::seq_enable_recursion >> *(
         expression_parser(mk_ptr_maker<expression_operator>(f))
       | comment_parser(mk_ptr_maker<comment_operator>(f))
       | content_parser(mk_ptr_maker<content>(f))
@@ -67,7 +61,20 @@ constexpr auto mk_content_parser(factory f) {
       | if_block_parser(mk_ptr_maker<if_block>(f))
       | for_block_parser(mk_ptr_maker<for_block>(f))
       | call_block_parser(mk_ptr_maker<call_block>(f))
-  ))
+  );
+}
+template<typename factory>
+constexpr auto mk_content_parser(factory f) {
+  using p = factory::parser;
+  using bp = base_parser<factory>;
+
+  constexpr auto trim_parser = trim_info<factory>::mk_parser();
+  //TODO:
+  //     templates: inheritance, import (import as)
+  //     parser facade (to parse file)
+  return lexeme(
+     trim_parser++ >> bp::mk_block_end() >> p::seq_enable_recursion
+  >> mk_content_inner_parser(f)
   >> ++trim_parser >> bp::mk_block_begin()
   );
 }
@@ -101,12 +108,11 @@ struct template_block : element_with_name<factory> {
   , blocks(make_holder(this->f))
   {}
 
-  constexpr static auto struct_fields_count() { return 5; }
+  constexpr static auto struct_fields_count() { return 4; }
   factory f;
   string_t _name;
   block_content<factory> holder;
   decltype(make_holder(std::declval<factory>())) blocks;
-  string_t file_name;
 
   friend constexpr void add_block(template_block& tmpl, auto* ptr) { tmpl.blocks.emplace_back(ptr); }
   constexpr static auto mk_parser(factory f) {
@@ -115,7 +121,7 @@ struct template_block : element_with_name<factory> {
     return create_in_ctx<template_holder>([](template_block&t){return &t;},
          bp::mk_block_begin()
       >> def(lit<"template">(p{}))
-      >> by_ind<1>(ident)
+      >> -by_ind<1>(ident)
       >> by_ind<2>(mk_content_parser(f))
       >> lit<"endtemplate">(p{}) >> bp::mk_block_end()
     );
@@ -129,13 +135,18 @@ struct file {
   factory f;
   vector_with_factory<factory, import_operator<factory>> imports;
   vector_with_factory<factory, template_block<factory>> templates;
-  constexpr static auto struct_fields_count() { return 3; }
+  decltype(mk_str(std::declval<factory>())) name;
+  constexpr static auto struct_fields_count() { return 4; }
 
   constexpr file() : file(factory{}) {}
-  constexpr explicit file(factory f) : f(std::move(f)), imports(this->f), templates(this->f) {}
+  constexpr explicit file(factory f) : f(std::move(f)), imports(this->f), templates(this->f)
+#ifdef __clang__
+  , name(mk_str(this->f)) //TODO: GCC15: cannot init the name field in gcc14 - compilation fail
+#endif
+  {}
 
   constexpr static auto mk_parser(const auto& f) {
-    return +++import_operator<factory>::mk_parser(f) >> +++template_block<factory>::mk_parser(f);
+    return by_ind<1>(+import_operator<factory>::mk_parser(f)) >> by_ind<2>(+template_block<factory>::mk_parser(f));
   }
 };
 
@@ -151,10 +162,9 @@ struct jinja {
   constexpr explicit jinja(factory f) : f(std::move(f)) {}
 
   constexpr auto parse_file(auto src, auto name) const {
-    auto parser = jinja_details::template_block<factory>::mk_parser(f);
-    jinja_details::template_block<factory> result{f};
-    result.file_name = std::move(name);
-    parse(parser, +factory::parser::space, src, result);
+    jinja_details::file<factory> result{f};
+    result.name = std::move(name);
+    parse(result.mk_parser(f), +factory::parser::space, src, result);
     return result;
   }
 };
