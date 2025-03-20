@@ -70,7 +70,6 @@ constexpr auto mk_content_parser(factory f) {
 
   constexpr auto trim_parser = trim_info<factory>::mk_parser();
   //TODO:
-  //     templates: inheritance, import (import as)
   //     parser facade (to parse file)
   return lexeme(
      trim_parser++ >> bp::mk_block_end() >> p::seq_enable_recursion
@@ -83,6 +82,7 @@ template<typename factory>
 struct template_block : element_with_name<factory> {
   using base = element_with_name<factory>;
   using string_t = base::string_t;
+  using name_t = base::string_t;
   using context_type = base::context_type;
   using p = factory::parser;
   template<auto s> using th = p::template tmpl<s>;
@@ -108,9 +108,10 @@ struct template_block : element_with_name<factory> {
   , blocks(make_holder(this->f))
   {}
 
-  constexpr static auto struct_fields_count() { return 4; }
+  constexpr static auto struct_fields_count() { return 5; }
   factory f;
   string_t _name;
+  decltype(mk_vec<name_t>(std::declval<factory>())) extends;
   block_content<factory> holder;
   decltype(make_holder(std::declval<factory>())) blocks;
 
@@ -122,7 +123,8 @@ struct template_block : element_with_name<factory> {
          bp::mk_block_begin()
       >> def(lit<"template">(p{}))
       >> -by_ind<1>(ident)
-      >> by_ind<2>(mk_content_parser(f))
+      >> -by_ind<2>(lit<"extends">(p{}) >> ident % ',')
+      >> by_ind<3>(mk_content_parser(f))
       >> lit<"endtemplate">(p{}) >> bp::mk_block_end()
     );
   }

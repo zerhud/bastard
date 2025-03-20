@@ -8,13 +8,12 @@ tests_src := $(shell find . -not -iname heap_variant.cpp -ipath '*/tests/*.cpp' 
 .PHONY: all force_clang
 
 base = $(basename $(subst tests/,,$(1)))
-
 all: cogen_gcc $(foreach src_file,$(tests_src),$(call base,$(src_file)))
 	@echo -e "\e[7;32mAll Done\e[0m"
 
 -include $(builddir)/cogen_gcc.d
-$(builddir)/cogen_gcc: cogen/main.cpp
-	$(GCC) -ftemplate-backtrace-limit=0 $(INCLUDES) cogen/main.cpp -o $@
+$(builddir)/cogen_gcc: cogen/main.cpp makefile
+	g++  -MMD -pipe -std=gnu++26 -march=native -fdiagnostics-color=always -lboost_program_options -ftemplate-backtrace-limit=0 $(INCLUDES) cogen/main.cpp -o $@
 clean::
 	rm -f $(builddir)/cogen_gcc{,.d}
 

@@ -23,6 +23,10 @@
 #include <variant>
 #include <iostream>
 
+#include <boost/program_options.hpp>
+
+namespace po = boost::program_options;
+
 
 template<auto base = 10>
 constexpr auto symbols_count(auto v) {
@@ -153,7 +157,13 @@ constexpr void trim_right(const std_factory&, std_factory::string_t& val) {
 }
 
 int main(int,char**) {
+  po::options_description desc("Available options");
+  desc.add_options()
+  ("help", "produce help message")
+  ("input,i", po::value<std::vector<std::string>>(), "file with DSL")
+  ("out,o", po::value<std::string>(), "produce help message")
+  ;
   jinja_type j;
-  auto parsed = j.parse_file(ascip::make_source("<% block main %>test<% endblock %>"), "test");
-  std::cout << "parsed elements: " << parsed.holder.size() << std::endl;
+  auto parsed = j.parse_file(ascip::make_source("<%template%><% block main() %>test<% endblock %><%endtemplate%>"), "test");
+  std::cout << "parsed elements: " << parsed.templates[0].holder.size() << std::endl;
 }

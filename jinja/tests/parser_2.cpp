@@ -50,4 +50,11 @@ static_assert( [] {
   return (p1==src1.size()) + 2*(p2==src2.size());
 }() == 3 );
 
+static_assert( [] {
+  jinja_details::template_block<factory> r1, r2, r3;
+  auto src1 = "<%template t extends o,a%>cnt<%endtemplate%>"sv;
+  const auto p1 = parse(r1.mk_parser(factory{}), +parser::space, parser::make_source(src1), r1);
+  return (p1==src1.size()) + 2*(r1.extends.size()==2) + 4*(r1.extends[1]=="a");
+}() == 7 );
+
 int main(int,char**) { }
