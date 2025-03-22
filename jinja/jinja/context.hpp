@@ -54,9 +54,9 @@ struct environment {
 
   constexpr environment() : environment(factory{}) { }
   constexpr explicit environment(factory f)
-    : f(std::move(f))
-      , globals(mk_vec<variable>(this->f))
-      , stack(mk_vec<area_type>(this->f)) {
+  : f(std::move(f))
+  , globals(mk_vec<variable>(this->f))
+  , stack(mk_vec<area_type>(this->f)) {
     frame_holder tmp{*this};
     tmp.env = nullptr;
   }

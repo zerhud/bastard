@@ -16,27 +16,25 @@ namespace jinja_details {
 template<typename factory, typename crtp>
 struct block_with_params : element_with_name<factory> {
   using base =  element_with_name<factory>;
-  using string_t = typename base::string_t;
-  using context_type = typename base::context_type;
+  using name_t = typename base::name_t;
   using p = typename factory::parser;
   template<auto s> using th = p::template tmpl<s>;
   using expr_type = decltype(mk_jinja_expression(std::declval<factory>()));
 
   struct parameter {
-    string_t name;
+    name_t name;
     expr_type value;
   };
 
   using parameters_holder = decltype(mk_vec<parameter>(std::declval<factory>()));
 
-  constexpr const string_t& name() const override { return _name; }
-  constexpr void execute(context_type& ctx) const override { }
+  constexpr const name_t& name() const override { return _name; }
 
   constexpr static auto struct_fields_count() { return 7; }
   factory f;
   trim_info<factory> begin_left;
   shift_info shift_inside;
-  string_t _name;
+  name_t _name;
   parameters_holder parameters;
   block_content<factory> holder;
   trim_info<factory> end_right;
@@ -75,18 +73,23 @@ struct block_with_params : element_with_name<factory> {
 template<typename factory>
 struct named_block : block_with_params<factory, named_block<factory>> {
   using base = block_with_params<factory, named_block>;
+  using context_type = typename base::context_type;
   using p = typename base::p;
   constexpr explicit named_block(factory f) : base(std::move(f)) {}
-  consteval static auto keyword_open() { return base::p::template lit<"block">; }
-  consteval static auto keyword_close() { return base::p::template lit<"endblock">; }
+  consteval static auto keyword_open() { return lit<"block">(p{}); }
+  consteval static auto keyword_close() { return lit<"endblock">(p{}); }
+  constexpr void execute(context_type& ctx) const override { }
 };
 
 template<typename factory>
 struct macro_block : block_with_params<factory, macro_block<factory>> {
   using base = block_with_params<factory, macro_block>;
+  using context_type = typename base::context_type;
+  using p = typename base::p;
   constexpr explicit macro_block(factory f) : base(std::move(f)) {}
-  consteval static auto keyword_open() { return base::p::template lit<"macro">; }
-  consteval static auto keyword_close() { return base::p::template lit<"endmacro">; }
+  consteval static auto keyword_open() { return lit<"macro">(p{}) ; }
+  consteval static auto keyword_close() { return lit<"endmacro">(p{}); }
+  constexpr void execute(context_type& ctx) const override { }
 };
 
 } // namespace jinja_details

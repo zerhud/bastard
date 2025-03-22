@@ -79,7 +79,7 @@ template<typename factory> struct for_block : base_jinja_element<factory> {
     else iterate_expr(ctx, for_exprs.exprs[expr_ind], expr_ind+1);
   }
   constexpr void iterate_expr(context_type& ctx, const for_expr& expr, unsigned expr_ind) const {
-    auto result = jinja_expression_eval(f, expr.expr);
+    auto result = jinja_expression_eval(ctx.f, ctx.env.mk_context_data(), expr.expr);
     using string_t = typename decltype(result)::string_t;
     if (result.is_string())
       exec(result, [&](const auto&, const string_t& val) { for (auto& s:val) prepare_ctx(ctx, val, expr_ind); });

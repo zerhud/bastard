@@ -30,7 +30,7 @@ template<typename factory> struct if_else_block : base_jinja_element<factory> {
   constexpr static auto struct_fields_count() { return 4; }
 
   constexpr void execute(context_type& ctx) const override {
-    auto result = jinja_expression_eval(f, condition);
+    auto result = jinja_expression_eval(ctx.f, ctx.env.mk_context_data(), condition);
     if (!!result) holder.execute(ctx);
   }
 
@@ -71,9 +71,9 @@ template<typename factory> struct if_block : base_jinja_element<factory> {
   constexpr static auto struct_fields_count() { return 6; }
 
   constexpr void execute(context_type& ctx) const override {
-    auto result = jinja_expression_eval(f, condition);
+    auto result = jinja_expression_eval(ctx.f, ctx.env.mk_context_data(), condition);
     if (!!result) holder.execute(ctx);
-    else for (auto& eb:else_blocks) if (!!jinja_expression_eval(f, eb.condition)) { eb.holder.execute(ctx); break; }
+    else for (auto& eb:else_blocks) if (!!jinja_expression_eval(ctx.f, ctx.env.mk_context_data(), eb.condition)) { eb.holder.execute(ctx); break; }
   }
 
   constexpr static auto mk_parser(const auto& f) {

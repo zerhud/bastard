@@ -31,7 +31,7 @@ struct content : base_jinja_element<factory> {
   {}
 
   constexpr void execute(context_type& ctx) const override {
-    ctx(data_type{value});
+    ctx(ctx.mk_data(value));
   }
 
   constexpr static auto mk_parser() {

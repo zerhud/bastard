@@ -47,10 +47,16 @@ static_assert( [] {
   cnt->value = "test content";
   r1.holder.holder.emplace_back() = std::move(cnt);
   op_type::context_type ctx{factory{}};
+  ctx.f.on_eval = [](data env, const test_expr& e) {
+    if ((data::string_t)(env[data{"test_name"}][0][data{"value"}]) != "test content") throw 0;
+    if (get<0>(e)!="test_expr") throw 1;
+  };
   r1.execute(ctx);
   auto result = ctx.env.at(data{"test_name"});
+  delete ctx.f.on_eval.impl;
   return (ctx.env.size()==1) + 2*result.is_string() + 4*((data::string_t)result == "0: 'test_expr'") ;
-}() == 7 );
+}() == 7, "the value of set_block is a result of block execution - array of output objects" );
+
 static_assert( [] {
   using op_type =  jinja_details::if_block<factory>;
   op_type r1{factory{}}, r2{factory{}};
@@ -65,7 +71,7 @@ static_assert( [] {
   r2.execute(ctx2);
   auto [_,_,val] = ctx1.cur_output().records[0].value();
   return val.is_string() + 2*(val=="test content") + 4*(ctx2.cur_output().size()==0);
-}() == 7, "else block main part" );
+}() == 7, "if block: main part" );
 static_assert( [] {
   using op_type =  jinja_details::if_block<factory>;
   op_type r1{factory{}}, r2{factory{}};
@@ -83,7 +89,7 @@ static_assert( [] {
   auto [_,_,val1] = ctx1.cur_output().records[0].value();
   auto [_,_,val2] = ctx2.cur_output().records[0].value();
   return val1.is_string() + 2*(val1=="r1 test") + 4*val2.is_string() + 8*(val2=="r2 test");
-}() == 15 );
+}() == 15, "if block: else part" );
 
 static_assert( [] {
   using op_type =  jinja_details::for_block<factory>;
@@ -97,6 +103,13 @@ static_assert( [] {
   auto [_,_,val1] = ctx1.cur_output().records[7].value();
   return (ctx1.cur_output().records.size()==8) + 2*(val1 == "t");
 }() == 3, "for_block simple execution" );
+
+static_assert( [] {
+  using op_type = jinja_details::named_block<factory>;
+  op_type r1{factory{}};
+  r1._name = "foo";
+  return 3;
+}() == 3 );
 
 int main(int,char**) {
 }

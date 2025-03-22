@@ -51,7 +51,7 @@ struct expression_operator : base_jinja_element<factory> {
   constexpr explicit expression_operator(factory f) : f(std::move(f)) {}
 
   constexpr void execute(context_type& ctx) const override {
-    ctx(begin, jinja_expression_eval(ctx.f, expr), end);
+    ctx(begin, jinja_expression_eval(ctx.f, ctx.env.mk_context_data(), expr), end);
   }
 
   constexpr static auto mk_parser(const auto& f) {
