@@ -20,6 +20,7 @@ struct block_with_params : element_with_name<factory> {
   using p = typename factory::parser;
   template<auto s> using th = p::template tmpl<s>;
   using expr_type = decltype(mk_jinja_expression(std::declval<factory>()));
+  using context_type = typename base::context_type;
 
   struct parameter {
     name_t name;
@@ -53,6 +54,12 @@ struct block_with_params : element_with_name<factory> {
   constexpr auto size() const { return holder.size(); }
   constexpr auto& operator[](auto ind) const { return holder[ind]; }
 
+  constexpr void execute(context_type& ctx) const override {
+    for (auto& p:parameters)
+      ctx.env.add_local(ctx.mk_data(p.name), jinja_expression_eval(ctx.f, ctx.env.mk_context_data(), p.value));
+    this->holder.execute(ctx);
+  }
+
   constexpr static auto mk_parser(const auto& f) {
     using bp = base_parser<factory>;
     auto expr_parser = mk_jinja_expression_parser(f);
@@ -78,7 +85,10 @@ struct named_block : block_with_params<factory, named_block<factory>> {
   constexpr explicit named_block(factory f) : base(std::move(f)) {}
   consteval static auto keyword_open() { return lit<"block">(p{}); }
   consteval static auto keyword_close() { return lit<"endblock">(p{}); }
-  constexpr void execute(context_type& ctx) const override { }
+  constexpr void execute(context_type& ctx) const override {
+    auto area_holder = ctx.env.push_frame();
+    base::execute(ctx);
+  }
 };
 
 template<typename factory>
@@ -89,7 +99,6 @@ struct macro_block : block_with_params<factory, macro_block<factory>> {
   constexpr explicit macro_block(factory f) : base(std::move(f)) {}
   consteval static auto keyword_open() { return lit<"macro">(p{}) ; }
   consteval static auto keyword_close() { return lit<"endmacro">(p{}); }
-  constexpr void execute(context_type& ctx) const override { }
 };
 
 } // namespace jinja_details
