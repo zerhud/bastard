@@ -44,6 +44,10 @@ constexpr void trim_right(const factory&, factory::string_t& val) {
 	while (!val.empty() && is_space(val.back())) val.pop_back();
 }
 
+constexpr auto mk_name(const factory&, auto&&... arg) {
+  return std::string{std::forward<decltype(arg)>(arg)...};
+}
+
 struct variant_workaround_factory : factory {
 #ifdef __clang__
 	template<typename... types> using variant_t = tests::variant_clang_bug_workaround<types...>;

@@ -20,13 +20,12 @@ struct template_holder;
 template<typename factory>
 struct template_block : element_with_name<factory> {
   using base = element_with_name<factory>;
-  using string_t = base::string_t;
-  using name_t = base::string_t;
+  using name_t = base::name_t;
   using context_type = base::context_type;
   using p = factory::parser;
   template<auto s> using th = p::template tmpl<s>;
 
-  constexpr const string_t& name() const override { return _name; }
+  constexpr const name_t& name() const override { return _name; }
   constexpr void execute(context_type& ctx) const override { }
 
   constexpr auto size() const { return holder.size(); }
@@ -49,7 +48,7 @@ struct template_block : element_with_name<factory> {
 
   constexpr static auto struct_fields_count() { return 5; }
   factory f;
-  string_t _name;
+  name_t _name;
   decltype(mk_vec<name_t>(std::declval<factory>())) extends;
   block_content<factory> holder;
   decltype(make_holder(std::declval<factory>())) blocks;

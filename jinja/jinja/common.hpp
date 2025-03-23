@@ -69,8 +69,7 @@ struct base_jinja_element {
 
 template<typename factory>
 struct element_with_name : base_jinja_element<factory> {
-  using name_t = decltype(mk_str(std::declval<factory>()));
-  using string_t = decltype(mk_str(std::declval<factory>()));
+  using name_t = decltype(mk_name(std::declval<factory>()));
   virtual const name_t& name() const =0 ;
 };
 

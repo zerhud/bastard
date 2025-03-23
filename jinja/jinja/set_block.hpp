@@ -16,7 +16,7 @@ namespace jinja_details {
 template<typename factory>
 struct set_block : element_with_name<factory> {
   using base =  element_with_name<factory>;
-  using string_t = typename base::string_t;
+  using name_t = typename base::name_t;
   using context_type = typename base::context_type;
   using expr_type = decltype(mk_jinja_expression(std::declval<factory>()));
   using p = typename factory::parser;
@@ -32,7 +32,7 @@ struct set_block : element_with_name<factory> {
   , holder(this->f)
   {}
 
-  constexpr const string_t& name() const override { return _name; }
+  constexpr const name_t& name() const override { return _name; }
   constexpr void execute(context_type& ctx) const override {
     auto data = ctx.mk_data();
     {
@@ -52,7 +52,7 @@ struct set_block : element_with_name<factory> {
 
   factory f;
   trim_info<factory> begin_left;
-  string_t _name;
+  name_t _name;
   expr_type handler;
   block_content<factory> holder;
   trim_info<factory> end_right;

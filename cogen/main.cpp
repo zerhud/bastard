@@ -73,7 +73,8 @@ template<typename type> constexpr auto mk_vec(const std_factory&) { return std::
 template<typename type> constexpr auto mk_empty_ptr(const std_factory&) { return std::unique_ptr<type>{}; }
 template<typename type> constexpr auto mk_ptr(const std_factory&, auto&&... args) { return std::make_unique<type>(std::forward<decltype(args)>(args)...); }
 constexpr auto mk_ptr_from_obj(const std_factory&, auto d) { return std::make_unique<decltype(d)>( std::move(d) ); }
-constexpr auto mk_str(const std_factory&) { return std::string{}; }
+constexpr auto mk_str(const std_factory&, auto&&... args) { return std::string{std::forward<decltype(args)>(args)...}; }
+constexpr auto mk_name(const std_factory&, auto&&... args) { return std::string{std::forward<decltype(args)>(args)...}; }
 constexpr auto mk_data(const std_factory& f) { return std_factory::data_type{f}; }
 constexpr auto mk_data(const std_factory&, std::string_view src) {
   using dt = std_factory::data_type;
