@@ -132,9 +132,25 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 				struct kv {
 					data_type k, v;
 				};
-				if constexpr (requires{this->orig_val().insert(kv{key,value});}) {
+				if constexpr (requires{inert(this->orig_val(), key, value);}) {
+					insert(this->orig_val(), key, value);
+					return this->orig_val().at(key);
+				}
+				else if constexpr (requires{this->orig_val().insert({key, value});}) {
+					this->orig_val().insert({key, value});
+					return this->orig_val().at(key);
+				}
+				else if constexpr (requires{this->orig_val().insert(kv{key,value});}) {
 					this->orig_val().insert(kv{key, value});
 					return this->orig_val().at(key);
+				}
+				else if constexpr(requires{put(this->orig_val(), key, std::move(value));}) {
+					put(this->orig_val(), key, std::move(value));
+					return this->orig_val.at(key);
+				}
+				else if constexpr(requires{this->orig_val().put(key, std::move(value));}) {
+					this->orig_val().put(key, std::move(value));
+					return this->orig_val.at(key);
 				}
 				else throw_wrong_interface_error<interfaces::put>(key.factory);
 			}
@@ -160,4 +176,3 @@ constexpr auto mk_te_object(const auto& f, auto&& src) {
 }
 
 } // namespace absd::details
-
