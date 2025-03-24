@@ -145,8 +145,8 @@ static_assert( [] {
   data params; params.put(data{"p1"}, data{100});
   auto result = obj.call(params);
   delete ctx1.f.on_eval.impl;
-  return obj.is_callable() + 2*(ctx1.cur_output().records.size()==0) + 4*(env_count==1) + 8*(result[0][data{"value"}] == "1: '7'") + 16*(ctx1.env.size()==0);
-}() == 31 );
+  return obj.is_callable() + 2*(ctx1.cur_output().records.size()==0) + 4*(env_count==1) + 8*(result[0][data{"value"}] == "1: '7'") + 16*(ctx1.env.size()==0) + 32*(obj[data{"name"}]=="foo");
+}() == 63 );
 
 int main(int,char**) {
 }
