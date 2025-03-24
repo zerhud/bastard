@@ -107,7 +107,7 @@ struct data {
 	}
 
 private:
-	template<typename type> constexpr static const bool is_inner_counter_exists = requires(std::remove_pointer_t<std::decay_t<type>>& v){ v.increase_counter(); };
+	template<typename type> constexpr static bool is_inner_counter_exists = requires(std::remove_pointer_t<std::decay_t<type>>& v){ v.increase_counter(); };
 
 	holder_t holder;
 	details::type_erasure_callable<factory_t, self_type>* multi_callable=nullptr;

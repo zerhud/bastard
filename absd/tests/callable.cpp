@@ -66,6 +66,10 @@ constexpr void main_test() {
 	static_assert( data_type::mk(callable_obj_arr{}).is_array() );
 	static_assert( data_type::mk(callable_obj_arr{}).is_object() );
 	static_assert( data_type::mk(callable_obj_arr{}, data_type::mk_param("a"), data_type::mk_param("b")).is_callable() );
+
+	struct object_with_call_method { constexpr data_type call(data_type) const { return data_type{17}; } };
+	static_assert( data_type::mk(object_with_call_method{}).is_callable() );
+	static_assert( data_type::mk(object_with_call_method{}).call(data_type{}) == 17 );
 }
 
 template<typename fp> struct absd_factory : tests::factory {
