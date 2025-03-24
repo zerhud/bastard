@@ -14,6 +14,7 @@
 #include "jinja/content.hpp"
 #include "jinja/operators.hpp"
 #include "jinja/named_block.hpp"
+#include "jinja/named_env_object.hpp"
 #include "jinja/set_block.hpp"
 #include "jinja/if_block.hpp"
 #include "jinja/for_block.hpp"

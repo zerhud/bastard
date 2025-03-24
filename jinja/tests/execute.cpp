@@ -128,5 +128,25 @@ static_assert( [] {
   return (ctx1.cur_output().records.size()==1) + 2*(env_count==1) + 4*(val1 == "1: '7'") + 8*(ctx1.env.size()==0);
 }() == 15, "pass parameters in named block" );
 
+static_assert( [] {
+  using op_type = jinja_details::named_block<factory>;
+  op_type r1{factory{}};
+  r1._name = "foo";
+  r1.parameters.emplace_back().name = "p1";
+  r1.parameters.back().value = test_expr{1};
+  r1.holder.holder.emplace_back(make_expr(7));
+  op_type::context_type ctx1{factory{}};
+  auto obj = data::mk(jinja_details::named_env_object<factory>{&r1, &ctx1});
+  std::size_t env_count = 0;
+  ctx1.f.on_eval = [&](data env, const test_expr& e) {
+    env_count += env.size();
+    if (env.size()!=0&&env[data{"p1"}].is_none()) throw 0;
+  };
+  data params; params.put(data{"p1"}, data{100});
+  auto result = obj.call(params);
+  delete ctx1.f.on_eval.impl;
+  return obj.is_callable() + 2*(ctx1.cur_output().records.size()==0) + 4*(env_count==1) + 8*(result[0][data{"value"}] == "1: '7'") + 16*(ctx1.env.size()==0);
+}() == 31 );
+
 int main(int,char**) {
 }
